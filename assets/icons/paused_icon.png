@@ -1,0 +1,4 @@
+# Paused 1x1 PNG (grey)
+from PIL import Image
+img = Image.new('RGB', (64, 64), color = 'grey')
+img.save("assets/icons/paused_icon.png")
