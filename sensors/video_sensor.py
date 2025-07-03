@@ -1,5 +1,6 @@
 import cv2
 import time
+import random # For placeholder facial emotion detection
 import config # For CAMERA_INDEX
 
 class VideoSensor:
@@ -11,6 +12,7 @@ class VideoSensor:
         self.last_error_message = ""
         self.retry_delay = 30  # seconds
         self.last_retry_time = 0
+        self.placeholder_facial_emotions = ["neutral", "happy", "fatigue detected", "anxiety detected", None, None, None, None] # Weighted to None
 
         self._initialize_capture()
 
@@ -69,7 +71,7 @@ class VideoSensor:
                 self._initialize_capture() # Attempt to re-initialize
 
             if self.error_state: # If still in error state after retry attempt
-                return None, self.last_error_message # Indicate error and return last message
+                return None, None, self.last_error_message # frame, emotion, error
             # If re-initialization was successful, error_state is false, proceed to read frame
 
         if not self.cap or not self.cap.isOpened():
@@ -77,16 +79,15 @@ class VideoSensor:
             if not self.error_state: # If not already marked as error, something new happened
                 self._log_error("Video capture is not open, though not in persistent error state.")
                 self.error_state = True # Mark as error
-            # No retry logic here, as it's handled by the error_state check at the beginning
-            return None, "Video capture not available."
+            return None, None, "Video capture not available." # frame, emotion, error
 
         try:
             ret, frame = self.cap.read()
-            if not ret:
+            if not ret or frame is None: # Added check for frame is None, as ret can sometimes be true with a None frame
                 self.error_state = True
-                error_msg = "Failed to read frame from video capture."
+                error_msg = "Failed to read frame from video capture (ret or frame is None)."
                 self._log_error(error_msg)
-                return None, error_msg
+                return None, None, error_msg # frame, emotion, error
 
             # If we successfully read a frame, ensure error_state is False
             if self.error_state: # Was in error, but now working
@@ -94,12 +95,13 @@ class VideoSensor:
                 self.error_state = False
                 self.last_error_message = ""
 
-            return frame, None # Return frame and no error
+            detected_emotion = self.analyze_facial_emotion(frame)
+            return frame, detected_emotion, None # frame, emotion, no error
         except Exception as e:
             self.error_state = True
             error_msg = "Exception while reading frame."
             self._log_error(error_msg, str(e))
-            return None, error_msg
+            return None, None, error_msg # frame, emotion, error
 
     def release(self):
         if self.cap and self.cap.isOpened():
@@ -113,6 +115,25 @@ class VideoSensor:
 
     def get_last_error(self):
         return self.last_error_message
+
+    def analyze_facial_emotion(self, frame):
+        """
+        Placeholder for OpenCV facial emotion analysis on a video frame.
+        Returns a string (e.g., "neutral", "fatigue detected") or None.
+        """
+        if frame is None: # Should not happen if called correctly
+            return None
+
+        # Simulate some processing or criteria for analysis
+        # For now, just randomly pick an emotion, weighted towards None
+        detected_emotion = random.choice(self.placeholder_facial_emotions)
+
+        if detected_emotion:
+            self._log_info(f"Placeholder facial emotion analysis: Detected '{detected_emotion}'.")
+        else:
+            # self._log_debug("Placeholder facial emotion analysis: No specific emotion detected.") # Could be too noisy
+            pass
+        return detected_emotion
 
 if __name__ == '__main__':
     # Example Usage (requires a webcam or will show errors)
@@ -138,24 +159,29 @@ if __name__ == '__main__':
 
     for i in range(5): # Try to get a few frames
         print(f"\nAttempting to get frame {i+1}...")
-        frame, error = vs.get_frame()
+        frame, facial_emotion, error = vs.get_frame()
         if error:
             print(f"Error getting frame: {error}")
             if vs.has_error() and i < 2 : # If error, wait for retry period for first couple of attempts
                  print(f"Sensor in error state. Waiting for {vs.retry_delay + 1}s to allow retry logic...")
-                 time.sleep(vs.retry_delay +1)
+                 time.sleep(vs.retry_delay + 1)
             elif vs.has_error(): # If still erroring, don't wait full period for subsequent tests
                 print("Sensor still in error state. Continuing test without long wait.")
                 time.sleep(1)
 
         elif frame is not None:
             print(f"Frame {i+1} received successfully. Shape: {frame.shape}")
+            if facial_emotion:
+                print(f"Detected Facial Emotion: {facial_emotion}")
+            else:
+                print("No specific facial emotion detected.")
             # cv2.imshow("Test Frame", frame) # Uncomment to display frame
             # if cv2.waitKey(1) & 0xFF == ord('q'):
             #    break
             time.sleep(0.5) # Simulate some processing
         else:
-            print(f"Frame {i+1} was None, but no explicit error string returned (should not happen). Has_Error: {vs.has_error()}")
+            # This case (frame is None, error is None) should ideally not be reached if error logic is sound
+            print(f"Frame {i+1} was None, but no explicit error string. Facial Emotion: {facial_emotion}. Has_Error: {vs.has_error()}")
             time.sleep(1)
 
     vs.release()

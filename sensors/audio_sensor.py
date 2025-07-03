@@ -1,6 +1,7 @@
 import sounddevice as sd
 import numpy as np
 import time
+import random # For placeholder emotion detection
 import config # Potentially for audio device settings in the future
 
 class AudioSensor:
@@ -16,6 +17,7 @@ class AudioSensor:
         self.last_error_message = ""
         self.retry_delay = 30  # seconds
         self.last_retry_time = 0
+        self.placeholder_emotions = ["neutral", "happy", "sad", "stress detected", None, None, None]  # Weighted towards None
 
         self._check_devices()
         self._initialize_stream()
@@ -100,13 +102,13 @@ class AudioSensor:
                 self._initialize_stream()
 
             if self.error_state: # If still in error state
-                return None, self.last_error_message
+                return None, None, self.last_error_message # chunk, emotion, error
 
         if not self.stream or self.stream.closed:
             if not self.error_state:
                  self._log_error("Audio stream is not active or closed, though not in persistent error state.")
                  self.error_state = True
-            return None, "Audio stream not available."
+            return None, None, "Audio stream not available." # chunk, emotion, error
 
         try:
             # sd.InputStream.read is blocking until `self.chunk_size` frames are read.
@@ -120,13 +122,12 @@ class AudioSensor:
                     self._log_info("Audio sensor recovered and reading data.")
                     self.error_state = False
                     self.last_error_message = ""
-                return data_chunk, None # Return audio data and no error
+
+                detected_emotion = self.analyze_emotion(data_chunk)
+                return data_chunk, detected_emotion, None # chunk, emotion, no error
             else:
                 # Not enough data available for a non-blocking read.
-                # For this example, we'll treat it as "no new chunk yet" rather than an error.
-                # A real implementation might queue smaller reads or handle this differently.
-                # print(f"AudioSensor: Not enough data available ({self.stream.read_available}/{self.chunk_size}). Returning None.")
-                return None, None # No new full chunk, not an error
+                return None, None, None # No new full chunk, no emotion, not an error
 
         except sd.PortAudioError as pae:
             self.error_state = True
@@ -134,13 +135,13 @@ class AudioSensor:
             self._log_error(error_msg)
             # Attempt to gracefully stop and close the stream on PortAudioError
             self._handle_stream_error()
-            return None, error_msg
+            return None, None, error_msg # chunk, emotion, error
         except Exception as e:
             self.error_state = True
             error_msg = "Generic exception while reading audio chunk."
             self._log_error(error_msg, str(e))
             self._handle_stream_error()
-            return None, error_msg
+            return None, None, error_msg # chunk, emotion, error
 
     def _handle_stream_error(self):
         if self.stream and not self.stream.closed:
@@ -170,6 +171,25 @@ class AudioSensor:
     def get_last_error(self):
         return self.last_error_message
 
+    def analyze_emotion(self, audio_chunk):
+        """
+        Placeholder for NLP emotion analysis on an audio chunk.
+        Returns a string (e.g., "neutral", "stress detected") or None.
+        """
+        if audio_chunk is None: # Should not happen if called correctly
+            return None
+
+        # Simulate some processing or criteria for analysis
+        # For now, just randomly pick an emotion, weighted towards None
+        detected_emotion = random.choice(self.placeholder_emotions)
+
+        if detected_emotion:
+            self._log_info(f"Placeholder emotion analysis: Detected '{detected_emotion}'.")
+        else:
+            # self._log_debug("Placeholder emotion analysis: No specific emotion detected.") # Could be too noisy
+            pass
+        return detected_emotion
+
 if __name__ == '__main__':
     class MockDataLogger:
         def log_info(self, msg): print(f"MOCK_LOG_INFO: {msg}")
@@ -191,24 +211,28 @@ if __name__ == '__main__':
         # Need to wait for buffer to fill if chunk_duration is long
         # time.sleep(audio_sensor.chunk_duration / 2) # Wait a bit for data to accumulate
 
-        audio_chunk, error = audio_sensor.get_chunk()
+        audio_chunk, detected_emotion, error = audio_sensor.get_chunk()
 
         if error:
             print(f"Error getting audio chunk: {error}")
-            if audio_sensor.has_error() and i < 2:
+            if audio_sensor.has_error() and i < 2: # Allow retry for first couple of errors
                 print(f"Sensor in error state. Waiting for {audio_sensor.retry_delay + 1}s to allow retry logic...")
                 time.sleep(audio_sensor.retry_delay + 1)
             elif audio_sensor.has_error():
                  print("Sensor still in error state. Continuing test without long wait.")
-                 time.sleep(0.1)
+                 time.sleep(0.1) # Short delay if persistently erroring
 
         elif audio_chunk is not None:
-            print(f"Audio chunk {i+1} received successfully. Shape: {audio_chunk.shape}, Max val: {np.max(audio_chunk):.4f}")
-            # Add some processing delay
-            time.sleep(0.1)
+            print(f"Audio chunk {i+1} received. Shape: {audio_chunk.shape}, Max val: {np.max(audio_chunk):.4f}")
+            if detected_emotion:
+                print(f"Detected Emotion: {detected_emotion}")
+            else:
+                print("No specific emotion detected.")
+            time.sleep(0.1) # Simulate processing
         else:
-            # This means not enough data was available for a full chunk.
-            print(f"Audio chunk {i+1} was None (not enough data or stream issue), no explicit error. Has_Error: {audio_sensor.has_error()}")
+            # This means not enough data was available for a full chunk (audio_chunk is None, error is None, emotion may or may not be None)
+            # Note: detected_emotion will be None if audio_chunk is None and error is None based on current get_chunk logic
+            print(f"Audio chunk {i+1} was None (not enough data or stream issue), no explicit error. Emotion: {detected_emotion}. Has_Error: {audio_sensor.has_error()}")
             time.sleep(0.2) # Wait a bit longer for data to fill
 
     audio_sensor.release()

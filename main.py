@@ -1,12 +1,14 @@
 import time
 import keyboard # Ensure this is installed
+import schedule # Added for periodic checks
+import os # Added for getenv
 import config
 from core.logic_engine import LogicEngine
 from core.intervention_engine import InterventionEngine
-from core.system_tray import ACRTrayIcon
+# from core.system_tray import ACRTrayIcon # Moved to conditional import
 from core.data_logger import DataLogger
-from sensors.video_sensor import VideoSensor
-from sensors.audio_sensor import AudioSensor
+# from sensors.video_sensor import VideoSensor # Moved to conditional import
+# from sensors.audio_sensor import AudioSensor # Moved to conditional import
 
 class Application:
     def __init__(self):
@@ -16,22 +18,68 @@ class Application:
         self.logic_engine = LogicEngine()
         self.intervention_engine = InterventionEngine(self.logic_engine, self)
 
-        self.video_sensor = VideoSensor(config.CAMERA_INDEX, self.data_logger)
-        self.audio_sensor = AudioSensor(self.data_logger)
+        self.video_sensor = None
+        self.audio_sensor = None
+
+        if os.getenv("NO_SENSORS") != "1":
+            try:
+                from sensors.video_sensor import VideoSensor
+                self.video_sensor = VideoSensor(config.CAMERA_INDEX, self.data_logger)
+            except Exception as e:
+                self.data_logger.log_error(f"Failed to initialize VideoSensor: {e}", "Continuing without video sensor.")
+            try:
+                from sensors.audio_sensor import AudioSensor
+                self.audio_sensor = AudioSensor(self.data_logger)
+            except Exception as e:
+                self.data_logger.log_error(f"Failed to initialize AudioSensor: {e}", "Continuing without audio sensor.")
+        else:
+            self.data_logger.log_info("NO_SENSORS environment variable set. Skipping sensor initialization.")
+
 
         self.running = True
         self.sensor_error_active = False
+        self.tray_icon = None # Initialize as None
 
-        self.tray_icon = ACRTrayIcon(self)
-        self.logic_engine.tray_callback = self.update_tray_status_and_notify
+        # Conditionally initialize tray icon
+        if os.getenv("NO_TRAY") != "1":
+            try:
+                from core.system_tray import ACRTrayIcon # Conditional import
+                self.tray_icon = ACRTrayIcon(self)
+                if self.logic_engine: # Ensure logic_engine is available
+                    self.logic_engine.tray_callback = self.update_tray_status_and_notify
+            except Exception as e:
+                self.data_logger.log_error(f"Failed to initialize ACRTrayIcon: {e}", "Continuing without tray icon.")
+                self.tray_icon = None # Ensure it's None if failed
+        else:
+            self.data_logger.log_info("NO_TRAY environment variable set. Skipping tray icon initialization.")
 
         self._setup_hotkeys()
+        self._setup_scheduler() # Added for periodic checks
 
         self.data_logger.log_info(f"ACR Initialized. Mode: {self.logic_engine.get_mode()}.")
         print(f"ACR Initialized. Mode: {self.logic_engine.get_mode()}. Press Esc to quit.")
         print(f"Hotkeys: Cycle Mode ({config.HOTKEY_CYCLE_MODE}), Pause/Resume ({config.HOTKEY_PAUSE_RESUME})")
         print(f"Feedback Hotkeys: Helpful ({config.HOTKEY_FEEDBACK_HELPFUL}), Unhelpful ({config.HOTKEY_FEEDBACK_UNHELPFUL})")
 
+    def _setup_scheduler(self):
+        self.data_logger.log_info(f"Setting up periodic check scheduler for every {config.PERIODIC_CHECK_INTERVAL_SECONDS} seconds.")
+        schedule.every(config.PERIODIC_CHECK_INTERVAL_SECONDS).seconds.do(self.perform_periodic_check)
+
+    def perform_periodic_check(self):
+        self.data_logger.log_info("Performing scheduled periodic check...")
+        # Placeholder for actual check logic, e.g., LMM pulse check, long-term pattern analysis trigger
+        # For now, just log that it ran.
+        # This check should respect application modes (e.g., not run if paused or snoozed, or run differently)
+        current_mode = self.logic_engine.get_mode()
+        if current_mode == "active":
+            self.data_logger.log_info(f"Periodic check running in ACTIVE mode.")
+            # Future: self.lmm_interface.perform_pulse_check()
+            # Future: self.intervention_engine.consider_proactive_suggestion()
+        elif current_mode == "snoozed":
+            self.data_logger.log_info(f"Periodic check: App is SNOOZED. Light check or logging only.")
+        elif current_mode == "paused":
+            self.data_logger.log_info(f"Periodic check: App is PAUSED. Skipping active tasks for check.")
+        # Error state is implicitly handled as active tasks would likely be skipped.
 
     def _setup_hotkeys(self):
         self.data_logger.log_info("Setting up hotkeys...")
@@ -114,14 +162,17 @@ class Application:
             self.tray_icon.update_icon_status("error" if self.sensor_error_active and new_mode != "paused" else new_mode)
 
     def _check_sensors(self):
-        video_had_error = self.video_sensor.has_error()
-        audio_had_error = self.audio_sensor.has_error()
+        if os.getenv("NO_SENSORS") == "1" and not self.video_sensor and not self.audio_sensor:
+            return False # No sensors to check
+
+        video_had_error = self.video_sensor.has_error() if self.video_sensor else False
+        audio_had_error = self.audio_sensor.has_error() if self.audio_sensor else False
         current_sensor_issue = video_had_error or audio_had_error
 
         if current_sensor_issue and not self.sensor_error_active: # New overall sensor error state
             self.data_logger.log_error("One or more sensors have entered an error state.")
-            if video_had_error: self.data_logger.log_warning(f"Video sensor error: {self.video_sensor.get_last_error()}")
-            if audio_had_error: self.data_logger.log_warning(f"Audio sensor error: {self.audio_sensor.get_last_error()}")
+            if video_had_error and self.video_sensor: self.data_logger.log_warning(f"Video sensor error: {self.video_sensor.get_last_error()}")
+            if audio_had_error and self.audio_sensor: self.data_logger.log_warning(f"Audio sensor error: {self.audio_sensor.get_last_error()}")
 
             self.sensor_error_active = True
             if self.tray_icon: self.tray_icon.update_icon_status("error")
@@ -144,8 +195,10 @@ class Application:
         loop_counter = 0
 
         while self.running:
+            schedule.run_pending() # Process scheduled tasks
+
             loop_counter += 1
-            if loop_counter % 5 == 0:
+            if loop_counter % 5 == 0: # Approx every 2.5s if sleep is 0.5s
                  self._check_sensors()
 
             current_mode = self.logic_engine.get_mode()
@@ -158,13 +211,30 @@ class Application:
                 last_known_mode = current_mode
 
             if current_mode == "active" and not self.sensor_error_active:
-                frame, video_err = self.video_sensor.get_frame()
-                audio_chunk, audio_err = self.audio_sensor.get_chunk()
+                video_err, audio_err = None, None
+                video_emotion = None # Initialize
+                if self.video_sensor:
+                    frame, video_emotion, video_err = self.video_sensor.get_frame()
+                    if video_err:
+                        self.data_logger.log_warning(f"Video frame read error in active loop: {video_err}")
+                    if frame is not None and video_emotion:
+                        self.data_logger.log_info(f"Video Sensor detected emotion: {video_emotion}")
+                    # frame can be processed further if needed
+                else:
+                    # self.data_logger.log_debug("Video sensor not available in active loop.") # Optional: too noisy
+                    pass
 
-                if video_err:
-                    self.data_logger.log_warning(f"Video frame read error in active loop: {video_err}")
-                if audio_err:
-                    self.data_logger.log_warning(f"Audio chunk read error in active loop: {audio_err}")
+                audio_emotion = None # Initialize
+                if self.audio_sensor:
+                    audio_chunk, audio_emotion, audio_err = self.audio_sensor.get_chunk()
+                    if audio_err:
+                        self.data_logger.log_warning(f"Audio chunk read error in active loop: {audio_err}")
+                    if audio_chunk is not None and audio_emotion:
+                        self.data_logger.log_info(f"Audio Sensor detected emotion: {audio_emotion}")
+                    # audio_chunk can be processed further if needed
+                else:
+                    # self.data_logger.log_debug("Audio sensor not available in active loop.") # Optional: too noisy
+                    pass
 
                 # --- Example of triggering a test intervention for feedback ---
                 if loop_counter % 60 == 0 : # Approx every 30s (if sleep is 0.5s)
@@ -180,9 +250,9 @@ class Application:
 
     def _shutdown(self):
         self.data_logger.log_info("Application shutting down...")
-        if hasattr(self, 'video_sensor') and self.video_sensor: self.video_sensor.release()
-        if hasattr(self, 'audio_sensor') and self.audio_sensor: self.audio_sensor.release()
-        if hasattr(self, 'tray_icon') and self.tray_icon: self.tray_icon.stop()
+        if self.video_sensor: self.video_sensor.release()
+        if self.audio_sensor: self.audio_sensor.release()
+        if self.tray_icon: self.tray_icon.stop()
 
         try:
             keyboard.unhook_all()

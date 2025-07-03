@@ -33,3 +33,9 @@ MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds, e.g., 5 minutes (for proactive, 
 
 # System Tray settings
 APP_NAME = "ACR"
+
+# Scheduler settings
+PERIODIC_CHECK_INTERVAL_SECONDS = 60  # Check every 60 seconds (adjust as needed for production)
+
+# Data store settings
+DATABASE_FILE = "asdgpt_data.sqlite"

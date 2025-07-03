@@ -1,6 +1,27 @@
 import time
 import config
 import datetime # For feedback timestamping
+import random # For selecting from multiple prompts
+
+# --- Placeholder Intervention Details ---
+INTERVENTION_TYPES = {
+    "FATIGUE_BREAK": "fatigue_break_suggestion",
+    "STRESS_BREATHING": "stress_breathing_exercise_suggestion",
+    "GENERIC_PROMPT": "generic_lmm_prompt" # For future LMM integration
+}
+
+FATIGUE_PROMPTS = [
+    "You seem to be tiring. How about a 5-minute break to refresh?",
+    "Feeling a bit fatigued? A short walk or some stretches might help.",
+    "This might be a good time to step away and rest your eyes for a few minutes."
+]
+
+STRESS_PROMPTS = [
+    "Feeling stressed? Let's try a quick breathing exercise. Inhale for 4, hold for 4, exhale for 6.",
+    "Signs of stress detected. Would you like to do a 1-minute mindfulness exercise?",
+    "If you're feeling overwhelmed, a brief pause and some deep breaths can make a difference."
+]
+# --- End Placeholder Intervention Details ---
 
 class InterventionEngine:
     def __init__(self, logic_engine, app_instance=None):
@@ -31,6 +52,49 @@ class InterventionEngine:
         if self.app and self.app.data_logger:
              self.app.data_logger.log_debug(f"Stored intervention for feedback: Type='{intervention_type_for_logging}', Msg='{message}'")
 
+    def decide_intervention(self, sensor_data: dict) -> tuple[str | None, str | None]:
+        """
+        Decides if an intervention is needed based on sensor data and context.
+        Returns: (intervention_type_for_logging, message_to_speak) or (None, None)
+        """
+        current_app_mode = self.logic_engine.get_mode()
+        if current_app_mode != "active":
+            # self.app.data_logger.log_debug("DecideIntervention: Suppressed, Mode is not active.") # Optional, can be noisy
+            return None, None
+
+        current_time = time.time()
+        if (current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS):
+            # self.app.data_logger.log_debug("DecideIntervention: Suppressed, too soon since last intervention.") # Optional
+            return None, None
+
+        # Basic rules based on sensor_data
+        video_emotion = sensor_data.get("video_emotion")
+        audio_emotion = sensor_data.get("audio_emotion")
+        # time_of_day_segment = sensor_data.get("time_of_day_segment") # Example for future use
+
+        intervention_type_to_log = None
+        message_to_speak = None
+
+        # Rule 1: Fatigue detected by video
+        if video_emotion == "fatigue detected":
+            self.app.data_logger.log_info(f"DecideIntervention: Condition met for fatigue (video: {video_emotion}).")
+            intervention_type_to_log = INTERVENTION_TYPES["FATIGUE_BREAK"]
+            message_to_speak = random.choice(FATIGUE_PROMPTS)
+            # Potentially add more conditions like time_of_day_segment == "afternoon"
+
+        # Rule 2: Stress detected by audio (can add more complex logic, e.g., if fatigue not already triggered)
+        elif audio_emotion == "stress detected": # Use elif to avoid multiple triggers in one cycle for now
+            self.app.data_logger.log_info(f"DecideIntervention: Condition met for stress (audio: {audio_emotion}).")
+            intervention_type_to_log = INTERVENTION_TYPES["STRESS_BREATHING"]
+            message_to_speak = random.choice(STRESS_PROMPTS)
+
+        # Add more rules here in the future, potentially involving LMM calls
+
+        if intervention_type_to_log and message_to_speak:
+            # self.last_intervention_time = current_time # This will be set by provide_intervention
+            return intervention_type_to_log, message_to_speak
+
+        return None, None
 
     def provide_intervention(self, intervention_type, custom_message=""):
         # intervention_type: Broad category like "custom", "posture_alert", "break_reminder"
@@ -38,16 +102,18 @@ class InterventionEngine:
 
         current_app_mode = self.logic_engine.get_mode()
         if current_app_mode != "active":
-            if self.app and self.app.data_logger: self.app.data_logger.log_debug(f"Intervention suppressed: Mode is {current_app_mode}")
+            if self.app and self.app.data_logger: self.app.data_logger.log_debug(f"ProvideIntervention: Suppressed, Mode is {current_app_mode}")
             return
 
-        current_time = time.time()
-        # Mode change notifications (handled by notify_mode_change) and error notifications bypass this time limit.
-        # Regular proactive interventions adhere to the MIN_TIME_BETWEEN_INTERVENTIONS.
-        if intervention_type not in ["mode_change_notification", "error_notification"] and \
-           (current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS):
-            if self.app and self.app.data_logger: self.app.data_logger.log_debug(f"Intervention suppressed: Too soon since last intervention.")
-            return
+        # Timing check for proactive interventions (those not in the list below) is now primarily handled by `decide_intervention`.
+        # `provide_intervention` will proceed if called for such types, assuming timing is okay.
+        # It will still update self.last_intervention_time for all spoken interventions except mode changes handled by notify_mode_change.
+        # Error notifications will also update last_intervention_time if they are spoken via this method.
+        # Mode changes via notify_mode_change have their own timing logic (bypass MIN_TIME_BETWEEN_INTERVENTIONS).
+
+        # The explicit check for MIN_TIME_BETWEEN_INTERVENTIONS is removed here for proactive types,
+        # as decide_intervention should be the gatekeeper.
+        # However, we still need to set self.last_intervention_time correctly.
 
         message_to_speak = custom_message # Default to custom_message
         intervention_type_for_logging = intervention_type # This is what gets logged as the "type"
