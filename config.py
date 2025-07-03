@@ -30,6 +30,48 @@ CAMERA_INDEX = 0 # Default camera index
 
 # Intervention Engine settings
 MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds, e.g., 5 minutes (for proactive, non-mode-change interventions)
+DEFAULT_INTERVENTION_DURATION = 30 # Default duration for an intervention if not specified (seconds)
+
+# Tiered Intervention Configurations
+# This allows defining default properties for different types/tiers of interventions.
+# LogicEngine can then select an intervention and pass its details to InterventionEngine.
+INTERVENTION_CONFIGS = {
+    "gentle_reminder_text": {
+        "tier": 1,
+        "default_message": "This is a gentle reminder.",
+        "default_duration": 10, # seconds
+        # "sound": None, # No sound for tier 1 text
+    },
+    "posture_alert_text": {
+        "tier": 1,
+        "default_message": "Please check your posture.",
+        "default_duration": 15,
+    },
+    "calming_audio_prompt": {
+        "tier": 2,
+        "default_message": "Let's try a calming sound.",
+        "default_duration": 60, # Duration of the audio or overall intervention
+        "sound_file": "sounds/calming_waves.wav", # Example path
+        "visual_prompt": None, # Could be an image path or text for a pop-up
+    },
+    "guided_breathing_prompt": {
+        "tier": 2,
+        "default_message": "Time for a short breathing exercise. Follow the prompts.",
+        "default_duration": 120,
+        "sound_file": "sounds/breathing_guide.mp3",
+        "visual_prompt": "images/breathing_animation.gif", # Example
+    },
+    "urgent_break_alert": {
+        "tier": 3,
+        "default_message": "It's important to take a break now. Please step away for 5 minutes.",
+        "default_duration": 300, # Enforces a 5-min period where the alert might be active/repeating
+        "sound_file": "sounds/urgent_alert_tone.wav",
+        "visual_prompt": "TAKE A BREAK NOW - 5 MINUTES", # Text for a more prominent visual
+        "force_action": True, # Custom flag, could indicate LogicEngine should try to e.g. overlay screen
+    }
+    # Add more predefined interventions as needed
+}
+
 
 # System Tray settings
 APP_NAME = "ACR"
