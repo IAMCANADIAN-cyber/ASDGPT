@@ -1,79 +1,175 @@
-import os
-from dotenv import load_dotenv
-# import google.generativeai as genai # Example if using Google's official library
+# Placeholder for LMM Interface
+# This module will be responsible for interacting with a Large Language Model (LMM)
+# to process sensor data and generate suggestions or interventions.
 
-# Load environment variables from .env file
-# This should be called early, ideally once when the application starts.
-# If other modules also need dotenv, it's safe to call load_dotenv() multiple times,
-# but it only needs to be successful once.
+import config # For API keys or LMM-specific configurations
+import os # For os.getenv
+
+# It's good practice to load dotenv here if this module might be used standalone
+# or early in an import chain, though main.py or config.py might also call it.
+from dotenv import load_dotenv
 load_dotenv()
 
 class LMMInterface:
     def __init__(self, data_logger=None):
-        self.api_key = os.getenv("GOOGLE_API_KEY")
+        """
+        Initializes the LMMInterface.
+        - data_logger: An instance of DataLogger for logging.
+        - Loads API key from environment variables (e.g., GOOGLE_API_KEY).
+        """
         self.logger = data_logger
+        self._log_info("LMMInterface initializing...")
 
-        if not self.api_key or self.api_key == "YOUR_API_KEY_HERE":
-            log_msg = "GOOGLE_API_KEY not found or not set in .env file. LMM functionality will be disabled."
-            if self.logger:
-                self.logger.log_warning(log_msg)
-            else:
-                print(f"WARNING: LMMInterface: {log_msg}")
-            self.api_key = None # Ensure it's None if not valid
+        # Load API key using os.getenv, assuming .env has been loaded
+        self.api_key = os.getenv("GOOGLE_API_KEY")
+        if not self.api_key or self.api_key == "YOUR_API_KEY_HERE": # Check for placeholder
+            self._log_warning("GOOGLE_API_KEY not found or is a placeholder in .env file. LMM functionality will be simulated.")
+            self.api_key = None # Ensure it's None if not valid/present
         else:
-            log_msg = "GOOGLE_API_KEY loaded successfully."
-            if self.logger:
-                self.logger.log_info(f"LMMInterface: {log_msg}")
-            else:
-                print(f"INFO: LMMInterface: {log_msg}")
-            # Example: Configure the library if the key is present
+            self._log_info("GOOGLE_API_KEY loaded. LMM functionality would use this key.")
+            # Example: Configure a library like genai if the key is present
             # try:
+            #    import google.generativeai as genai
             #    genai.configure(api_key=self.api_key)
-            #    if self.logger: self.logger.log_info("LMMInterface: Google GenAI SDK configured.")
+            #    self._log_info("Google GenAI SDK configured.")
+            # except ImportError:
+            #    self._log_warning("Google GenAI SDK not installed. LMM calls will be simulated.")
             # except Exception as e:
-            #    if self.logger: self.logger.log_error("LMMInterface: Failed to configure Google GenAI SDK.", str(e))
+            #    self._log_error("Failed to configure Google GenAI SDK.", str(e))
 
-    def get_insight_from_lmm(self, prompt_data, context_data=None):
-        """
-        Placeholder function to get insights from a Large Language Model.
 
-        :param prompt_data: Main data or question for the LMM.
-        :param context_data: Additional context to provide to the LMM.
-        :return: A string containing the LMM's response, or an error message.
+        self._log_info("LMMInterface initialized.")
+
+    def _log_info(self, message):
+        if self.logger: self.logger.log_info(f"LMMInterface: {message}")
+        else: print(f"INFO: LMMInterface: {message}")
+
+    def _log_warning(self, message):
+        if self.logger: self.logger.log_warning(f"LMMInterface: {message}")
+        else: print(f"WARNING: LMMInterface: {message}")
+
+    def _log_error(self, message, details=""):
+        full_message = f"LMMInterface: {message}"
+        if self.logger: self.logger.log_error(full_message, details)
+        else: print(f"ERROR: {full_message} | Details: {details}")
+
+    def _log_debug(self, message):
+        if self.logger and hasattr(self.logger, 'log_debug'):
+            self.logger.log_debug(f"LMMInterface: {message}")
+        # Fallback for basic logging if logger has no log_debug but level is DEBUG
+        elif self.logger and hasattr(self.logger, 'log_level') and self.logger.log_level == "DEBUG":
+             self.logger.log_info(f"LMMInterface-DEBUG: {message}")
+
+
+    def process_data(self, video_data=None, audio_data=None, user_context=None):
         """
+        Processes incoming sensor data and user context, potentially interacting with an LMM.
+
+        Args:
+            video_data: Data from the video sensor (e.g., features, summaries).
+            audio_data: Data from the audio sensor (e.g., features, classification).
+            user_context: Additional context (e.g., user's current task, preferences).
+
+        Returns:
+            A dictionary or object containing the LMM's analysis or a simulated response.
+            Returns None if processing fails or no meaningful analysis is derived.
+        """
+        self._log_info("Processing data...")
         if not self.api_key:
-            error_msg = "LMM insights unavailable: API key not configured."
-            if self.logger: self.logger.log_error(f"LMMInterface: {error_msg}")
-            return error_msg
+            self._log_debug("API key not available, using simulated LMM processing.")
+            # Fall through to simulated processing logic
 
-        # This is where you would structure the actual prompt and make the API call
-        # For example, using Google's SDK:
-        # model = genai.GenerativeModel('gemini-pro') # Or your chosen model
-        # full_prompt = f"Context: {context_data}\n\nPrompt: {prompt_data}\n\nInsight:"
-        # try:
-        #    if self.logger: self.logger.log_debug(f"LMMInterface: Sending prompt to LMM: {full_prompt[:200]}...") # Log snippet
-        #    response = model.generate_content(full_prompt)
-        #    if self.logger: self.logger.log_info("LMMInterface: Received response from LMM.")
-        #    return response.text
-        # except Exception as e:
-        #    error_msg = f"Error communicating with LMM: {e}"
-        #    if self.logger: self.logger.log_error(f"LMMInterface: {error_msg}", str(e))
-        #    return f"Error: {error_msg}"
+        if video_data is None and audio_data is None:
+            self._log_warning("No video or audio data provided to LMM process_data.")
+            return None
 
-        # Placeholder response:
-        log_msg = f"Simulating LMM call with prompt data: {str(prompt_data)[:100]}..."
-        if self.logger: self.logger.log_debug(f"LMMInterface: {log_msg}")
-        else: print(log_msg)
+        # Placeholder: Simulate LMM interaction or actual call if API key exists
+        # In a real implementation:
+        # 1. Format the data into a prompt for the LMM.
+        # 2. If self.api_key: Make an API call to the LMM.
+        # 3. Else: Use the simulation logic.
+        # 4. Parse the LMM's response.
 
-        return f"This is a simulated insight based on: '{str(prompt_data)[:50]}...'. LMM integration is pending."
+        self._log_debug(f"Simulating LMM processing for video_data (type: {type(video_data)}), audio_data (type: {type(audio_data)})")
+
+        simulated_response = {
+            "sentiment": "neutral",
+            "detected_event": None, # e.g., "slouching", "background_noise"
+            "confidence": 0.0,
+            "raw_llm_output": "Simulated: No specific event detected by default."
+        }
+
+        if video_data is not None:
+            # Highly simplistic simulation based on presence of data
+            simulated_response["detected_event"] = "potential_posture_issue"
+            simulated_response["confidence"] = 0.65
+            simulated_response["raw_llm_output"] = "Simulated: Video data suggests a possible posture issue."
+            self._log_info(f"LMM simulated: Video data processed, event: '{simulated_response['detected_event']}'.")
+
+        if audio_data is not None:
+            # Simplistic simulation, overwrites if video didn't set, or appends if complex logic desired
+            if not simulated_response.get("detected_event"): # Only if video didn't trigger
+                 simulated_response["detected_event"] = "ambient_noise_level_high"
+                 simulated_response["confidence"] = 0.55
+                 simulated_response["raw_llm_output"] = "Simulated: Audio data indicates high ambient noise."
+                 self._log_info(f"LMM simulated: Audio data processed, event: '{simulated_response['detected_event']}'.")
+            else: # Video already detected something, maybe combine or prioritize
+                 current_event = simulated_response['detected_event']
+                 simulated_response['detected_event'] = f"{current_event}_and_ambient_noise_level_high" # Example combination
+                 simulated_response["raw_llm_output"] += " Additionally, audio data indicates high ambient noise."
+                 self._log_info(f"LMM simulated: Audio data also processed, combined event: '{simulated_response['detected_event']}'.")
+
+
+        if simulated_response.get("detected_event"):
+            self._log_info(f"LMM simulated analysis: Event='{simulated_response['detected_event']}', Confidence={simulated_response['confidence']:.2f}")
+            return simulated_response
+        else:
+            self._log_info("LMM simulated: No specific event detected from data.")
+            return None
+
+    def get_intervention_suggestion(self, processed_analysis):
+        """
+        Based on the LMM's processed analysis, determine if an intervention is
+        warranted and what kind.
+
+        Args:
+            processed_analysis: The output from the process_data method.
+
+        Returns:
+            A dictionary describing the suggested intervention (e.g., type, message)
+            or None if no intervention is suggested.
+        """
+        self._log_info("Getting intervention suggestion from LMM processed analysis...")
+        if not processed_analysis or not processed_analysis.get("detected_event"):
+            self._log_debug("No detected event in analysis, no intervention suggested.")
+            return None
+
+        event = processed_analysis["detected_event"]
+        confidence = processed_analysis.get("confidence", 0.0)
+
+        # Placeholder: Simple logic to convert LMM analysis to an intervention
+        # This would be more sophisticated in a real system.
+        if "potential_posture_issue" in event and confidence > 0.6:
+            self._log_info(f"Suggesting 'posture_reminder' intervention (Confidence: {confidence:.2f}).")
+            return {
+                "type": "posture_reminder", # Matches InterventionEngine types
+                "message": "The LMM detected a potential posture issue. Maybe take a moment to adjust?"
+            }
+        elif "ambient_noise_level_high" in event and confidence > 0.5:
+            self._log_info(f"Suggesting 'noise_alert' intervention (Confidence: {confidence:.2f}).")
+            return {
+                "type": "noise_alert",
+                "message": "The LMM detected high ambient noise. Is everything okay with your audio?"
+            }
+        # Add more rules as needed
+
+        self._log_debug(f"Detected event '{event}' did not meet criteria for an intervention or no rule defined.")
+        return None
 
 if __name__ == '__main__':
-    # For direct testing of this module
-    # Create a dummy .env file for this test if it doesn't exist or is not accessible
-    # (though it should exist at project root by now)
-
-    # Mock DataLogger for testing
+    # Example Usage
     class MockDataLogger:
+        def __init__(self): self.log_level = "DEBUG"
         def log_info(self, msg): print(f"MOCK_LOG_INFO: {msg}")
         def log_warning(self, msg): print(f"MOCK_LOG_WARN: {msg}")
         def log_error(self, msg, details=""): print(f"MOCK_LOG_ERROR: {msg} | Details: {details}")
@@ -81,37 +177,55 @@ if __name__ == '__main__':
 
     mock_logger = MockDataLogger()
 
+    # Ensure .env file exists in the project root for this test to run as intended regarding API key.
+    # Example .env content:
+    # GOOGLE_API_KEY="YOUR_API_KEY_HERE"
+    # OR
+    # GOOGLE_API_KEY="actual_key_if_testing_real_calls"
+
     print("--- Testing LMMInterface ---")
-    # Test case 1: API key is "YOUR_API_KEY_HERE" (default in .env) or missing
-    print("\nTest 1: API Key is default or missing...")
-    lmm_interface_no_key = LMMInterface(data_logger=mock_logger)
-    insight1 = lmm_interface_no_key.get_insight_from_lmm("What is the meaning of life?")
-    print(f"Insight 1: {insight1}")
-    assert "API key not configured" in insight1 or "YOUR_API_KEY_HERE" in str(os.getenv("GOOGLE_API_KEY"))
+    lmm_interface = LMMInterface(data_logger=mock_logger)
+
+    print("\n--- Test Case 1: No data ---")
+    analysis1 = lmm_interface.process_data()
+    suggestion1 = lmm_interface.get_intervention_suggestion(analysis1)
+    print(f"Analysis: {analysis1}, Suggestion: {suggestion1}")
+
+    print("\n--- Test Case 2: Video data only ---")
+    mock_video_data = {"summary": "User appears to be stationary."}
+    analysis2 = lmm_interface.process_data(video_data=mock_video_data)
+    suggestion2 = lmm_interface.get_intervention_suggestion(analysis2)
+    print(f"Analysis: {analysis2}, Suggestion: {suggestion2}")
+    if suggestion2:
+        assert suggestion2["type"] == "posture_reminder"
+
+    print("\n--- Test Case 3: Audio data only ---")
+    mock_audio_data = {"average_db": -20}
+    analysis3 = lmm_interface.process_data(audio_data=mock_audio_data)
+    suggestion3 = lmm_interface.get_intervention_suggestion(analysis3)
+    print(f"Analysis: {analysis3}, Suggestion: {suggestion3}")
+    if suggestion3:
+         assert suggestion3["type"] == "noise_alert"
 
 
-    # Test case 2: Simulate a valid API key being set in environment for testing
-    # This would typically be done by having a .env file with a real (or valid format fake) key.
-    # For this test, we can temporarily set the environment variable if python-dotenv allows overriding.
-    print("\nTest 2: API Key is set (simulated valid)...")
-    original_env_val = os.environ.get("GOOGLE_API_KEY")
-    os.environ["GOOGLE_API_KEY"] = "TEST_KEY_12345ABCDE" # Simulate a valid key
+    print("\n--- Test Case 4: Both video and audio data ---")
+    analysis4 = lmm_interface.process_data(video_data=mock_video_data, audio_data=mock_audio_data)
+    suggestion4 = lmm_interface.get_intervention_suggestion(analysis4)
+    print(f"Analysis: {analysis4}, Suggestion: {suggestion4}")
+    if suggestion4:
+        # The combined event in simulation might be "potential_posture_issue_and_ambient_noise_level_high"
+        # The get_intervention_suggestion logic currently prioritizes posture if "potential_posture_issue" is in event string.
+        assert "posture_reminder" in suggestion4["type"] or "noise_alert" in suggestion4["type"]
 
-    # Re-initialize to pick up the new (mocked) environment variable
-    # Note: load_dotenv() might not overwrite existing os.environ vars by default.
-    # For a robust test, you'd clear os.environ['GOOGLE_API_KEY'] then call load_dotenv()
-    # or ensure your .env has the test key. Here, we are directly manipulating os.environ
-    # so LMMInterface should pick it up via os.getenv().
 
-    lmm_interface_with_key = LMMInterface(data_logger=mock_logger) # Will re-run os.getenv
-    insight2 = lmm_interface_with_key.get_insight_from_lmm("Suggest a healthy breakfast.")
-    print(f"Insight 2: {insight2}")
-    assert "simulated insight" in insight2
+    print("\n--- Test Case 5: Simulated LMM analysis with low confidence ---")
+    low_confidence_analysis = {
+        "detected_event": "potential_posture_issue",
+        "confidence": 0.3, # Below threshold of 0.6
+        "raw_llm_output": "Simulated: Video data suggests a slight possibility of a posture issue."
+    }
+    suggestion5 = lmm_interface.get_intervention_suggestion(low_confidence_analysis)
+    print(f"Analysis: {low_confidence_analysis}, Suggestion (low confidence): {suggestion5}")
+    assert suggestion5 is None
 
-    # Restore original environment variable if it existed
-    if original_env_val is not None:
-        os.environ["GOOGLE_API_KEY"] = original_env_val
-    elif "GOOGLE_API_KEY" in os.environ: # It was set by us, now remove
-        del os.environ["GOOGLE_API_KEY"]
-
-    print("\n--- LMMInterface test finished ---")
+    print("\nLMMInterface tests complete.")
