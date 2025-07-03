@@ -13,11 +13,17 @@ class Application:
         self.data_logger = DataLogger(config.LOG_FILE)
         self.data_logger.log_info("ACR Application Initializing...")
 
-        self.logic_engine = LogicEngine()
-        self.intervention_engine = InterventionEngine(self.logic_engine, self)
-
+        # Initialize sensors first, as they might be needed by LogicEngine
         self.video_sensor = VideoSensor(config.CAMERA_INDEX, self.data_logger)
         self.audio_sensor = AudioSensor(self.data_logger)
+
+        # Pass sensors and logger to LogicEngine
+        self.logic_engine = LogicEngine(
+            audio_sensor=self.audio_sensor,
+            video_sensor=self.video_sensor,
+            logger=self.data_logger
+        )
+        self.intervention_engine = InterventionEngine(self.logic_engine, self)
 
         self.running = True
         self.sensor_error_active = False
@@ -146,9 +152,13 @@ class Application:
         while self.running:
             loop_counter += 1
             if loop_counter % 5 == 0:
-                 self._check_sensors()
+                 self._check_sensors() # This existing sensor check primarily updates self.sensor_error_active
 
-            current_mode = self.logic_engine.get_mode()
+            # Call LogicEngine's update method
+            # This will handle snooze expiry and placeholder sensor logging
+            self.logic_engine.update()
+
+            current_mode = self.logic_engine.get_mode() # get_mode() is called within update(), but also good to have the latest here
 
             if current_mode != last_known_mode:
                 if self.sensor_error_active:
