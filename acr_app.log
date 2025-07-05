@@ -1,0 +1,165 @@
+2025-07-05T02:53:29.518130 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-07-05T02:53:29.518299 [INFO] ACR Application Initializing...
+2025-07-05T02:53:29.518360 [INFO] LogicEngine: LogicEngine initialized. Mode: active
+2025-07-05T02:53:29.531932 [ERROR] AudioSensor: Failed to initialize Vosk model from invalid/path/to/vosk-model. | Details: Failed to create a model
+2025-07-05T02:53:29.532389 [INFO] AudioSensor: Available audio devices:
+2025-07-05T02:53:29.532515 [WARNING] AudioSensor: Could not query audio devices: Error querying device -1
+2025-07-05T02:53:29.532580 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2025-07-05T02:53:29.532742 [ERROR] AudioSensor: Exception during audio stream initialization. | Details: Error querying device -1
+2025-07-05T02:53:29.532837 [WARNING] LogicEngine: AudioSensor initialized with non-critical error: Exception during audio stream initialization.
+2025-07-05T02:53:29.550661 [INFO] Set TTS rate to 150.
+2025-07-05T02:53:29.557029 [INFO] Available TTS voices:
+2025-07-05T02:53:29.557201 [INFO]   ID: Afrikaans, Name: Afrikaans, Lang: ['af'], Gender: male, Age: None
+2025-07-05T02:53:29.557265 [INFO]   ID: Amharic, Name: Amharic, Lang: ['am'], Gender: male, Age: None
+2025-07-05T02:53:29.557303 [INFO]   ID: Aragonese, Name: Aragonese, Lang: ['an'], Gender: male, Age: None
+2025-07-05T02:53:29.557338 [INFO]   ID: Arabic, Name: Arabic, Lang: ['ar'], Gender: male, Age: None
+2025-07-05T02:53:29.557385 [INFO]   ID: Assamese, Name: Assamese, Lang: ['as'], Gender: male, Age: None
+2025-07-05T02:53:29.557419 [INFO]   ID: Azerbaijani, Name: Azerbaijani, Lang: ['az'], Gender: male, Age: None
+2025-07-05T02:53:29.557453 [INFO]   ID: Bashkir, Name: Bashkir, Lang: ['ba'], Gender: male, Age: None
+2025-07-05T02:53:29.557486 [INFO]   ID: Belarusian, Name: Belarusian, Lang: ['be'], Gender: male, Age: None
+2025-07-05T02:53:29.557520 [INFO]   ID: Bulgarian, Name: Bulgarian, Lang: ['bg'], Gender: male, Age: None
+2025-07-05T02:53:29.557554 [INFO]   ID: Bengali, Name: Bengali, Lang: ['bn'], Gender: male, Age: None
+2025-07-05T02:53:29.557588 [INFO]   ID: Bishnupriya Manipuri, Name: Bishnupriya Manipuri, Lang: ['bpy'], Gender: male, Age: None
+2025-07-05T02:53:29.557620 [INFO]   ID: Bosnian, Name: Bosnian, Lang: ['bs'], Gender: male, Age: None
+2025-07-05T02:53:29.557652 [INFO]   ID: Catalan, Name: Catalan, Lang: ['ca'], Gender: male, Age: None
+2025-07-05T02:53:29.557685 [INFO]   ID: Cherokee , Name: Cherokee , Lang: ['chr-US-Qaaa-x-west'], Gender: male, Age: None
+2025-07-05T02:53:29.557758 [INFO]   ID: Chinese (Mandarin, latin as English), Name: Chinese (Mandarin, latin as English), Lang: ['cmn'], Gender: male, Age: None
+2025-07-05T02:53:29.557800 [INFO]   ID: Chinese (Mandarin, latin as Pinyin), Name: Chinese (Mandarin, latin as Pinyin), Lang: ['cmn-latn-pinyin'], Gender: male, Age: None
+2025-07-05T02:53:29.557834 [INFO]   ID: Czech, Name: Czech, Lang: ['cs'], Gender: male, Age: None
+2025-07-05T02:53:29.557868 [INFO]   ID: Chuvash, Name: Chuvash, Lang: ['cv'], Gender: male, Age: None
+2025-07-05T02:53:29.557900 [INFO]   ID: Welsh, Name: Welsh, Lang: ['cy'], Gender: male, Age: None
+2025-07-05T02:53:29.557934 [INFO]   ID: Danish, Name: Danish, Lang: ['da'], Gender: male, Age: None
+2025-07-05T02:53:29.557966 [INFO]   ID: German, Name: German, Lang: ['de'], Gender: male, Age: None
+2025-07-05T02:53:29.557999 [INFO]   ID: Greek, Name: Greek, Lang: ['el'], Gender: male, Age: None
+2025-07-05T02:53:29.558033 [INFO]   ID: English (Caribbean), Name: English (Caribbean), Lang: ['en-029'], Gender: male, Age: None
+2025-07-05T02:53:29.558068 [INFO]   ID: English (Great Britain), Name: English (Great Britain), Lang: ['en-gb'], Gender: male, Age: None
+2025-07-05T02:53:29.558101 [INFO]   ID: English (Scotland), Name: English (Scotland), Lang: ['en-gb-scotland'], Gender: male, Age: None
+2025-07-05T02:53:29.558134 [INFO]   ID: English (Lancaster), Name: English (Lancaster), Lang: ['en-gb-x-gbclan'], Gender: male, Age: None
+2025-07-05T02:53:29.558166 [INFO]   ID: English (West Midlands), Name: English (West Midlands), Lang: ['en-gb-x-gbcwmd'], Gender: male, Age: None
+2025-07-05T02:53:29.558212 [INFO]   ID: English (Received Pronunciation), Name: English (Received Pronunciation), Lang: ['en-gb-x-rp'], Gender: male, Age: None
+2025-07-05T02:53:29.558247 [INFO]   ID: English (America), Name: English (America), Lang: ['en-us'], Gender: male, Age: None
+2025-07-05T02:53:29.558280 [INFO]   ID: English (America, New York City), Name: English (America, New York City), Lang: ['en-us-nyc'], Gender: male, Age: None
+2025-07-05T02:53:29.558313 [INFO]   ID: Esperanto, Name: Esperanto, Lang: ['eo'], Gender: male, Age: None
+2025-07-05T02:53:29.558345 [INFO]   ID: Spanish (Spain), Name: Spanish (Spain), Lang: ['es'], Gender: male, Age: None
+2025-07-05T02:53:29.558386 [INFO]   ID: Spanish (Latin America), Name: Spanish (Latin America), Lang: ['es-419'], Gender: male, Age: None
+2025-07-05T02:53:29.558419 [INFO]   ID: Estonian, Name: Estonian, Lang: ['et'], Gender: male, Age: None
+2025-07-05T02:53:29.558451 [INFO]   ID: Basque, Name: Basque, Lang: ['eu'], Gender: male, Age: None
+2025-07-05T02:53:29.558483 [INFO]   ID: Persian, Name: Persian, Lang: ['fa'], Gender: male, Age: None
+2025-07-05T02:53:29.558516 [INFO]   ID: Persian (Pinglish), Name: Persian (Pinglish), Lang: ['fa-latn'], Gender: male, Age: None
+2025-07-05T02:53:29.558552 [INFO]   ID: Finnish, Name: Finnish, Lang: ['fi'], Gender: male, Age: None
+2025-07-05T02:53:29.558584 [INFO]   ID: French (Belgium), Name: French (Belgium), Lang: ['fr-be'], Gender: male, Age: None
+2025-07-05T02:53:29.558617 [INFO]   ID: French (Switzerland), Name: French (Switzerland), Lang: ['fr-ch'], Gender: male, Age: None
+2025-07-05T02:53:29.558649 [INFO]   ID: French (France), Name: French (France), Lang: ['fr-fr'], Gender: male, Age: None
+2025-07-05T02:53:29.558681 [INFO]   ID: Gaelic (Irish), Name: Gaelic (Irish), Lang: ['ga'], Gender: male, Age: None
+2025-07-05T02:53:29.558757 [INFO]   ID: Gaelic (Scottish), Name: Gaelic (Scottish), Lang: ['gd'], Gender: male, Age: None
+2025-07-05T02:53:29.558800 [INFO]   ID: Guarani, Name: Guarani, Lang: ['gn'], Gender: male, Age: None
+2025-07-05T02:53:29.558836 [INFO]   ID: Greek (Ancient), Name: Greek (Ancient), Lang: ['grc'], Gender: male, Age: None
+2025-07-05T02:53:29.558870 [INFO]   ID: Gujarati, Name: Gujarati, Lang: ['gu'], Gender: male, Age: None
+2025-07-05T02:53:29.558903 [INFO]   ID: Hakka Chinese, Name: Hakka Chinese, Lang: ['hak'], Gender: male, Age: None
+2025-07-05T02:53:29.558937 [INFO]   ID: Hawaiian, Name: Hawaiian, Lang: ['haw'], Gender: male, Age: None
+2025-07-05T02:53:29.558970 [INFO]   ID: Hebrew, Name: Hebrew, Lang: ['he'], Gender: male, Age: None
+2025-07-05T02:53:29.559003 [INFO]   ID: Hindi, Name: Hindi, Lang: ['hi'], Gender: male, Age: None
+2025-07-05T02:53:29.559122 [INFO]   ID: Croatian, Name: Croatian, Lang: ['hr'], Gender: male, Age: None
+2025-07-05T02:53:29.559161 [INFO]   ID: Haitian Creole, Name: Haitian Creole, Lang: ['ht'], Gender: male, Age: None
+2025-07-05T02:53:29.559195 [INFO]   ID: Hungarian, Name: Hungarian, Lang: ['hu'], Gender: male, Age: None
+2025-07-05T02:53:29.559229 [INFO]   ID: Armenian (East Armenia), Name: Armenian (East Armenia), Lang: ['hy'], Gender: male, Age: None
+2025-07-05T02:53:29.559267 [INFO]   ID: Armenian (West Armenia), Name: Armenian (West Armenia), Lang: ['hyw'], Gender: male, Age: None
+2025-07-05T02:53:29.559301 [INFO]   ID: Interlingua, Name: Interlingua, Lang: ['ia'], Gender: male, Age: None
+2025-07-05T02:53:29.559334 [INFO]   ID: Indonesian, Name: Indonesian, Lang: ['id'], Gender: male, Age: None
+2025-07-05T02:53:29.559375 [INFO]   ID: Ido, Name: Ido, Lang: ['io'], Gender: male, Age: None
+2025-07-05T02:53:29.559409 [INFO]   ID: Icelandic, Name: Icelandic, Lang: ['is'], Gender: male, Age: None
+2025-07-05T02:53:29.559442 [INFO]   ID: Italian, Name: Italian, Lang: ['it'], Gender: male, Age: None
+2025-07-05T02:53:29.559475 [INFO]   ID: Japanese, Name: Japanese, Lang: ['ja'], Gender: male, Age: None
+2025-07-05T02:53:29.559508 [INFO]   ID: Lojban, Name: Lojban, Lang: ['jbo'], Gender: male, Age: None
+2025-07-05T02:53:29.559611 [INFO]   ID: Georgian, Name: Georgian, Lang: ['ka'], Gender: male, Age: None
+2025-07-05T02:53:29.559655 [INFO]   ID: Kazakh, Name: Kazakh, Lang: ['kk'], Gender: male, Age: None
+2025-07-05T02:53:29.559689 [INFO]   ID: Greenlandic, Name: Greenlandic, Lang: ['kl'], Gender: male, Age: None
+2025-07-05T02:53:29.559759 [INFO]   ID: Kannada, Name: Kannada, Lang: ['kn'], Gender: male, Age: None
+2025-07-05T02:53:29.559800 [INFO]   ID: Korean, Name: Korean, Lang: ['ko'], Gender: male, Age: None
+2025-07-05T02:53:29.559834 [INFO]   ID: Konkani, Name: Konkani, Lang: ['kok'], Gender: male, Age: None
+2025-07-05T02:53:29.559867 [INFO]   ID: Kurdish, Name: Kurdish, Lang: ['ku'], Gender: male, Age: None
+2025-07-05T02:53:29.559901 [INFO]   ID: Kyrgyz, Name: Kyrgyz, Lang: ['ky'], Gender: male, Age: None
+2025-07-05T02:53:29.559934 [INFO]   ID: Latin, Name: Latin, Lang: ['la'], Gender: male, Age: None
+2025-07-05T02:53:29.559967 [INFO]   ID: Luxembourgish, Name: Luxembourgish, Lang: ['lb'], Gender: male, Age: None
+2025-07-05T02:53:29.559999 [INFO]   ID: Lingua Franca Nova, Name: Lingua Franca Nova, Lang: ['lfn'], Gender: male, Age: None
+2025-07-05T02:53:29.560038 [INFO]   ID: Lithuanian, Name: Lithuanian, Lang: ['lt'], Gender: male, Age: None
+2025-07-05T02:53:29.560071 [INFO]   ID: Latgalian, Name: Latgalian, Lang: ['ltg'], Gender: male, Age: None
+2025-07-05T02:53:29.560103 [INFO]   ID: Latvian, Name: Latvian, Lang: ['lv'], Gender: male, Age: None
+2025-07-05T02:53:29.560136 [INFO]   ID: Māori, Name: Māori, Lang: ['mi'], Gender: male, Age: None
+2025-07-05T02:53:29.560172 [INFO]   ID: Macedonian, Name: Macedonian, Lang: ['mk'], Gender: male, Age: None
+2025-07-05T02:53:29.560205 [INFO]   ID: Malayalam, Name: Malayalam, Lang: ['ml'], Gender: male, Age: None
+2025-07-05T02:53:29.560237 [INFO]   ID: Marathi, Name: Marathi, Lang: ['mr'], Gender: male, Age: None
+2025-07-05T02:53:29.560269 [INFO]   ID: Malay, Name: Malay, Lang: ['ms'], Gender: male, Age: None
+2025-07-05T02:53:29.560302 [INFO]   ID: Maltese, Name: Maltese, Lang: ['mt'], Gender: male, Age: None
+2025-07-05T02:53:29.560335 [INFO]   ID: Myanmar (Burmese), Name: Myanmar (Burmese), Lang: ['my'], Gender: male, Age: None
+2025-07-05T02:53:29.560375 [INFO]   ID: Norwegian Bokmål, Name: Norwegian Bokmål, Lang: ['nb'], Gender: male, Age: None
+2025-07-05T02:53:29.560410 [INFO]   ID: Nahuatl (Classical), Name: Nahuatl (Classical), Lang: ['nci'], Gender: male, Age: None
+2025-07-05T02:53:29.560442 [INFO]   ID: Nepali, Name: Nepali, Lang: ['ne'], Gender: male, Age: None
+2025-07-05T02:53:29.560475 [INFO]   ID: Dutch, Name: Dutch, Lang: ['nl'], Gender: male, Age: None
+2025-07-05T02:53:29.560507 [INFO]   ID: Nogai, Name: Nogai, Lang: ['nog'], Gender: male, Age: None
+2025-07-05T02:53:29.560540 [INFO]   ID: Oromo, Name: Oromo, Lang: ['om'], Gender: male, Age: None
+2025-07-05T02:53:29.560572 [INFO]   ID: Oriya, Name: Oriya, Lang: ['or'], Gender: male, Age: None
+2025-07-05T02:53:29.560604 [INFO]   ID: Punjabi, Name: Punjabi, Lang: ['pa'], Gender: male, Age: None
+2025-07-05T02:53:29.560636 [INFO]   ID: Papiamento, Name: Papiamento, Lang: ['pap'], Gender: male, Age: None
+2025-07-05T02:53:29.560669 [INFO]   ID: Klingon, Name: Klingon, Lang: ['piqd'], Gender: male, Age: None
+2025-07-05T02:53:29.560726 [INFO]   ID: Polish, Name: Polish, Lang: ['pl'], Gender: male, Age: None
+2025-07-05T02:53:29.560774 [INFO]   ID: Portuguese (Portugal), Name: Portuguese (Portugal), Lang: ['pt'], Gender: male, Age: None
+2025-07-05T02:53:29.560811 [INFO]   ID: Portuguese (Brazil), Name: Portuguese (Brazil), Lang: ['pt-br'], Gender: male, Age: None
+2025-07-05T02:53:29.560845 [INFO]   ID: Pyash, Name: Pyash, Lang: ['py'], Gender: male, Age: None
+2025-07-05T02:53:29.560878 [INFO]   ID: Lang_Belta, Name: Lang_Belta, Lang: ['qdb'], Gender: male, Age: None
+2025-07-05T02:53:29.560910 [INFO]   ID: Quechua, Name: Quechua, Lang: ['qu'], Gender: male, Age: None
+2025-07-05T02:53:29.560943 [INFO]   ID: K'iche', Name: K'iche', Lang: ['quc'], Gender: male, Age: None
+2025-07-05T02:53:29.560977 [INFO]   ID: Quenya, Name: Quenya, Lang: ['qya'], Gender: male, Age: None
+2025-07-05T02:53:29.561016 [INFO]   ID: Romanian, Name: Romanian, Lang: ['ro'], Gender: male, Age: None
+2025-07-05T02:53:29.561050 [INFO]   ID: Russian, Name: Russian, Lang: ['ru'], Gender: male, Age: None
+2025-07-05T02:53:29.561083 [INFO]   ID: Russian (Latvia), Name: Russian (Latvia), Lang: ['ru-lv'], Gender: male, Age: None
+2025-07-05T02:53:29.561115 [INFO]   ID: Sindhi, Name: Sindhi, Lang: ['sd'], Gender: male, Age: None
+2025-07-05T02:53:29.561148 [INFO]   ID: Shan (Tai Yai), Name: Shan (Tai Yai), Lang: ['shn'], Gender: male, Age: None
+2025-07-05T02:53:29.561180 [INFO]   ID: Sinhala, Name: Sinhala, Lang: ['si'], Gender: male, Age: None
+2025-07-05T02:53:29.561213 [INFO]   ID: Sindarin, Name: Sindarin, Lang: ['sjn'], Gender: male, Age: None
+2025-07-05T02:53:29.561246 [INFO]   ID: Slovak, Name: Slovak, Lang: ['sk'], Gender: male, Age: None
+2025-07-05T02:53:29.561278 [INFO]   ID: Slovenian, Name: Slovenian, Lang: ['sl'], Gender: male, Age: None
+2025-07-05T02:53:29.561311 [INFO]   ID: Lule Saami, Name: Lule Saami, Lang: ['smj'], Gender: male, Age: None
+2025-07-05T02:53:29.561344 [INFO]   ID: Albanian, Name: Albanian, Lang: ['sq'], Gender: male, Age: None
+2025-07-05T02:53:29.561384 [INFO]   ID: Serbian, Name: Serbian, Lang: ['sr'], Gender: male, Age: None
+2025-07-05T02:53:29.561417 [INFO]   ID: Swedish, Name: Swedish, Lang: ['sv'], Gender: male, Age: None
+2025-07-05T02:53:29.561450 [INFO]   ID: Swahili, Name: Swahili, Lang: ['sw'], Gender: male, Age: None
+2025-07-05T02:53:29.561482 [INFO]   ID: Tamil, Name: Tamil, Lang: ['ta'], Gender: male, Age: None
+2025-07-05T02:53:29.561515 [INFO]   ID: Telugu, Name: Telugu, Lang: ['te'], Gender: male, Age: None
+2025-07-05T02:53:29.561547 [INFO]   ID: Thai, Name: Thai, Lang: ['th'], Gender: male, Age: None
+2025-07-05T02:53:29.561580 [INFO]   ID: Turkmen, Name: Turkmen, Lang: ['tk'], Gender: male, Age: None
+2025-07-05T02:53:29.561612 [INFO]   ID: Setswana, Name: Setswana, Lang: ['tn'], Gender: male, Age: None
+2025-07-05T02:53:29.561645 [INFO]   ID: Turkish, Name: Turkish, Lang: ['tr'], Gender: male, Age: None
+2025-07-05T02:53:29.561677 [INFO]   ID: Tatar, Name: Tatar, Lang: ['tt'], Gender: male, Age: None
+2025-07-05T02:53:29.561741 [INFO]   ID: Uyghur, Name: Uyghur, Lang: ['ug'], Gender: male, Age: None
+2025-07-05T02:53:29.561786 [INFO]   ID: Ukrainian, Name: Ukrainian, Lang: ['uk'], Gender: male, Age: None
+2025-07-05T02:53:29.561822 [INFO]   ID: Urdu, Name: Urdu, Lang: ['ur'], Gender: male, Age: None
+2025-07-05T02:53:29.561863 [INFO]   ID: Uzbek, Name: Uzbek, Lang: ['uz'], Gender: male, Age: None
+2025-07-05T02:53:29.561897 [INFO]   ID: Vietnamese (Northern), Name: Vietnamese (Northern), Lang: ['vi'], Gender: male, Age: None
+2025-07-05T02:53:29.561930 [INFO]   ID: Vietnamese (Central), Name: Vietnamese (Central), Lang: ['vi-vn-x-central'], Gender: male, Age: None
+2025-07-05T02:53:29.561963 [INFO]   ID: Vietnamese (Southern), Name: Vietnamese (Southern), Lang: ['vi-vn-x-south'], Gender: male, Age: None
+2025-07-05T02:53:29.561995 [INFO]   ID: Chinese (Cantonese), Name: Chinese (Cantonese), Lang: ['yue'], Gender: male, Age: None
+2025-07-05T02:53:29.562028 [INFO]   ID: Chinese (Cantonese, latin as Jyutping), Name: Chinese (Cantonese, latin as Jyutping), Lang: ['yue'], Gender: male, Age: None
+2025-07-05T02:53:29.562063 [INFO] No TTS_VOICE_ID specified. Using default voice.
+2025-07-05T02:53:29.562124 [WARNING] Could not get current voice properties after init: 'NoneType' object has no attribute 'decode'
+2025-07-05T02:53:29.562161 [INFO] InterventionEngine initialized.
+2025-07-05T02:53:29.562238 [INFO] VideoSensor: Attempting to initialize video capture on index 0...
+2025-07-05T02:53:29.562884 [ERROR] VideoSensor: Failed to open video capture on index 0.
+2025-07-05T02:53:29.562972 [INFO] Setting up hotkeys...
+2025-07-05T02:53:29.563131 [ERROR] Error setting up hotkeys: You must be root to use this library on linux.. This might require admin/sudo rights.
+2025-07-05T02:53:29.563215 [INFO] ACR Initialized. Mode: active.
+2025-07-05T02:53:29.563262 [INFO] InterventionEngine: Attempting to speak: 'Application started in active mode.' (TTS Enabled: True)
+2025-07-05T02:53:29.574062 [INFO] InterventionEngine: Successfully spoke: 'Application started in active mode.'
+2025-07-05T02:53:29.574224 [WARNING] Video frame read error in active loop: Failed to open video capture on index 0.
+2025-07-05T02:53:29.574309 [ERROR] LogicEngine: Error during audio transcription: Vosk recognizer not initialized.
+2025-07-05T02:53:30.074802 [WARNING] Video frame read error in active loop: Failed to open video capture on index 0.
+2025-07-05T02:53:30.075094 [ERROR] LogicEngine: Error during audio transcription: Vosk recognizer not initialized.
+2025-07-05T02:53:30.575474 [WARNING] Video frame read error in active loop: Failed to open video capture on index 0.
+2025-07-05T02:53:30.575676 [ERROR] LogicEngine: Error during audio transcription: Vosk recognizer not initialized.
+2025-07-05T02:53:31.076045 [WARNING] Video frame read error in active loop: Failed to open video capture on index 0.
+2025-07-05T02:53:31.076253 [ERROR] LogicEngine: Error during audio transcription: Vosk recognizer not initialized.
+2025-07-05T02:53:31.576615 [ERROR] One or more sensors have entered an error state.
+2025-07-05T02:53:31.576896 [WARNING] Video sensor error: Failed to open video capture on index 0.
+2025-07-05T02:53:31.576957 [WARNING] Audio sensor error: Exception during audio stream initialization.
+2025-07-05T02:53:31.577005 [INFO] InterventionEngine: Attempting to speak: 'Sensor error detected. Operations affected.' (TTS Enabled: True)
+2025-07-05T02:53:31.587637 [INFO] InterventionEngine: Successfully spoke: 'Sensor error detected. Operations affected.'

@@ -13,11 +13,32 @@ class Application:
         self.data_logger = DataLogger(config.LOG_FILE)
         self.data_logger.log_info("ACR Application Initializing...")
 
-        self.logic_engine = LogicEngine()
-        self.intervention_engine = InterventionEngine(self.logic_engine, self)
+        # Initialize LMMInterface first if LogicEngine depends on it
+        # For now, assuming LMMInterface can be initialized standalone or LogicEngine handles its absence
+        self.lmm_interface = None # Placeholder, will be initialized if needed by LogicEngine
+        # from core.lmm_interface import LMMInterface # Import if not already
+        # self.lmm_interface = LMMInterface(data_logger=self.data_logger)
 
+
+        # LogicEngine now takes data_logger, lmm_interface, and intervention_engine
+        self.logic_engine = LogicEngine(
+            data_logger=self.data_logger,
+            llm_interface=self.lmm_interface,
+            # intervention_engine will be passed after it's created to avoid circular dependency if any
+        )
+        self.intervention_engine = InterventionEngine(self.logic_engine, self, self.data_logger)
+        self.logic_engine.intervention_engine = self.intervention_engine # Now pass it to logic_engine
+
+        # VideoSensor is straightforward
         self.video_sensor = VideoSensor(config.CAMERA_INDEX, self.data_logger)
-        self.audio_sensor = AudioSensor(self.data_logger)
+
+        # AudioSensor is now initialized within LogicEngine if STT is used.
+        # We can keep a reference here if direct access is needed for other purposes,
+        # or rely on logic_engine.audio_sensor.
+        # For now, let's assume LogicEngine manages its AudioSensor instance primarily.
+        self.audio_sensor = self.logic_engine.audio_sensor
+        # This makes self.audio_sensor in Application point to the same instance as in LogicEngine,
+        # or None if LogicEngine failed to initialize it.
 
         self.running = True
         self.sensor_error_active = False
@@ -28,6 +49,8 @@ class Application:
         self._setup_hotkeys()
 
         self.data_logger.log_info(f"ACR Initialized. Mode: {self.logic_engine.get_mode()}.")
+        # self.intervention_engine.notify_mode_change(self.logic_engine.get_mode(), f"Application started in {self.logic_engine.get_mode()} mode.")
+
         print(f"ACR Initialized. Mode: {self.logic_engine.get_mode()}. Press Esc to quit.")
         print(f"Hotkeys: Cycle Mode ({config.HOTKEY_CYCLE_MODE}), Pause/Resume ({config.HOTKEY_PAUSE_RESUME})")
         print(f"Feedback Hotkeys: Helpful ({config.HOTKEY_FEEDBACK_HELPFUL}), Unhelpful ({config.HOTKEY_FEEDBACK_UNHELPFUL})")
@@ -115,13 +138,26 @@ class Application:
 
     def _check_sensors(self):
         video_had_error = self.video_sensor.has_error()
-        audio_had_error = self.audio_sensor.has_error()
+        # Check audio sensor via logic_engine if it's managed there, or directly if self.audio_sensor is always populated
+        audio_had_error = False
+        audio_error_msg = ""
+        if self.logic_engine.audio_sensor: # Check if audio_sensor was successfully initialized
+            audio_had_error = self.logic_engine.audio_sensor.has_error()
+            if audio_had_error:
+                audio_error_msg = self.logic_engine.audio_sensor.get_last_error()
+        elif config.VOSK_MODEL_PATH: # If VOSK_MODEL_PATH was set, implies STT was intended
+            # This case means audio_sensor failed to init in LogicEngine
+            audio_had_error = True
+            audio_error_msg = "AudioSensor (STT) failed to initialize in LogicEngine."
+            # Log this specific failure if not already logged sufficiently by LogicEngine
+            # self.data_logger.log_warning(audio_error_msg) # LogicEngine likely logged this already
+
         current_sensor_issue = video_had_error or audio_had_error
 
         if current_sensor_issue and not self.sensor_error_active: # New overall sensor error state
             self.data_logger.log_error("One or more sensors have entered an error state.")
             if video_had_error: self.data_logger.log_warning(f"Video sensor error: {self.video_sensor.get_last_error()}")
-            if audio_had_error: self.data_logger.log_warning(f"Audio sensor error: {self.audio_sensor.get_last_error()}")
+            if audio_had_error: self.data_logger.log_warning(f"Audio sensor error: {audio_error_msg}")
 
             self.sensor_error_active = True
             if self.tray_icon: self.tray_icon.update_icon_status("error")
@@ -158,15 +194,27 @@ class Application:
                 last_known_mode = current_mode
 
             if current_mode == "active" and not self.sensor_error_active:
+                # Video processing
                 frame, video_err = self.video_sensor.get_frame()
-                audio_chunk, audio_err = self.audio_sensor.get_chunk()
-
                 if video_err:
                     self.data_logger.log_warning(f"Video frame read error in active loop: {video_err}")
-                if audio_err:
-                    self.data_logger.log_warning(f"Audio chunk read error in active loop: {audio_err}")
+
+                # Audio processing (including STT) is now handled by LogicEngine
+                self.logic_engine.process_audio_input()
+
+                # Example of LMM processing based on video (if needed directly here, or move to LogicEngine)
+                # if frame is not None and self.logic_engine.lmm_interface:
+                #     video_analysis = self.logic_engine.lmm_interface.process_data(video_data={"frame_summary": "new_frame"})
+                #     if video_analysis:
+                #         video_suggestion = self.logic_engine.lmm_interface.get_intervention_suggestion(video_analysis)
+                #         if video_suggestion:
+                #             self.intervention_engine.provide_intervention(
+                #                 video_suggestion["type"], video_suggestion.get("message")
+                #             )
 
                 # --- Example of triggering a test intervention for feedback ---
+                # This should ideally be driven by LMM or specific logic, not just a counter.
+                # Keeping it for now for testing feedback mechanism.
                 if loop_counter % 60 == 0 : # Approx every 30s (if sleep is 0.5s)
                     self.data_logger.log_debug("Triggering simulated intervention for feedback testing.")
                     self.intervention_engine.provide_intervention(
@@ -181,7 +229,11 @@ class Application:
     def _shutdown(self):
         self.data_logger.log_info("Application shutting down...")
         if hasattr(self, 'video_sensor') and self.video_sensor: self.video_sensor.release()
-        if hasattr(self, 'audio_sensor') and self.audio_sensor: self.audio_sensor.release()
+
+        # Audio sensor is managed by LogicEngine, so call its cleanup
+        if hasattr(self, 'logic_engine') and self.logic_engine:
+            self.logic_engine.cleanup() # This will release the audio_sensor
+
         if hasattr(self, 'tray_icon') and self.tray_icon: self.tray_icon.stop()
 
         try:

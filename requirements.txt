@@ -7,3 +7,5 @@ sounddevice
 scipy
 requests
 pillow
+vosk
+pyttsx3

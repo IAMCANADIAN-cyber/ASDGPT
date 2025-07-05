@@ -107,17 +107,46 @@ class LMMInterface:
             self._log_info(f"LMM simulated: Video data processed, event: '{simulated_response['detected_event']}'.")
 
         if audio_data is not None:
-            # Simplistic simulation, overwrites if video didn't set, or appends if complex logic desired
-            if not simulated_response.get("detected_event"): # Only if video didn't trigger
-                 simulated_response["detected_event"] = "ambient_noise_level_high"
-                 simulated_response["confidence"] = 0.55
-                 simulated_response["raw_llm_output"] = "Simulated: Audio data indicates high ambient noise."
-                 self._log_info(f"LMM simulated: Audio data processed, event: '{simulated_response['detected_event']}'.")
-            else: # Video already detected something, maybe combine or prioritize
-                 current_event = simulated_response['detected_event']
-                 simulated_response['detected_event'] = f"{current_event}_and_ambient_noise_level_high" # Example combination
-                 simulated_response["raw_llm_output"] += " Additionally, audio data indicates high ambient noise."
-                 self._log_info(f"LMM simulated: Audio data also processed, combined event: '{simulated_response['detected_event']}'.")
+            # audio_data can now be a dictionary with "type" and "content" for speech transcripts
+            # or other audio features.
+            event_details = []
+            raw_output_details = []
+
+            if isinstance(audio_data, dict):
+                if audio_data.get("type") == "speech_transcript" and audio_data.get("content"):
+                    transcript = audio_data["content"]
+                    self._log_info(f"LMM processing speech transcript: '{transcript}'")
+                    # Simulate LMM processing of the transcript
+                    if "help" in transcript.lower():
+                        event_details.append("user_asked_for_help")
+                        raw_output_details.append(f"Simulated: User transcript contained 'help': '{transcript}'.")
+                        simulated_response["confidence"] = max(simulated_response.get("confidence", 0.0), 0.9)
+                    elif "sad" in transcript.lower() or "upset" in transcript.lower():
+                        event_details.append("user_expressed_sadness")
+                        raw_output_details.append(f"Simulated: User transcript expressed sadness: '{transcript}'.")
+                        simulated_response["confidence"] = max(simulated_response.get("confidence", 0.0), 0.7)
+                    else:
+                        event_details.append("user_speech_detected")
+                        raw_output_details.append(f"Simulated: User speech processed: '{transcript}'.")
+                        simulated_response["confidence"] = max(simulated_response.get("confidence", 0.0), 0.5) # Lower confidence for generic speech
+                else: # Other types of audio data (e.g., old format, or new features)
+                    event_details.append("ambient_noise_level_high") # Fallback for non-transcript audio
+                    raw_output_details.append("Simulated: Audio data (non-transcript) indicates high ambient noise.")
+                    simulated_response["confidence"] = max(simulated_response.get("confidence", 0.0), 0.55)
+            else: # Original handling if audio_data is not a dict (e.g. just a feature value)
+                event_details.append("ambient_noise_level_high_generic")
+                raw_output_details.append("Simulated: Generic audio data indicates high ambient noise.")
+                simulated_response["confidence"] = max(simulated_response.get("confidence", 0.0), 0.55)
+
+            # Combine with existing detected event if any
+            if simulated_response.get("detected_event"):
+                simulated_response["detected_event"] = f"{simulated_response['detected_event']}_and_{'_'.join(event_details)}"
+                simulated_response["raw_llm_output"] += " Additionally, " + ' '.join(raw_output_details)
+            else:
+                simulated_response["detected_event"] = '_'.join(event_details)
+                simulated_response["raw_llm_output"] = ' '.join(raw_output_details)
+
+            self._log_info(f"LMM simulated: Audio data processed, event now: '{simulated_response['detected_event']}'.")
 
 
         if simulated_response.get("detected_event"):
@@ -160,6 +189,18 @@ class LMMInterface:
             return {
                 "type": "noise_alert",
                 "message": "The LMM detected high ambient noise. Is everything okay with your audio?"
+            }
+        elif "user_asked_for_help" in event and confidence > 0.8:
+            self._log_info(f"Suggesting 'assistance_response' intervention (Confidence: {confidence:.2f}).")
+            return {
+                "type": "assistance_response",
+                "message": "It sounds like you might need help. I'm here to listen."
+            }
+        elif "user_expressed_sadness" in event and confidence > 0.65:
+            self._log_info(f"Suggesting 'empathetic_response' intervention (Confidence: {confidence:.2f}).")
+            return {
+                "type": "empathetic_response",
+                "message": "I hear that you're feeling sad. Sometimes talking about it can help."
             }
         # Add more rules as needed
 
