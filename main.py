@@ -1,285 +1,290 @@
 import time
-import keyboard # Ensure this is installed
+import keyboard
 import config
 from core.logic_engine import LogicEngine
 from core.intervention_engine import InterventionEngine
 from core.system_tray import ACRTrayIcon
 from core.data_logger import DataLogger
+from core.lmm_interface import LMMInterface # Added LMMInterface import
 from sensors.video_sensor import VideoSensor
-from sensors.audio_sensor import AudioSensor
+# AudioSensor is initialized within LogicEngine
 
 class Application:
     def __init__(self):
-        self.data_logger = DataLogger(config.LOG_FILE)
+        self.data_logger = DataLogger(config.LOG_FILE, config.LOG_LEVEL) # Pass log level
         self.data_logger.log_info("ACR Application Initializing...")
 
-        # Initialize LMMInterface first if LogicEngine depends on it
-        # For now, assuming LMMInterface can be initialized standalone or LogicEngine handles its absence
-        self.lmm_interface = None # Placeholder, will be initialized if needed by LogicEngine
-        # from core.lmm_interface import LMMInterface # Import if not already
-        # self.lmm_interface = LMMInterface(data_logger=self.data_logger)
+        self.lmm_interface = LMMInterface(data_logger=self.data_logger)
 
-
-        # LogicEngine now takes data_logger, lmm_interface, and intervention_engine
+        # InterventionEngine needs logic_engine, app_instance, and data_logger
+        # LogicEngine needs data_logger, lmm_interface, and intervention_engine
+        # To break circular dependency for init, we can pass intervention_engine to logic_engine later
         self.logic_engine = LogicEngine(
             data_logger=self.data_logger,
             llm_interface=self.lmm_interface,
-            # intervention_engine will be passed after it's created to avoid circular dependency if any
+            intervention_engine=None # Will be set post-IE init
         )
-        self.intervention_engine = InterventionEngine(self.logic_engine, self, self.data_logger)
-        self.logic_engine.intervention_engine = self.intervention_engine # Now pass it to logic_engine
+        self.intervention_engine = InterventionEngine(
+            logic_engine=self.logic_engine,
+            app_instance=self, # Pass self (Application instance)
+            data_logger_override=self.data_logger # Explicitly pass logger
+        )
+        self.logic_engine.intervention_engine = self.intervention_engine # Complete LogicEngine setup
 
-        # VideoSensor is straightforward
         self.video_sensor = VideoSensor(config.CAMERA_INDEX, self.data_logger)
-
-        # AudioSensor is now initialized within LogicEngine if STT is used.
-        # We can keep a reference here if direct access is needed for other purposes,
-        # or rely on logic_engine.audio_sensor.
-        # For now, let's assume LogicEngine manages its AudioSensor instance primarily.
-        self.audio_sensor = self.logic_engine.audio_sensor
-        # This makes self.audio_sensor in Application point to the same instance as in LogicEngine,
-        # or None if LogicEngine failed to initialize it.
+        self.audio_sensor = self.logic_engine.audio_sensor # Reference from LogicEngine
 
         self.running = True
-        self.sensor_error_active = False
+        self.sensor_error_active = False # Tracks if any sensor is in a persistent error state
 
-        self.tray_icon = ACRTrayIcon(self)
-        self.logic_engine.tray_callback = self.update_tray_status_and_notify
+        self.tray_icon = None
+        try:
+            self.tray_icon = ACRTrayIcon(self)
+            if self.logic_engine: # Ensure logic_engine exists before setting callback
+                 self.logic_engine.tray_callback = self.update_tray_status_and_notify
+        except Exception as e:
+            self.data_logger.log_error(f"Failed to initialize system tray: {e}. Application will run without tray icon.", details=str(e))
+            self.tray_icon = None
+
 
         self._setup_hotkeys()
 
-        self.data_logger.log_info(f"ACR Initialized. Mode: {self.logic_engine.get_mode()}.")
-        # self.intervention_engine.notify_mode_change(self.logic_engine.get_mode(), f"Application started in {self.logic_engine.get_mode()} mode.")
+        initial_mode = self.logic_engine.get_mode()
+        self.data_logger.log_info(f"ACR Initialized. Mode: {initial_mode}.")
+        if self.intervention_engine: # Check if IE was initialized
+            self.intervention_engine.notify_mode_change(initial_mode, f"Application started in {initial_mode} mode.")
 
-        print(f"ACR Initialized. Mode: {self.logic_engine.get_mode()}. Press Esc to quit.")
-        print(f"Hotkeys: Cycle Mode ({config.HOTKEY_CYCLE_MODE}), Pause/Resume ({config.HOTKEY_PAUSE_RESUME})")
-        print(f"Feedback Hotkeys: Helpful ({config.HOTKEY_FEEDBACK_HELPFUL}), Unhelpful ({config.HOTKEY_FEEDBACK_UNHELPFUL})")
+        print(f"ACR Initialized. Mode: {initial_mode}. Press Esc to quit.")
+        if hasattr(config, 'HOTKEY_CYCLE_MODE') and hasattr(config, 'HOTKEY_PAUSE_RESUME'):
+            print(f"Hotkeys: Cycle Mode ({config.HOTKEY_CYCLE_MODE}), Pause/Resume ({config.HOTKEY_PAUSE_RESUME})")
+        if hasattr(config, 'HOTKEY_FEEDBACK_HELPFUL') and hasattr(config, 'HOTKEY_FEEDBACK_UNHELPFUL'):
+            print(f"Feedback Hotkeys: Helpful ({config.HOTKEY_FEEDBACK_HELPFUL}), Unhelpful ({config.HOTKEY_FEEDBACK_UNHELPFUL})")
 
 
     def _setup_hotkeys(self):
         self.data_logger.log_info("Setting up hotkeys...")
         try:
-            # Mode control hotkeys
-            keyboard.add_hotkey(config.HOTKEY_CYCLE_MODE, lambda: self.on_cycle_mode_pressed(), suppress=True)
-            keyboard.add_hotkey(config.HOTKEY_PAUSE_RESUME, lambda: self.on_pause_resume_pressed(), suppress=True)
+            if hasattr(config, 'HOTKEY_CYCLE_MODE'):
+                keyboard.add_hotkey(config.HOTKEY_CYCLE_MODE, lambda: self.on_cycle_mode_pressed(), suppress=True)
+            if hasattr(config, 'HOTKEY_PAUSE_RESUME'):
+                keyboard.add_hotkey(config.HOTKEY_PAUSE_RESUME, lambda: self.on_pause_resume_pressed(), suppress=True)
+            if hasattr(config, 'HOTKEY_FEEDBACK_HELPFUL'):
+                keyboard.add_hotkey(config.HOTKEY_FEEDBACK_HELPFUL, lambda: self.on_feedback_helpful_pressed(), suppress=True)
+            if hasattr(config, 'HOTKEY_FEEDBACK_UNHELPFUL'):
+                keyboard.add_hotkey(config.HOTKEY_FEEDBACK_UNHELPFUL, lambda: self.on_feedback_unhelpful_pressed(), suppress=True)
 
-            # Feedback hotkeys (Task 4.4)
-            keyboard.add_hotkey(config.HOTKEY_FEEDBACK_HELPFUL, lambda: self.on_feedback_helpful_pressed(), suppress=True)
-            keyboard.add_hotkey(config.HOTKEY_FEEDBACK_UNHELPFUL, lambda: self.on_feedback_unhelpful_pressed(), suppress=True)
-
-            # Quit hotkey
             keyboard.add_hotkey("esc", self.quit_application_hotkey_wrapper, suppress=True)
-
-            self.data_logger.log_info("Hotkeys registered successfully (Mode, Feedback, Quit).")
+            self.data_logger.log_info("Hotkeys registered (or skipped if not in config).")
         except Exception as e:
-            log_msg = f"Error setting up hotkeys: {e}. This might require admin/sudo rights."
-            self.data_logger.log_error(log_msg)
+            log_msg = f"Error setting up hotkeys: {e}. This might require admin/sudo rights or specific OS permissions."
+            self.data_logger.log_error(log_msg, details=str(e))
             print(log_msg)
 
-    # --- Feedback Hotkey Handlers (Task 4.4) ---
     def on_feedback_helpful_pressed(self):
         self.data_logger.log_info(f"Hotkey '{config.HOTKEY_FEEDBACK_HELPFUL}' pressed.")
-        self.intervention_engine.register_feedback("helpful")
-        # Optionally, provide some subtle confirmation feedback (e.g., short tray flash or sound)
-        if self.tray_icon: # Example: quick flash of current icon
+        if self.intervention_engine:
+            self.intervention_engine.register_feedback("helpful")
+        if self.tray_icon:
              self.tray_icon.flash_icon(flash_status=self.logic_engine.get_mode(), duration=0.3, flashes=1)
-
 
     def on_feedback_unhelpful_pressed(self):
         self.data_logger.log_info(f"Hotkey '{config.HOTKEY_FEEDBACK_UNHELPFUL}' pressed.")
-        self.intervention_engine.register_feedback("unhelpful")
-        if self.tray_icon: # Example: quick flash
+        if self.intervention_engine:
+            self.intervention_engine.register_feedback("unhelpful")
+        if self.tray_icon:
              self.tray_icon.flash_icon(flash_status=self.logic_engine.get_mode(), duration=0.3, flashes=1)
 
-    # --- Existing Methods (potentially updated) ---
     def update_tray_status_and_notify(self, new_mode, old_mode=None):
-        if self.sensor_error_active and new_mode != "error":
-            if self.tray_icon: self.tray_icon.update_icon_status("error")
-        elif self.tray_icon:
-            self.tray_icon.update_icon_status(new_mode)
+        # This callback is primarily for the tray icon.
+        # TTS notifications for mode changes are handled by on_cycle_mode_pressed and on_pause_resume_pressed
+        # by calling intervention_engine.notify_mode_change directly.
+        if self.tray_icon:
+            effective_display_mode = "error" if self.sensor_error_active and new_mode != "error" else new_mode
+            self.tray_icon.update_icon_status(effective_display_mode)
 
-        if old_mode != new_mode:
-            log_msg = f"Mode changed from {old_mode} to {new_mode} (Programmatic: {'Yes' if old_mode else 'No'})."
-            self.data_logger.log_info(log_msg)
-            # print(log_msg) # Already printed by LogicEngine usually
-            if new_mode == "active" and old_mode == "snoozed":
-                 self.intervention_engine.notify_mode_change(new_mode, "Snooze ended. Co-regulator active.")
+        if old_mode != new_mode: # Log the mode change if it actually changed
+            self.data_logger.log_info(f"Mode changed from {old_mode} to {new_mode} (Programmatic: {'Yes' if from_snooze_expiry else 'No'}).")
+            # If snooze expired to active, intervention_engine.notify_mode_change is called from logic_engine.get_mode() via set_mode
+            # This is a bit convoluted, might simplify later. For now, ensure set_mode in LogicEngine calls IE.notify.
+            # Let's ensure notify_mode_change in IE is robust.
 
     def on_cycle_mode_pressed(self, from_tray=False):
-        if self.sensor_error_active:
-            self.data_logger.log_info("Mode change via hotkey ignored due to active sensor error.")
+        if self.sensor_error_active and not from_tray: # Allow tray to cycle out of error if sensors recover
+            self.data_logger.log_info("Mode cycle via hotkey ignored due to active sensor error.")
             return
 
         old_mode = self.logic_engine.get_mode()
         self.logic_engine.cycle_mode()
-        new_mode = self.logic_engine.get_mode()
-        log_msg = f"Event: Cycle Mode Hotkey. Mode changed from {old_mode} to {new_mode}"
-        self.data_logger.log_info(log_msg)
-        # print(log_msg) # InterventionEngine will print its SPEAKING line
-        self.intervention_engine.notify_mode_change(new_mode)
-        if self.tray_icon: self.tray_icon.update_icon_status(new_mode)
+        new_mode = self.logic_engine.get_mode() # This will be the actual new mode after cycle logic
+
+        self.data_logger.log_info(f"Event: Cycle Mode {'from tray' if from_tray else 'Hotkey'}. Mode changed from {old_mode} to {new_mode}")
+        if self.intervention_engine:
+            self.intervention_engine.notify_mode_change(new_mode) # TTS for the mode change
+        if self.tray_icon: # Update tray icon status
+            self.tray_icon.update_icon_status("error" if self.sensor_error_active and new_mode != "paused" else new_mode)
+
 
     def on_pause_resume_pressed(self, from_tray=False):
-        if self.sensor_error_active and self.logic_engine.get_mode() == "paused":
-            pass
-        elif self.sensor_error_active:
-            self.data_logger.log_info("Pause/Resume via hotkey modified due to active sensor error.")
-            pass
-
+        # Allow pausing even if sensor error is active. Resuming might go to error state if still applicable.
         old_mode = self.logic_engine.get_mode()
         self.logic_engine.toggle_pause_resume()
         new_mode = self.logic_engine.get_mode()
-        log_msg = f"Event: Pause/Resume Hotkey. Mode changed from {old_mode} to {new_mode}"
-        self.data_logger.log_info(log_msg)
-        # print(log_msg)
-        self.intervention_engine.notify_mode_change(new_mode)
+
+        self.data_logger.log_info(f"Event: Pause/Resume {'from tray' if from_tray else 'Hotkey'}. Mode changed from {old_mode} to {new_mode}")
+        if self.intervention_engine:
+            self.intervention_engine.notify_mode_change(new_mode) # TTS for the mode change
         if self.tray_icon:
             self.tray_icon.update_icon_status("error" if self.sensor_error_active and new_mode != "paused" else new_mode)
 
+
     def _check_sensors(self):
-        video_had_error = self.video_sensor.has_error()
-        # Check audio sensor via logic_engine if it's managed there, or directly if self.audio_sensor is always populated
-        audio_had_error = False
-        audio_error_msg = ""
-        if self.logic_engine.audio_sensor: # Check if audio_sensor was successfully initialized
-            audio_had_error = self.logic_engine.audio_sensor.has_error()
-            if audio_had_error:
-                audio_error_msg = self.logic_engine.audio_sensor.get_last_error()
-        elif config.VOSK_MODEL_PATH: # If VOSK_MODEL_PATH was set, implies STT was intended
-            # This case means audio_sensor failed to init in LogicEngine
-            audio_had_error = True
-            audio_error_msg = "AudioSensor (STT) failed to initialize in LogicEngine."
-            # Log this specific failure if not already logged sufficiently by LogicEngine
-            # self.data_logger.log_warning(audio_error_msg) # LogicEngine likely logged this already
+        video_err = self.video_sensor.has_error()
+        video_err_msg = self.video_sensor.get_last_error() if video_err else ""
 
-        current_sensor_issue = video_had_error or audio_had_error
+        audio_err = False
+        audio_err_msg = ""
+        if self.audio_sensor: # If audio_sensor was initialized
+            audio_err = self.audio_sensor.has_error()
+            if audio_err: audio_err_msg = self.audio_sensor.get_last_error()
+        elif getattr(config, 'VOSK_MODEL_PATH', None): # If STT was intended but sensor failed to init
+            audio_err = True
+            audio_err_msg = "AudioSensor (STT) failed to initialize in LogicEngine."
 
-        if current_sensor_issue and not self.sensor_error_active: # New overall sensor error state
-            self.data_logger.log_error("One or more sensors have entered an error state.")
-            if video_had_error: self.data_logger.log_warning(f"Video sensor error: {self.video_sensor.get_last_error()}")
-            if audio_had_error: self.data_logger.log_warning(f"Audio sensor error: {audio_error_msg}")
+        current_overall_sensor_issue = video_err or audio_err
 
+        if current_overall_sensor_issue and not self.sensor_error_active:
             self.sensor_error_active = True
-            if self.tray_icon: self.tray_icon.update_icon_status("error")
-            self.intervention_engine.notify_mode_change("error") # Generic sensor error message from IE
+            self.data_logger.log_error("One or more sensors have entered an error state.")
+            if video_err: self.data_logger.log_warning(f"Video sensor error: {video_err_msg}")
+            if audio_err: self.data_logger.log_warning(f"Audio sensor error: {audio_err_msg}")
 
-        elif not current_sensor_issue and self.sensor_error_active: # Errors just cleared
-            self.data_logger.log_info("All sensor errors appear to be resolved.")
+            if self.tray_icon: self.tray_icon.update_icon_status("error")
+            if self.intervention_engine: self.intervention_engine.notify_mode_change("error") # TTS for error state
+
+        elif not current_overall_sensor_issue and self.sensor_error_active:
             self.sensor_error_active = False
-            if self.tray_icon: self.tray_icon.update_icon_status(self.logic_engine.get_mode())
-            self.intervention_engine.notify_mode_change(self.logic_engine.get_mode(), "Sensors recovered. Operations resuming.")
+            self.data_logger.log_info("All sensor errors appear to be resolved.")
+            current_mode = self.logic_engine.get_mode()
+            if self.tray_icon: self.tray_icon.update_icon_status(current_mode)
+            if self.intervention_engine: self.intervention_engine.notify_mode_change(current_mode, "Sensors recovered. Operations resuming.")
 
         return self.sensor_error_active
-
 
     def run(self):
         if self.tray_icon:
             self.tray_icon.run_threaded()
 
-        last_known_mode = self.logic_engine.get_mode()
+        last_known_mode = self.logic_engine.get_mode() # Initialize with current mode
         loop_counter = 0
 
-        while self.running:
-            loop_counter += 1
-            if loop_counter % 5 == 0:
-                 self._check_sensors()
+        try:
+            while self.running:
+                loop_counter += 1
 
-            current_mode = self.logic_engine.get_mode()
+                # Check sensors periodically (e.g., every 5 loops = 2.5s if sleep is 0.5s)
+                if loop_counter % 5 == 0:
+                    self._check_sensors()
 
-            if current_mode != last_known_mode:
-                if self.sensor_error_active:
-                    if self.tray_icon: self.tray_icon.update_icon_status("error")
-                else:
-                    if self.tray_icon: self.tray_icon.update_icon_status(current_mode)
-                last_known_mode = current_mode
+                current_mode = self.logic_engine.get_mode() # Checks for snooze expiry
 
-            if current_mode == "active" and not self.sensor_error_active:
-                # Video processing
-                frame, video_err = self.video_sensor.get_frame()
-                if video_err:
-                    self.data_logger.log_warning(f"Video frame read error in active loop: {video_err}")
+                if current_mode != last_known_mode: # Mode actually changed
+                    self.data_logger.log_info(f"Main loop: Detected mode change from {last_known_mode} to {current_mode}")
+                    # Tray update is handled by logic_engine.tray_callback or specific hotkey methods.
+                    # TTS for mode change is handled by logic_engine.set_mode -> _notify_mode_change -> app.intervention_engine.notify_mode_change
+                    last_known_mode = current_mode
 
-                # Audio processing (including STT) is now handled by LogicEngine
-                self.logic_engine.process_audio_input()
+                if current_mode == "active" and not self.sensor_error_active:
+                    # Video processing (simplified, actual processing would be more complex)
+                    frame, video_err_detail = self.video_sensor.get_frame()
+                    if video_err_detail:
+                        self.data_logger.log_warning(f"Video frame read error in active loop: {video_err_detail}")
 
-                # Example of LMM processing based on video (if needed directly here, or move to LogicEngine)
-                # if frame is not None and self.logic_engine.lmm_interface:
-                #     video_analysis = self.logic_engine.lmm_interface.process_data(video_data={"frame_summary": "new_frame"})
-                #     if video_analysis:
-                #         video_suggestion = self.logic_engine.lmm_interface.get_intervention_suggestion(video_analysis)
-                #         if video_suggestion:
-                #             self.intervention_engine.provide_intervention(
-                #                 video_suggestion["type"], video_suggestion.get("message")
-                #             )
+                    # Audio processing (STT) is now handled by LogicEngine
+                    if self.logic_engine:
+                        self.logic_engine.process_audio_input()
 
-                # --- Example of triggering a test intervention for feedback ---
-                # This should ideally be driven by LMM or specific logic, not just a counter.
-                # Keeping it for now for testing feedback mechanism.
-                if loop_counter % 60 == 0 : # Approx every 30s (if sleep is 0.5s)
-                    self.data_logger.log_debug("Triggering simulated intervention for feedback testing.")
-                    self.intervention_engine.provide_intervention(
-                        intervention_type="posture_reminder", # Specific type
-                        custom_message="How's your posture right now? Take a moment to adjust if needed."
-                    )
-                # --- End of example ---
+                    # Placeholder for LMM processing and proactive interventions based on combined sensor data
+                    # This would typically involve passing data to LMMInterface via LogicEngine
+                    # and then using InterventionEngine to deliver interventions.
 
-            time.sleep(0.5)
-        self._shutdown()
+                    # Example of triggering a test intervention (from main branch logic)
+                    # This should be driven by LMM or specific logic, not just a counter.
+                    # Adopting the new start_intervention structure
+                    if loop_counter % getattr(config, 'TEST_INTERVENTION_INTERVAL_SECONDS', 120) == 0 : # Approx every 60s
+                        self.data_logger.log_debug("Triggering simulated intervention for feedback testing.")
+                        if self.intervention_engine:
+                            intervention_details = {
+                                "type": "posture_reminder_test",
+                                "message": "This is a test of the posture reminder. How's your posture?",
+                                "tier": 1, # Example tier
+                                "duration": 5 # Short duration for test
+                            }
+                            self.intervention_engine.start_intervention(intervention_details)
+
+                time.sleep(0.5) # Main loop delay
+        except KeyboardInterrupt:
+            self.data_logger.log_info("Application run loop interrupted by KeyboardInterrupt.")
+        finally:
+            self._shutdown()
 
     def _shutdown(self):
         self.data_logger.log_info("Application shutting down...")
         if hasattr(self, 'video_sensor') and self.video_sensor: self.video_sensor.release()
 
-        # Audio sensor is managed by LogicEngine, so call its cleanup
         if hasattr(self, 'logic_engine') and self.logic_engine:
-            self.logic_engine.cleanup() # This will release the audio_sensor
+            self.logic_engine.cleanup()
 
         if hasattr(self, 'tray_icon') and self.tray_icon: self.tray_icon.stop()
 
         try:
             keyboard.unhook_all()
             self.data_logger.log_info("Keyboard hotkeys unhooked.")
-        except Exception as e: # pragma: no cover
-            self.data_logger.log_warning(f"Could not unhook all keyboard hotkeys: {e}")
+        except Exception as e:
+            self.data_logger.log_warning(f"Could not unhook all keyboard hotkeys: {e}", details=str(e))
 
         self.data_logger.log_info("Application shutdown complete.")
         print("Application shutdown complete.")
 
-
     def quit_application_hotkey_wrapper(self):
+        # This wrapper is needed because keyboard.add_hotkey doesn't pass arguments.
         self.quit_application()
 
     def quit_application(self):
-        if not self.running:
-            return
+        if not self.running: return
         self.data_logger.log_info("Quit signal received.")
         print("Quit signal received.")
-        self.running = False
+        self.running = False # This will break the main loop in self.run()
 
 if __name__ == "__main__":
+    # Set default config values if not present, useful for direct script running or testing
     if not hasattr(config, 'CAMERA_INDEX'): config.CAMERA_INDEX = 0
     if not hasattr(config, 'LOG_FILE'): config.LOG_FILE = "acr_app.log"
-    if not hasattr(config, 'LOG_LEVEL'): config.LOG_LEVEL = "DEBUG" # Set to DEBUG for more verbose test output
+    if not hasattr(config, 'LOG_LEVEL'): config.LOG_LEVEL = "DEBUG"
     if not hasattr(config, 'FEEDBACK_WINDOW_SECONDS'): config.FEEDBACK_WINDOW_SECONDS = 15
+    if not hasattr(config, 'MIN_TIME_BETWEEN_INTERVENTIONS'): config.MIN_TIME_BETWEEN_INTERVENTIONS = 300
+    if not hasattr(config, 'DEFAULT_INTERVENTION_DURATION'): config.DEFAULT_INTERVENTION_DURATION = 10
+    if not hasattr(config, 'SNOOZE_DURATION'): config.SNOOZE_DURATION = 3600
+    if not hasattr(config, 'TEST_INTERVENTION_INTERVAL_SECONDS'): config.TEST_INTERVENTION_INTERVAL_SECONDS = 120
 
 
     app = None
     try:
         app = Application()
         app.run()
-    except KeyboardInterrupt: # pragma: no cover
-        print("Application interrupted by user (Ctrl+C).")
-        if app and hasattr(app, 'data_logger'): app.data_logger.log_warning("Application interrupted by user (Ctrl+C).")
-    except Exception as e: # pragma: no cover
+    except KeyboardInterrupt:
+        print("Application interrupted by user (Ctrl+C in main).")
+        if app and hasattr(app, 'data_logger'): app.data_logger.log_warning("Application interrupted by user (Ctrl+C in main).")
+    except Exception as e:
         print(f"An unexpected error occurred in main: {e}")
         if app and hasattr(app, 'data_logger'):
             app.data_logger.log_error(f"Unhandled exception in main execution: {e}", details=str(e.__traceback__))
-        elif not app :
-            try:
-                temp_logger = DataLogger("emergency_error.log")
-                temp_logger.log_error(f"Critical error during Application init: {e}", details=str(e.__traceback__))
-            except: pass
+        elif not app : # Error during Application init itself
+            try: # Attempt to log to a fallback emergency logger
+                emergency_logger = DataLogger("emergency_acr_error.log", "ERROR")
+                emergency_logger.log_error(f"Critical error during Application init: {e}", details=str(e.__traceback__))
+            except: pass # If even emergency logger fails, just print
+                print(f"CRITICAL INIT ERROR (logging failed): {e}")
     finally:
-        if app and app.running:
-            app.quit_application()
+        if app and app.running: # If loop was broken by other means than quit_application
+            app.quit_application() # Ensure shutdown sequence is called
         print("Main script execution finished.")

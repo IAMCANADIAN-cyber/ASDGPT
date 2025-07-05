@@ -1,36 +1,37 @@
 import time
 import config
-from sensors.audio_sensor import AudioSensor # Import AudioSensor
-from core.lmm_interface import LMMInterface # Assuming LMMInterface is needed for processing
+from sensors.audio_sensor import AudioSensor
+# LMMInterface and InterventionEngine will be passed in __init__
 
 class LogicEngine:
-    def __init__(self, data_logger=None, llm_interface=None, intervention_engine=None): # Added engines
+    def __init__(self, data_logger=None, llm_interface=None, intervention_engine=None):
         self.current_mode = config.DEFAULT_MODE
         self.snooze_end_time = 0
         self.previous_mode_before_pause = config.DEFAULT_MODE
         self.tray_callback = None
         self.logger = data_logger
         self.llm_interface = llm_interface
-        self.intervention_engine = intervention_engine # Store intervention engine
+        self.intervention_engine = intervention_engine
 
         self._log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
         # Initialize AudioSensor with Vosk model path from config
         self.audio_sensor = None
-        try:
-            self.audio_sensor = AudioSensor(
-                data_logger=self.logger,
-                vosk_model_path=config.VOSK_MODEL_PATH
-            )
-            if self.audio_sensor.has_error() and "Vosk init failed" in self.audio_sensor.get_last_error():
-                self._log_error(f"AudioSensor STT initialization failed: {self.audio_sensor.get_last_error()}. Voice input will be disabled.")
-                self.audio_sensor = None # Disable if STT failed critically
-            elif self.audio_sensor.has_error():
-                 self._log_warning(f"AudioSensor initialized with non-critical error: {self.audio_sensor.get_last_error()}")
-
-        except Exception as e:
-            self._log_error(f"Failed to initialize AudioSensor in LogicEngine: {e}", details=str(e))
-            self.audio_sensor = None
+        vosk_model_path = getattr(config, 'VOSK_MODEL_PATH', None)
+        if vosk_model_path:
+            try:
+                self.audio_sensor = AudioSensor(
+                    data_logger=self.logger,
+                    vosk_model_path=vosk_model_path
+                )
+                if self.audio_sensor.has_error(): # This includes Vosk init and stream errors
+                    self._log_error(f"AudioSensor initialized with error: {self.audio_sensor.get_last_error()}. STT/Audio input might be impaired.")
+                    # If error is critical for STT (e.g. Vosk model load failed), STT methods in AudioSensor will reflect this.
+            except Exception as e:
+                self._log_error(f"Failed to initialize AudioSensor in LogicEngine: {e}", details=str(e))
+                self.audio_sensor = None
+        else:
+            self._log_info("VOSK_MODEL_PATH not configured. STT features will be unavailable.")
 
     def _log_info(self, message):
         if self.logger: self.logger.log_info(f"LogicEngine: {message}")
@@ -41,103 +42,89 @@ class LogicEngine:
         else: print(f"WARNING: LogicEngine: {message}")
 
     def _log_error(self, message, details=""):
-        if self.logger: self.logger.log_error(f"LogicEngine: {message}", details)
+        if self.logger: self.logger.log_error(f"LogicEngine: {message}", details=details)
         else: print(f"ERROR: LogicEngine: {message} | Details: {details}")
 
+    def _log_debug(self, message):
+        if self.logger and hasattr(self.logger, 'log_debug'): self.logger.log_debug(f"LogicEngine: {message}")
+        elif self.logger: self.logger.log_info(f"LogicEngine-DEBUG: {message}") # Fallback
+        else: print(f"DEBUG: LogicEngine: {message}")
+
     def get_mode(self):
-        # old_mode = self.current_mode # This variable is not used before being reassigned
-        # The original logic for old_mode here seemed to be for checking if mode changed *within* this call
-        # due to snooze expiry. Let's preserve the intent.
         initial_mode_for_this_call = self.current_mode
         if self.current_mode == "snoozed":
             if time.time() >= self.snooze_end_time and self.snooze_end_time != 0:
-                print("Snooze expired.")
-                self.snooze_end_time = 0 # Reset snooze time
+                self._log_info("Snooze expired.")
+                self.snooze_end_time = 0
                 self.set_mode("active", from_snooze_expiry=True)
-                # set_mode will call _notify_mode_change
 
         # If mode was changed by snooze expiry, self.current_mode is now updated.
-        # If not, it's the same as old_mode.
+        if initial_mode_for_this_call != self.current_mode:
+             self._log_debug(f"Mode changed internally in get_mode (e.g. snooze expiry) from {initial_mode_for_this_call} to {self.current_mode}")
         return self.current_mode
 
     def set_mode(self, mode, from_snooze_expiry=False):
-        if mode not in ["active", "snoozed", "paused", "error"]: # Added error mode
-            print(f"Warning: Attempted to set invalid mode: {mode}")
+        if mode not in ["active", "snoozed", "paused", "error"]:
+            self._log_warning(f"Attempted to set invalid mode: {mode}")
             return
 
         old_mode = self.current_mode
-        if mode == old_mode and not from_snooze_expiry : # Allow re-setting active if snooze expired
-            # (e.g. if already active, but snooze expired, we still want notification)
-            # This condition might need refinement based on desired notification behavior
-            if not (mode == "active" and from_snooze_expiry and old_mode == "snoozed"):
-                 return
+        # Allow re-setting active if snooze expired, or if mode is genuinely different
+        if mode == old_mode and not (mode == "active" and from_snooze_expiry and old_mode == "snoozed"):
+            return
 
-
-        print(f"LogicEngine: Changing mode from {old_mode} to {mode}")
+        self._log_info(f"Changing mode from {old_mode} to {mode}")
 
         if old_mode != "paused" and mode == "paused":
             self.previous_mode_before_pause = old_mode
 
         self.current_mode = mode
 
+        snooze_duration_config = getattr(config, 'SNOOZE_DURATION', 3600)
         if self.current_mode == "snoozed":
-            self.snooze_end_time = time.time() + config.SNOOZE_DURATION
-            print(f"Snooze activated. Will return to active mode in {config.SNOOZE_DURATION / 60:.0f} minutes.")
+            self.snooze_end_time = time.time() + snooze_duration_config
+            self._log_info(f"Snooze activated. Will return to active mode in {snooze_duration_config / 60:.0f} minutes.")
         elif self.current_mode == "active":
-            # If mode becomes active (either by user or snooze expiry), ensure snooze_end_time is cleared
             self.snooze_end_time = 0
 
         self._notify_mode_change(old_mode, new_mode=self.current_mode, from_snooze_expiry=from_snooze_expiry)
 
     def cycle_mode(self):
-        current_actual_mode = self.get_mode()
+        current_actual_mode = self.get_mode() # Ensures snooze expiry is checked
         if current_actual_mode == "active":
             self.set_mode("snoozed")
         elif current_actual_mode == "snoozed":
             self.set_mode("paused")
         elif current_actual_mode == "paused":
-            # When cycling from paused, go to active, not previous_mode_before_pause
             self.set_mode("active")
 
     def toggle_pause_resume(self):
-        current_actual_mode = self.get_mode()
+        current_actual_mode = self.get_mode() # Ensures snooze expiry is checked
         if current_actual_mode == "paused":
-            # If snooze would have expired while paused, return to active.
             if self.previous_mode_before_pause == "snoozed" and \
                self.snooze_end_time != 0 and time.time() >= self.snooze_end_time:
-                self.snooze_end_time = 0 # Clear snooze as it's now handled
+                self.snooze_end_time = 0
                 self.set_mode("active")
             else:
                 self.set_mode(self.previous_mode_before_pause)
         else:
-            # This will set self.previous_mode_before_pause correctly if current is not "paused"
             self.set_mode("paused")
 
     def _notify_mode_change(self, old_mode, new_mode, from_snooze_expiry=False):
-        print(f"LogicEngine Notification: Mode changed from {old_mode} to {new_mode}")
+        self._log_info(f"Notification: Mode changed from {old_mode} to {new_mode}")
         if self.tray_callback:
-            # Pass both old and new mode for more context if needed by callback
             self.tray_callback(new_mode=new_mode, old_mode=old_mode)
+        # TTS for mode change is handled by InterventionEngine via Application class
 
     def process_audio_input(self):
-        """
-        Called periodically to process audio input, transcribe it,
-        and potentially send it to the LMM.
-        """
-        if not self.audio_sensor:
-            # self._log_info("Audio sensor not available, skipping audio processing.")
+        if not self.audio_sensor or self.audio_sensor.has_error() or not self.audio_sensor.vosk_recognizer:
+            # self._log_debug("Audio sensor not available or STT not initialized, skipping audio processing.")
             return
 
-        if self.current_mode != "active": # Only process audio if active
-            # self._log_info(f"LogicEngine not in 'active' mode (currently {self.current_mode}), skipping audio processing.")
+        if self.current_mode != "active":
+            # self._log_debug(f"LogicEngine not in 'active' mode (currently {self.current_mode}), skipping audio processing.")
             return
 
-        # Attempt to get transcribed text
-        # Using transcribe_chunk for potentially faster partial results,
-        # or get_final_transcription if longer utterances are expected.
-        # For now, let's try to get any new text from the current chunk.
-
-        # The audio_sensor's transcribe_chunk now handles getting a new audio chunk if none is provided.
         transcribed_text, error = self.audio_sensor.transcribe_chunk()
 
         if error and error != "partial":
@@ -145,57 +132,44 @@ class LogicEngine:
             return
 
         if error == "partial" and transcribed_text:
-            self._log_info(f"Partial STT result: '{transcribed_text}' - buffering or waiting for final.")
-            # We might want to buffer partial results or handle them differently.
-            # For now, we'll only send non-partial (i.e., more complete) results to LMM.
-            return # Don't send partial results to LMM yet
+            self._log_debug(f"Partial STT result: '{transcribed_text}' - will wait for final.")
+            return
 
         if transcribed_text:
             self._log_info(f"Transcribed text: '{transcribed_text}'")
             if self.llm_interface:
-                # We need to define how transcribed audio fits into process_data
-                # For now, let's pass it as 'audio_data' or a specific keyword
-                # Assuming LMMInterface is updated to handle a dictionary for audio_data
-                # or a new parameter like 'transcribed_speech'
                 llm_audio_input = {"type": "speech_transcript", "content": transcribed_text}
-
-                self._log_info(f"Sending transcribed text to LMM: {llm_audio_input}")
+                self._log_debug(f"Sending transcribed text to LMM: {llm_audio_input}")
                 analysis = self.llm_interface.process_data(audio_data=llm_audio_input)
 
                 if analysis:
-                    self._log_info(f"LMM analysis from audio: {analysis}")
+                    self._log_debug(f"LMM analysis from audio: {analysis}")
                     if self.intervention_engine:
                         suggestion = self.llm_interface.get_intervention_suggestion(analysis)
                         if suggestion:
                             self._log_info(f"Intervention suggested by LMM based on audio: {suggestion}")
-                            # self.intervention_engine.trigger_intervention(suggestion["type"], suggestion.get("message"))
-                            # Triggering intervention directly here might be too much.
-                            # The main loop in main.py should probably handle fetching suggestions
-                            # and deciding when/how to trigger them based on overall state.
-                            # For now, we log that a suggestion was made.
+                            # The new InterventionEngine uses start_intervention with a dict
+                            intervention_details = {
+                                "type": suggestion.get("type", "unknown_suggestion"),
+                                "message": suggestion.get("message", "LMM suggested an action."),
+                                # Add other relevant parameters from suggestion if any (e.g. duration, tier)
+                            }
+                            self.intervention_engine.start_intervention(intervention_details)
                         else:
-                            self._log_info("LMM processed audio, but no intervention suggested.")
-                    else:
-                        self._log_warning("Intervention engine not available to act on LMM suggestion from audio.")
+                            self._log_debug("LMM processed audio, but no intervention suggested.")
                 else:
-                    self._log_info("LMM processed audio but returned no analysis.")
+                    self._log_debug("LMM processed audio but returned no analysis.")
             else:
                 self._log_warning("LMM interface not available to process transcribed text.")
-        # else:
-            # self._log_info("No new transcribed text from audio sensor this cycle.")
-            # This can be noisy, so commented out. AudioSensor already logs if no text.
 
     def cleanup(self):
-        """Called to release resources, e.g., when the application is closing."""
         self._log_info("LogicEngine cleaning up...")
         if self.audio_sensor:
             self.audio_sensor.release()
             self._log_info("AudioSensor released.")
         self._log_info("LogicEngine cleanup complete.")
 
-
 if __name__ == '__main__':
-    # --- Mocking dependencies for testing LogicEngine with STT ---
     class MockDataLogger:
         def __init__(self): self.log_level = "DEBUG"
         def log_info(self, msg, details=""): print(f"MOCK_LOG_INFO: {msg}")
@@ -217,20 +191,23 @@ if __name__ == '__main__':
             return None
 
     class MockInterventionEngine:
-        def trigger_intervention(self, type, message=None):
-            print(f"MOCK_INTERVENTION: Triggered type='{type}', message='{message or ''}'")
+        def start_intervention(self, details):
+            print(f"MOCK_INTERVENTION: start_intervention called with details: {details}")
+        def notify_mode_change(self, mode, message=None):
+            print(f"MOCK_INTERVENTION: notify_mode_change: mode={mode}, message='{message or ''}'")
+
 
     mock_logger = MockDataLogger()
     mock_lmm = MockLMMInterface()
     mock_intervention_engine = MockInterventionEngine()
 
-    # Ensure config.VOSK_MODEL_PATH is set or AudioSensor will run without STT
-    # For this test, we assume it's set and the model exists, or AudioSensor handles it.
-    print(f"Using VOSK_MODEL_PATH from config: '{config.VOSK_MODEL_PATH}' for test.")
+    # For testing, ensure VOSK_MODEL_PATH is valid or STT part will be skipped.
+    # To test STT failure, set config.VOSK_MODEL_PATH to an invalid path before init.
+    # Default config.VOSK_MODEL_PATH = "vosk-model-small-en-us-0.15"
+    print(f"Using VOSK_MODEL_PATH from config: '{getattr(config, 'VOSK_MODEL_PATH', 'Not Set')}' for test.")
     import os
-    if not os.path.exists(config.VOSK_MODEL_PATH):
-         print(f"WARNING: Vosk model not found at '{config.VOSK_MODEL_PATH}'. STT part of test may not function fully.")
-
+    if not os.path.exists(getattr(config, 'VOSK_MODEL_PATH', '')):
+         print(f"WARNING: Vosk model not found at '{getattr(config, 'VOSK_MODEL_PATH', '')}'. STT part of test may not function fully.")
 
     engine = LogicEngine(data_logger=mock_logger, llm_interface=mock_lmm, intervention_engine=mock_intervention_engine)
 
@@ -239,47 +216,32 @@ if __name__ == '__main__':
     engine.tray_callback = test_callback
 
     print(f"\nInitial mode: {engine.get_mode()}")
-    assert engine.get_mode() == "active" # Should be active by default
+    assert engine.get_mode() == "active"
 
-    # --- Test STT processing loop ---
-    if engine.audio_sensor and not (engine.audio_sensor.has_error() and "Vosk init failed" in engine.audio_sensor.get_last_error()):
-        print("\n--- Testing STT processing. Speak 'hello' into your microphone. ---")
-        print("Will run process_audio_input() for 10 cycles (approx 10-15 seconds).")
-        engine.set_mode("active") # Ensure active mode for STT
-        for i in range(10):
+    if engine.audio_sensor and not engine.audio_sensor.has_error() and engine.audio_sensor.vosk_recognizer:
+        print("\n--- Testing STT processing. (Mic input needed for real transcription) ---")
+        print("Will run process_audio_input() for 5 cycles.")
+        engine.set_mode("active")
+        for i in range(5):
             print(f"Audio processing cycle {i+1}...")
-            engine.process_audio_input()
-            time.sleep(1) # Wait for audio chunk and processing
-
-        # Try a final transcription call (might not always yield more if continuously processing)
-        if engine.audio_sensor:
-            final_text, _ = engine.audio_sensor.get_final_transcription()
-            if final_text:
-                 print(f"Final transcription attempt from sensor: {final_text}")
-                 # Potentially send this to LMM too if it's different or more complete
-                 llm_audio_input = {"type": "speech_transcript_final", "content": final_text}
-                 analysis = engine.llm_interface.process_data(audio_data=llm_audio_input)
-                 if analysis:
-                     suggestion = engine.llm_interface.get_intervention_suggestion(analysis)
-                     if suggestion:
-                         print(f"LMM suggestion from final audio: {suggestion}")
-                         # engine.intervention_engine.trigger_intervention(suggestion["type"], suggestion.get("message"))
-
+            engine.process_audio_input() # This will try to get a chunk and transcribe
+            time.sleep(0.2) # Simulate some delay
     else:
-        print("\n--- STT processing test SKIPPED (AudioSensor init failed or Vosk model issue) ---")
+        print("\n--- STT processing test SKIPPED (AudioSensor init/Vosk model issue or no mic) ---")
 
-
-    # --- Original mode switching tests (should still work) ---
     print("\n--- Testing mode switching ---")
-    engine.set_mode("active") # Reset
+    engine.set_mode("active")
     engine.cycle_mode()
     print(f"Mode after cycle 1: {engine.get_mode()}")
+    assert engine.get_mode() == "snoozed"
 
     engine.toggle_pause_resume()
     print(f"Mode after pause: {engine.get_mode()}")
+    assert engine.get_mode() == "paused"
 
     engine.toggle_pause_resume()
     print(f"Mode after resume: {engine.get_mode()}")
+    assert engine.get_mode() == "snoozed"
 
     print("\nSimulating snooze duration passing...")
     engine.snooze_end_time = time.time() - 1
