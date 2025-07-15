@@ -51,31 +51,17 @@ class AudioSensor:
     def _initialize_stream(self):
         self._log_info(f"Attempting to initialize audio stream (SampleRate: {self.sample_rate}, Channels: {self.channels})...")
         try:
-            # Define a dummy callback as InputStream needs one, though we might not use it traditionally
-            def audio_callback(indata, frames, time, status):
-                if status:
-                    self._log_warning(f"Audio callback status: {status}")
-                # We are not processing data in this callback for this example's get_chunk model
-                pass
-
             self.stream = sd.InputStream(
                 samplerate=self.sample_rate,
                 channels=self.channels,
                 blocksize=self.chunk_size, # Read in chunks of desired size
                 # device=None, # Default input device
-                callback=audio_callback # Even if not used for data below, good for status
+                callback=None # Using blocking read, so no callback
             )
             self.stream.start() # Start the stream
             self.error_state = False
             self.last_error_message = ""
             self._log_info("Audio stream initialized and started successfully.")
-
-            # Try reading a small chunk to confirm
-            # data_chunk, overflowed = self.stream.read(self.chunk_size) # sd.InputStream.read is blocking
-            # if overflowed:
-            #    self._log_warning("Initial audio read reported overflow.")
-            # self._log_info(f"Initial audio chunk read successfully, shape: {data_chunk.shape}")
-
 
         except Exception as e:
             self.error_state = True
@@ -109,24 +95,16 @@ class AudioSensor:
             return None, "Audio stream not available."
 
         try:
-            # sd.InputStream.read is blocking until `self.chunk_size` frames are read.
-            # Make sure blocksize in constructor matches read size for simplicity here.
-            if self.stream.read_available >= self.chunk_size:
-                data_chunk, overflowed = self.stream.read(self.chunk_size)
-                if overflowed:
-                    self._log_warning("Audio buffer overflow detected during read.")
+            # With a blocking stream (no callback), read() will wait until it has enough data.
+            data_chunk, overflowed = self.stream.read(self.chunk_size)
+            if overflowed:
+                self._log_warning("Audio buffer overflow detected during read.")
 
-                if self.error_state: # Was in error, but now working
-                    self._log_info("Audio sensor recovered and reading data.")
-                    self.error_state = False
-                    self.last_error_message = ""
-                return data_chunk, None # Return audio data and no error
-            else:
-                # Not enough data available for a non-blocking read.
-                # For this example, we'll treat it as "no new chunk yet" rather than an error.
-                # A real implementation might queue smaller reads or handle this differently.
-                # print(f"AudioSensor: Not enough data available ({self.stream.read_available}/{self.chunk_size}). Returning None.")
-                return None, None # No new full chunk, not an error
+            if self.error_state: # Was in error, but now working
+                self._log_info("Audio sensor recovered and reading data.")
+                self.error_state = False
+                self.last_error_message = ""
+            return data_chunk, None # Return audio data and no error
 
         except sd.PortAudioError as pae:
             self.error_state = True

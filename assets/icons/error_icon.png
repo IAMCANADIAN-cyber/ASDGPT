@@ -1,4 +1,1 @@
-# Error 1x1 PNG (red)
-from PIL import Image
-img = Image.new('RGB', (64, 64), color = 'red')
-img.save("assets/icons/error_icon.png")
+iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60eADAAAAABJRU5ErkJggg==
