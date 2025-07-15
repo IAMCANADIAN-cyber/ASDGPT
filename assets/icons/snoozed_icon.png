@@ -1,4 +1,1 @@
-# Snoozed 1x1 PNG (blue)
-from PIL import Image
-img = Image.new('RGB', (64, 64), color = 'blue')
-img.save("assets/icons/snoozed_icon.png")
+iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60eADAAAAABJRU5ErkJggg==

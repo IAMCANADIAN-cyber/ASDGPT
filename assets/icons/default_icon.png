@@ -1,4 +1,1 @@
-# Default 1x1 PNG (purple)
-from PIL import Image
-img = Image.new('RGB', (64, 64), color = 'purple')
-img.save("assets/icons/default_icon.png")
+iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60eADAAAAABJRU5ErkJggg==
