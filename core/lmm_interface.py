@@ -1,44 +1,18 @@
-# Placeholder for LMM Interface
-# This module will be responsible for interacting with a Large Language Model (LMM)
-# to process sensor data and generate suggestions or interventions.
+# LMM Interface
+# This module is responsible for interacting with a Large Language Model (LMM).
 
-import config # For API keys or LMM-specific configurations
-import os # For os.getenv
-
-# It's good practice to load dotenv here if this module might be used standalone
-# or early in an import chain, though main.py or config.py might also call it.
-from dotenv import load_dotenv
-load_dotenv()
+import config
+import requests
 
 class LMMInterface:
     def __init__(self, data_logger=None):
         """
         Initializes the LMMInterface.
         - data_logger: An instance of DataLogger for logging.
-        - Loads API key from environment variables (e.g., GOOGLE_API_KEY).
         """
         self.logger = data_logger
-        self._log_info("LMMInterface initializing...")
-
-        # Load API key using os.getenv, assuming .env has been loaded
-        self.api_key = os.getenv("GOOGLE_API_KEY")
-        if not self.api_key or self.api_key == "YOUR_API_KEY_HERE": # Check for placeholder
-            self._log_warning("GOOGLE_API_KEY not found or is a placeholder in .env file. LMM functionality will be simulated.")
-            self.api_key = None # Ensure it's None if not valid/present
-        else:
-            self._log_info("GOOGLE_API_KEY loaded. LMM functionality would use this key.")
-            # Example: Configure a library like genai if the key is present
-            # try:
-            #    import google.generativeai as genai
-            #    genai.configure(api_key=self.api_key)
-            #    self._log_info("Google GenAI SDK configured.")
-            # except ImportError:
-            #    self._log_warning("Google GenAI SDK not installed. LMM calls will be simulated.")
-            # except Exception as e:
-            #    self._log_error("Failed to configure Google GenAI SDK.", str(e))
-
-
-        self._log_info("LMMInterface initialized.")
+        self.llm_url = config.LOCAL_LLM_URL
+        self._log_info(f"LMMInterface initializing with URL: {self.llm_url}")
 
     def _log_info(self, message):
         if self.logger: self.logger.log_info(f"LMMInterface: {message}")
@@ -63,108 +37,54 @@ class LMMInterface:
 
     def process_data(self, video_data=None, audio_data=None, user_context=None):
         """
-        Processes incoming sensor data and user context, potentially interacting with an LMM.
+        Processes incoming sensor data and user context by sending it to the local LMM.
 
         Args:
-            video_data: Data from the video sensor (e.g., features, summaries).
-            audio_data: Data from the audio sensor (e.g., features, classification).
-            user_context: Additional context (e.g., user's current task, preferences).
+            video_data: Data from the video sensor.
+            audio_data: Data from the audio sensor.
+            user_context: Additional context.
 
         Returns:
-            A dictionary or object containing the LMM's analysis or a simulated response.
-            Returns None if processing fails or no meaningful analysis is derived.
+            A dictionary with the LMM's response or None on failure.
         """
-        self._log_info("Processing data...")
-        if not self.api_key:
-            self._log_debug("API key not available, using simulated LMM processing.")
-            # Fall through to simulated processing logic
+        self._log_info("Sending data to local LMM...")
 
         if video_data is None and audio_data is None:
             self._log_warning("No video or audio data provided to LMM process_data.")
             return None
 
-        # Placeholder: Simulate LMM interaction or actual call if API key exists
-        # In a real implementation:
-        # 1. Format the data into a prompt for the LMM.
-        # 2. If self.api_key: Make an API call to the LMM.
-        # 3. Else: Use the simulation logic.
-        # 4. Parse the LMM's response.
-
-        self._log_debug(f"Simulating LMM processing for video_data (type: {type(video_data)}), audio_data (type: {type(audio_data)})")
-
-        simulated_response = {
-            "sentiment": "neutral",
-            "detected_event": None, # e.g., "slouching", "background_noise"
-            "confidence": 0.0,
-            "raw_llm_output": "Simulated: No specific event detected by default."
+        payload = {
+            "video_data": video_data,
+            "audio_data": audio_data,
+            "user_context": user_context
         }
 
-        if video_data is not None:
-            # Highly simplistic simulation based on presence of data
-            simulated_response["detected_event"] = "potential_posture_issue"
-            simulated_response["confidence"] = 0.65
-            simulated_response["raw_llm_output"] = "Simulated: Video data suggests a possible posture issue."
-            self._log_info(f"LMM simulated: Video data processed, event: '{simulated_response['detected_event']}'.")
-
-        if audio_data is not None:
-            # Simplistic simulation, overwrites if video didn't set, or appends if complex logic desired
-            if not simulated_response.get("detected_event"): # Only if video didn't trigger
-                 simulated_response["detected_event"] = "ambient_noise_level_high"
-                 simulated_response["confidence"] = 0.55
-                 simulated_response["raw_llm_output"] = "Simulated: Audio data indicates high ambient noise."
-                 self._log_info(f"LMM simulated: Audio data processed, event: '{simulated_response['detected_event']}'.")
-            else: # Video already detected something, maybe combine or prioritize
-                 current_event = simulated_response['detected_event']
-                 simulated_response['detected_event'] = f"{current_event}_and_ambient_noise_level_high" # Example combination
-                 simulated_response["raw_llm_output"] += " Additionally, audio data indicates high ambient noise."
-                 self._log_info(f"LMM simulated: Audio data also processed, combined event: '{simulated_response['detected_event']}'.")
-
-
-        if simulated_response.get("detected_event"):
-            self._log_info(f"LMM simulated analysis: Event='{simulated_response['detected_event']}', Confidence={simulated_response['confidence']:.2f}")
-            return simulated_response
-        else:
-            self._log_info("LMM simulated: No specific event detected from data.")
+        try:
+            response = requests.post(self.llm_url, json=payload, timeout=10)
+            response.raise_for_status()  # Raise an exception for bad status codes
+            self._log_info(f"Received response from LMM: {response.json()}")
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            self._log_error(f"Failed to connect to LMM at {self.llm_url}", str(e))
             return None
 
     def get_intervention_suggestion(self, processed_analysis):
         """
-        Based on the LMM's processed analysis, determine if an intervention is
-        warranted and what kind.
+        Extracts an intervention suggestion from the LMM's analysis.
+        Assumes the LMM can directly provide a suggestion.
 
         Args:
-            processed_analysis: The output from the process_data method.
+            processed_analysis: The JSON response from the LMM.
 
         Returns:
-            A dictionary describing the suggested intervention (e.g., type, message)
-            or None if no intervention is suggested.
+            A dictionary describing the suggested intervention or None.
         """
-        self._log_info("Getting intervention suggestion from LMM processed analysis...")
-        if not processed_analysis or not processed_analysis.get("detected_event"):
-            self._log_debug("No detected event in analysis, no intervention suggested.")
+        if not processed_analysis:
             return None
 
-        event = processed_analysis["detected_event"]
-        confidence = processed_analysis.get("confidence", 0.0)
-
-        # Placeholder: Simple logic to convert LMM analysis to an intervention
-        # This would be more sophisticated in a real system.
-        if "potential_posture_issue" in event and confidence > 0.6:
-            self._log_info(f"Suggesting 'posture_reminder' intervention (Confidence: {confidence:.2f}).")
-            return {
-                "type": "posture_reminder", # Matches InterventionEngine types
-                "message": "The LMM detected a potential posture issue. Maybe take a moment to adjust?"
-            }
-        elif "ambient_noise_level_high" in event and confidence > 0.5:
-            self._log_info(f"Suggesting 'noise_alert' intervention (Confidence: {confidence:.2f}).")
-            return {
-                "type": "noise_alert",
-                "message": "The LMM detected high ambient noise. Is everything okay with your audio?"
-            }
-        # Add more rules as needed
-
-        self._log_debug(f"Detected event '{event}' did not meet criteria for an intervention or no rule defined.")
-        return None
+        # Example: LMM returns a dict with a "suggestion" key
+        # a valid suggestion would be like: {"type": "posture_reminder", "message": "Check your posture."}
+        return processed_analysis.get("suggestion")
 
 if __name__ == '__main__':
     # Example Usage
