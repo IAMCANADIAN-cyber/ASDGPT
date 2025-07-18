@@ -190,9 +190,11 @@ class Application:
                 # --- Example of triggering a test intervention for feedback ---
                 if loop_counter % 60 == 0 : # Approx every 30s (if sleep is 0.5s)
                     self.data_logger.log_debug("Triggering simulated intervention for feedback testing.")
-                    self.intervention_engine.provide_intervention(
-                        intervention_type="posture_reminder", # Specific type
-                        custom_message="How's your posture right now? Take a moment to adjust if needed."
+                    self.intervention_engine.start_intervention(
+                        intervention_details={
+                            "type": "posture_reminder", # Specific type
+                            "message": "How's your posture right now? Take a moment to adjust if needed."
+                        }
                     )
                 # --- End of example ---
 
@@ -325,9 +327,11 @@ class Application:
                 # This might need adjustment based on how frequently the loop runs now
                 if loop_counter % 120 == 0 : # Approx every ~6s if loop is ~50ms
                     self.data_logger.log_debug("Triggering simulated intervention for feedback testing.")
-                    self.intervention_engine.provide_intervention(
-                        intervention_type="posture_reminder", # Specific type
-                        custom_message="How's your posture right now? Take a moment to adjust if needed."
+                    self.intervention_engine.start_intervention(
+                        intervention_details={
+                            "type": "posture_reminder", # Specific type
+                            "message": "How's your posture right now? Take a moment to adjust if needed."
+                        }
                     )
                 # --- End of example ---
 

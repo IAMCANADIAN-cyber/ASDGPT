@@ -75,3 +75,6 @@ INTERVENTION_CONFIGS = {
 
 # System Tray settings
 APP_NAME = "ACR"
+
+# LMM Configuration
+LOCAL_LLM_URL = "http://127.0.0.1:1234"
