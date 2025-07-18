@@ -1,44 +1,40 @@
 import time
 import config
-from .data_logger import DataLogger # Assuming DataLogger is in the same directory
+import threading
+from typing import Optional, Callable, Any
+import numpy as np
+from .data_logger import DataLogger
 
 class LogicEngine:
-    def __init__(self, audio_sensor=None, video_sensor=None, logger=None):
-        self.current_mode = config.DEFAULT_MODE
-        self.snooze_end_time = 0
-        self.previous_mode_before_pause = config.DEFAULT_MODE
-        self.tray_callback = None # Callback for notifying tray/main app
-        self.audio_sensor = audio_sensor
-        self.video_sensor = video_sensor
-        self.logger = logger if logger else DataLogger() # Use provided logger or create one
+    def __init__(self, audio_sensor: Optional[Any] = None, video_sensor: Optional[Any] = None, logger: Optional[DataLogger] = None) -> None:
+        self.current_mode: str = config.DEFAULT_MODE
+        self.snooze_end_time: float = 0
+        self.previous_mode_before_pause: str = config.DEFAULT_MODE
+        self.tray_callback: Optional[Callable[[str, Optional[str]], None]] = None
+        self.audio_sensor: Optional[Any] = audio_sensor
+        self.video_sensor: Optional[Any] = video_sensor
+        self.logger: DataLogger = logger if logger else DataLogger()
+        self._lock: threading.Lock = threading.Lock()
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
-    def get_mode(self):
-        old_mode = self.current_mode
-        if self.current_mode == "snoozed":
-            if time.time() >= self.snooze_end_time and self.snooze_end_time != 0:
-                self.logger.log_info("Snooze expired.")
-                self.snooze_end_time = 0 # Reset snooze time
-                self.set_mode("active", from_snooze_expiry=True)
-                # set_mode will call _notify_mode_change
+    def get_mode(self) -> str:
+        with self._lock:
+            return self.current_mode
 
-        # If mode was changed by snooze expiry, self.current_mode is now updated.
-        # If not, it's the same as old_mode.
-        return self.current_mode
+    def set_mode(self, mode: str, from_snooze_expiry: bool = False) -> None:
+        with self._lock:
+            self._set_mode_unlocked(mode, from_snooze_expiry)
 
-    def set_mode(self, mode, from_snooze_expiry=False):
-        if mode not in ["active", "snoozed", "paused", "error"]: # Added error mode
+    def _set_mode_unlocked(self, mode: str, from_snooze_expiry: bool = False) -> None:
+        if mode not in ["active", "snoozed", "paused", "error"]:
             self.logger.log_warning(f"Attempted to set invalid mode: {mode}")
             return
 
         old_mode = self.current_mode
-        if mode == old_mode and not from_snooze_expiry : # Allow re-setting active if snooze expired
-            # (e.g. if already active, but snooze expired, we still want notification)
-            # This condition might need refinement based on desired notification behavior
+        if mode == old_mode and not from_snooze_expiry:
             if not (mode == "active" and from_snooze_expiry and old_mode == "snoozed"):
-                 return
-
+                return
 
         self.logger.log_info(f"LogicEngine: Changing mode from {old_mode} to {mode}")
 
@@ -51,50 +47,58 @@ class LogicEngine:
             self.snooze_end_time = time.time() + config.SNOOZE_DURATION
             self.logger.log_info(f"Snooze activated. Will return to active mode in {config.SNOOZE_DURATION / 60:.0f} minutes.")
         elif self.current_mode == "active":
-            # If mode becomes active (either by user or snooze expiry), ensure snooze_end_time is cleared
             self.snooze_end_time = 0
 
         self._notify_mode_change(old_mode, new_mode=self.current_mode, from_snooze_expiry=from_snooze_expiry)
 
-    def cycle_mode(self):
-        current_actual_mode = self.get_mode()
-        if current_actual_mode == "active":
-            self.set_mode("snoozed")
-        elif current_actual_mode == "snoozed":
-            self.set_mode("paused")
-        elif current_actual_mode == "paused":
-            # When cycling from paused, go to active, not previous_mode_before_pause
-            self.set_mode("active")
+    def cycle_mode(self) -> None:
+        with self._lock:
+            current_actual_mode = self.get_mode()
+            if current_actual_mode == "active":
+                self._set_mode_unlocked("snoozed")
+            elif current_actual_mode == "snoozed":
+                self._set_mode_unlocked("paused")
+            elif current_actual_mode == "paused":
+                self._set_mode_unlocked("active")
 
-    def toggle_pause_resume(self):
-        current_actual_mode = self.get_mode()
-        if current_actual_mode == "paused":
-            # If snooze would have expired while paused, return to active.
-            if self.previous_mode_before_pause == "snoozed" and \
-               self.snooze_end_time != 0 and time.time() >= self.snooze_end_time:
-                self.snooze_end_time = 0 # Clear snooze as it's now handled
-                self.set_mode("active")
+    def toggle_pause_resume(self) -> None:
+        with self._lock:
+            current_actual_mode = self.get_mode()
+            if current_actual_mode == "paused":
+                if self.previous_mode_before_pause == "snoozed" and \
+                   self.snooze_end_time != 0 and time.time() >= self.snooze_end_time:
+                    self.snooze_end_time = 0
+                    self._set_mode_unlocked("active")
+                else:
+                    self._set_mode_unlocked(self.previous_mode_before_pause)
             else:
-                self.set_mode(self.previous_mode_before_pause)
-        else:
-            # This will set self.previous_mode_before_pause correctly if current is not "paused"
-            self.set_mode("paused")
+                self._set_mode_unlocked("paused")
 
-    def _notify_mode_change(self, old_mode, new_mode, from_snooze_expiry=False):
+    def _notify_mode_change(self, old_mode: str, new_mode: str, from_snooze_expiry: bool = False) -> None:
         self.logger.log_info(f"LogicEngine Notification: Mode changed from {old_mode} to {new_mode}{' (due to snooze expiry)' if from_snooze_expiry else ''}")
         if self.tray_callback:
-            # Pass both old and new mode for more context if needed by callback
             self.tray_callback(new_mode=new_mode, old_mode=old_mode)
 
-    def update(self):
+    def process_video_data(self, frame: np.ndarray) -> None:
+        # Placeholder for video data processing
+        self.logger.log_debug(f"Processing video frame of shape {frame.shape}")
+
+    def process_audio_data(self, audio_chunk: np.ndarray) -> None:
+        # Placeholder for audio data processing
+        self.logger.log_debug(f"Processing audio chunk of shape {audio_chunk.shape}")
+
+    def update(self) -> None:
         """
         Periodically called to update the logic engine's state and evaluations.
         For now, primarily ensures snooze expiry is checked.
         """
-        # This call will automatically transition from "snoozed" to "active"
-        # if the snooze timer has expired, and notify via tray_callback.
-        current_mode = self.get_mode() # Ensures mode is up-to-date
+        with self._lock:
+            if self.current_mode == "snoozed" and time.time() >= self.snooze_end_time and self.snooze_end_time != 0:
+                self.logger.log_info("Snooze expired.")
+                self.snooze_end_time = 0
+                self._set_mode_unlocked("active", from_snooze_expiry=True)
 
+        current_mode = self.get_mode()
         self.logger.log_debug(f"LogicEngine update. Current mode: {current_mode}")
 
         # Placeholder for sensor interaction
@@ -196,12 +200,12 @@ if __name__ == '__main__':
     print("\nTesting pause then snooze expiry while paused then resume...")
     engine.set_mode("active") # Reset to active
     engine.set_mode("snoozed") # snoozed
-    engine.snooze_end_time = time.time() + 5 # Snooze for 5 seconds
-    print(f"Snoozing for 5s. Current mode: {engine.get_mode()}")
+    engine.snooze_end_time = time.time() + 0.1 # Snooze for 0.1 seconds
+    print(f"Snoozing for 0.1s. Current mode: {engine.get_mode()}")
     engine.set_mode("paused") # paused (while snoozing)
     print(f"Paused. Current mode: {engine.get_mode()}")
-    print("Waiting for 6 seconds to ensure snooze expires...")
-    time.sleep(6)
+    print("Waiting for 0.2 seconds to ensure snooze expires...")
+    time.sleep(0.2)
     # Snooze has now expired. previous_mode_before_pause is "snoozed".
     # snooze_end_time is in the past.
     engine.toggle_pause_resume() # paused -> active (because snooze expired)
