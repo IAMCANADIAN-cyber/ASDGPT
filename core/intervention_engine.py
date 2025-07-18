@@ -1,25 +1,24 @@
 import time
 import config
-import datetime # For feedback timestamping
+import datetime
 import threading
+from typing import Optional, Any, Dict
 
 class InterventionEngine:
-    def __init__(self, logic_engine, app_instance=None):
+    def __init__(self, logic_engine: Any, app_instance: Optional[Any] = None) -> None:
         self.logic_engine = logic_engine
-        self.app = app_instance # Used for DataLogger and TrayIcon
-        self.last_intervention_time = 0 # For MIN_TIME_BETWEEN_INTERVENTIONS check
-        self.intervention_active = False
-        self.intervention_thread = None
-        # _current_intervention_details will store: type, message, duration, tier, and other params
-        self._current_intervention_details = {}
+        self.app = app_instance
+        self.last_intervention_time: float = 0
+        self._intervention_active: threading.Event = threading.Event()
+        self.intervention_thread: Optional[threading.Thread] = None
+        self._current_intervention_details: Dict[str, Any] = {}
 
-        # Store details of the last intervention that is eligible for feedback
-        self.last_feedback_eligible_intervention = {
+        self.last_feedback_eligible_intervention: Dict[str, Any] = {
             "message": None,
-            "type": None, # The specific type of intervention, e.g., "slumped_posture_alert"
+            "type": None,
             "timestamp": None
         }
-        self.feedback_window = config.FEEDBACK_WINDOW_SECONDS if hasattr(config, 'FEEDBACK_WINDOW_SECONDS') else 15
+        self.feedback_window: int = config.FEEDBACK_WINDOW_SECONDS if hasattr(config, 'FEEDBACK_WINDOW_SECONDS') else 15
 
         log_message = "InterventionEngine initialized."
         if self.app and hasattr(self.app, 'data_logger'):
@@ -27,7 +26,7 @@ class InterventionEngine:
         else:
             print(log_message + " (DataLogger not available)")
 
-    def _store_last_intervention(self, message, intervention_type_for_logging):
+    def _store_last_intervention(self, message: str, intervention_type_for_logging: str) -> None:
         """Stores details of an intervention that qualifies for feedback."""
         self.last_feedback_eligible_intervention = {
             "message": message,
@@ -37,35 +36,32 @@ class InterventionEngine:
         if self.app and self.app.data_logger:
              self.app.data_logger.log_debug(f"Stored intervention for feedback: Type='{intervention_type_for_logging}', Msg='{message}'")
 
-    def _speak(self, text):
+    def _speak(self, text: str) -> None:
         # Placeholder for actual text-to-speech (TTS) implementation
         log_message = f"SPEAKING: '{text}'"
         if self.app and self.app.data_logger:
             self.app.data_logger.log_info(log_message)
         else:
             print(log_message)
-        # Actual TTS would go here
 
-    def _play_sound(self, sound_file_path):
+    def _play_sound(self, sound_file_path: str) -> None:
         # Placeholder for playing a sound
         log_message = f"PLAYING_SOUND: '{sound_file_path}'"
         if self.app and self.app.data_logger:
             self.app.data_logger.log_info(log_message)
         else:
             print(log_message)
-        # Actual sound playing library would be used here (e.g., playsound, pygame.mixer)
 
-    def _show_visual_prompt(self, image_path_or_text):
+    def _show_visual_prompt(self, image_path_or_text: str) -> None:
         # Placeholder for showing a visual prompt (e.g., a window with an image or text)
         log_message = f"SHOWING_VISUAL: '{image_path_or_text}'"
         if self.app and self.app.data_logger:
             self.app.data_logger.log_info(log_message)
         else:
             print(log_message)
-        # Actual GUI toolkit would be used here (e.g., tkinter, PyQt)
 
 
-    def _run_intervention_thread(self):
+    def _run_intervention_thread(self) -> None:
         """The actual intervention logic run in a separate thread."""
         intervention_type = self._current_intervention_details.get("type", "unknown_intervention")
         message = self._current_intervention_details.get("message", "No message provided.")
@@ -76,15 +72,19 @@ class InterventionEngine:
         elapsed_time = 0
 
         log_prefix = f"Intervention (Type: {intervention_type}, Tier: {tier})"
-        logger = self.app.data_logger if self.app and self.app.data_logger else None
+        logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
 
-        def log_info(msg):
-            if logger: logger.log_info(msg)
-            else: print(msg)
+        def log_info(msg: str) -> None:
+            if logger:
+                logger.log_info(msg)
+            else:
+                print(msg)
 
-        def log_debug(msg):
-            if logger: logger.log_debug(msg)
-            else: print(msg)
+        def log_debug(msg: str) -> None:
+            if logger:
+                logger.log_debug(msg)
+            else:
+                print(msg)
 
         log_info(f"{log_prefix}: Started. Message: '{message}'. Max duration: {max_duration}s.")
 
@@ -118,52 +118,62 @@ class InterventionEngine:
                 self.app.tray_icon.flash_icon(flash_status=flash_icon_type, original_status=current_app_mode)
 
         # Main loop for the intervention duration, allowing for early stop
-        while self.intervention_active and elapsed_time < max_duration:
+        while self._intervention_active.is_set() and elapsed_time < max_duration:
             # Tier-specific ongoing actions could be added here if needed (e.g. repeating a sound softly)
             time.sleep(0.1) # Check frequently for stop signal
             elapsed_time = time.time() - start_time
 
-        if not self.intervention_active:
+        if not self._intervention_active.is_set():
             log_info(f"{log_prefix}: Stopped early by request.")
         elif elapsed_time >= max_duration:
             log_info(f"{log_prefix}: Completed (duration: {elapsed_time:.1f}s).")
 
-        self.intervention_active = False # Ensure flag is reset
-        self._current_intervention_details = {} # Clear details
+        self._intervention_active.clear()
+        self._current_intervention_details = {}
 
-    def start_intervention(self, intervention_details):
+    def start_intervention(self, intervention_details: Dict[str, Any]) -> bool:
         """
         Starts an intervention based on the provided details.
         intervention_details (dict): Must contain 'type', 'message'.
                                      Optional: 'duration', 'tier', and other parameters.
         """
-        log_func = print
-        if self.app and self.app.data_logger:
-            log_func = self.app.data_logger.log_info
+        logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
 
         intervention_type = intervention_details.get("type")
         custom_message = intervention_details.get("message")
 
         if not intervention_type or not custom_message:
-            log_func("Intervention attempt failed: 'type' and 'message' are required in intervention_details.")
+            if logger:
+                logger.log_warning("Intervention attempt failed: 'type' and 'message' are required.")
+            else:
+                print("Intervention attempt failed: 'type' and 'message' are required.")
             return False
 
-        if self.intervention_active:
-            log_func(f"Intervention attempt ignored: An intervention ('{self._current_intervention_details.get('type')}') is already active.")
+        if self._intervention_active.is_set():
+            if logger:
+                logger.log_info(f"Intervention attempt ignored: An intervention ('{self._current_intervention_details.get('type')}') is already active.")
+            else:
+                print(f"Intervention attempt ignored: An intervention ('{self._current_intervention_details.get('type')}') is already active.")
             return False
 
         current_app_mode = self.logic_engine.get_mode()
         if current_app_mode != "active":
-            log_func(f"Intervention '{intervention_type}' suppressed: Mode is {current_app_mode}")
+            if logger:
+                logger.log_info(f"Intervention '{intervention_type}' suppressed: Mode is {current_app_mode}")
+            else:
+                print(f"Intervention '{intervention_type}' suppressed: Mode is {current_app_mode}")
             return False
 
         current_time = time.time()
         if intervention_type not in ["mode_change_notification", "error_notification", "error_notification_spoken"] and \
            (current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS):
-            log_func(f"Intervention '{intervention_type}' suppressed: Too soon since last intervention ({current_time - self.last_intervention_time:.1f}s < {config.MIN_TIME_BETWEEN_INTERVENTIONS}s).")
+            if logger:
+                logger.log_info(f"Intervention '{intervention_type}' suppressed: Too soon since last intervention.")
+            else:
+                print(f"Intervention '{intervention_type}' suppressed: Too soon since last intervention.")
             return False
 
-        self.intervention_active = True
+        self._intervention_active.set()
 
         # Populate _current_intervention_details, ensuring defaults
         self._current_intervention_details = {
@@ -180,46 +190,60 @@ class InterventionEngine:
         self.intervention_thread = threading.Thread(target=self._run_intervention_thread)
         self.intervention_thread.daemon = True
         self.intervention_thread.start()
-        log_func(f"Intervention '{intervention_type}' (Tier {self._current_intervention_details['tier']}) initiated.")
+        if logger:
+            logger.log_info(f"Intervention '{intervention_type}' (Tier {self._current_intervention_details['tier']}) initiated.")
+        else:
+            print(f"Intervention '{intervention_type}' (Tier {self._current_intervention_details['tier']}) initiated.")
         return True
 
-    def stop_intervention(self):
-        log_func = print
-        if self.app and self.app.data_logger:
-            log_func = self.app.data_logger.log_info
-
-        if self.intervention_active and self.intervention_thread:
-            log_func(f"Stopping intervention ('{self._current_intervention_details.get('type')}', Tier {self._current_intervention_details.get('tier')})...")
-            self.intervention_active = False
+    def stop_intervention(self) -> None:
+        logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
+        if self._intervention_active.is_set() and self.intervention_thread:
+            if logger:
+                logger.log_info(f"Stopping intervention ('{self._current_intervention_details.get('type')}', Tier {self._current_intervention_details.get('tier')})...")
+            else:
+                print(f"Stopping intervention ('{self._current_intervention_details.get('type')}', Tier {self._current_intervention_details.get('tier')})...")
+            self._intervention_active.clear()
         else:
-            log_func("No active intervention to stop.")
+            if logger:
+                logger.log_info("No active intervention to stop.")
+            else:
+                print("No active intervention to stop.")
 
-    def notify_mode_change(self, new_mode, custom_message=None):
+    def notify_mode_change(self, new_mode: str, custom_message: Optional[str] = None) -> None:
         """Handles speaking notifications for mode changes. These are not subject to feedback."""
         message = custom_message
         if not message:
-            if new_mode == "paused": message = "Co-regulator paused."
-            elif new_mode == "snoozed": message = f"Co-regulator snoozed for {config.SNOOZE_DURATION / 60:.0f} minutes."
-            elif new_mode == "active": message = "Co-regulator active."
-            elif new_mode == "error": message = "Sensor error detected. Operations affected."
+            if new_mode == "paused":
+                message = "Co-regulator paused."
+            elif new_mode == "snoozed":
+                message = f"Co-regulator snoozed for {config.SNOOZE_DURATION / 60:.0f} minutes."
+            elif new_mode == "active":
+                message = "Co-regulator active."
+            elif new_mode == "error":
+                message = "Sensor error detected. Operations affected."
 
         if message:
             self._speak(message)
 
-    def register_feedback(self, feedback_value): # "helpful" or "unhelpful"
+    def register_feedback(self, feedback_value: str) -> None:
+        logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
         if not self.last_feedback_eligible_intervention["timestamp"]:
             log_msg = "Feedback received, but no recent feedback-eligible intervention to link it to."
-            if self.app and self.app.data_logger: self.app.data_logger.log_info(log_msg)
-            else: print(log_msg)
+            if logger:
+                logger.log_info(log_msg)
+            else:
+                print(log_msg)
             return
 
         time_since_intervention = time.time() - self.last_feedback_eligible_intervention["timestamp"]
 
         if time_since_intervention > self.feedback_window:
-            log_msg = f"Feedback ('{feedback_value}') received for intervention '{self.last_feedback_eligible_intervention['message']}', but too late ({time_since_intervention:.1f}s > {self.feedback_window}s window)."
-            if self.app and self.app.data_logger:
-                self.app.data_logger.log_info(log_msg)
-            else: print(log_msg)
+            log_msg = f"Feedback ('{feedback_value}') received for intervention '{self.last_feedback_eligible_intervention['message']}', but too late."
+            if logger:
+                logger.log_info(log_msg)
+            else:
+                print(log_msg)
             self.last_feedback_eligible_intervention = {"message": None, "type": None, "timestamp": None}
             return
 
@@ -232,13 +256,12 @@ class InterventionEngine:
             "time_delta_seconds": round(time_since_intervention, 2)
         }
 
-        log_msg_console = f"Feedback '{feedback_value}' logged for intervention: '{self.last_feedback_eligible_intervention['message']}' (Type: {self.last_feedback_eligible_intervention['type']})"
-        if self.app and self.app.data_logger:
-            self.app.data_logger.log_event(event_type="user_feedback", payload=feedback_payload)
-            self.app.data_logger.log_info(log_msg_console)
+        log_msg_console = f"Feedback '{feedback_value}' logged for intervention: '{self.last_feedback_eligible_intervention['message']}'"
+        if logger:
+            logger.log_event(event_type="user_feedback", payload=feedback_payload)
+            logger.log_info(log_msg_console)
         else:
             print(f"DataLogger not available. Feedback event: {feedback_payload}")
-        print(log_msg_console)
 
         self.last_feedback_eligible_intervention = {"message": None, "type": None, "timestamp": None}
 
@@ -280,21 +303,21 @@ if __name__ == '__main__':
     intervention_engine = InterventionEngine(mock_logic_engine, mock_app_instance)
 
     print("\n--- Test 1: Tier 1 Intervention (Default) ---")
-    details_t1 = {"type": "posture_check", "message": "Sit straight!", "duration": 2}
+    details_t1 = {"type": "posture_check", "message": "Sit straight!", "duration": 0.1}
     intervention_engine.start_intervention(details_t1)
-    time.sleep(3)
+    time.sleep(0.2)
 
     print("\n--- Test 2: Tier 2 Intervention ---")
-    details_t2 = {"type": "calm_down", "message": "Feeling stressed? Try this sound.", "tier": 2, "duration": 3}
+    details_t2 = {"type": "calm_down", "message": "Feeling stressed? Try this sound.", "tier": 2, "duration": 0.1}
     intervention_engine.start_intervention(details_t2)
-    time.sleep(4)
+    time.sleep(0.2)
 
     print("\n--- Test 3: Tier 3 Intervention and stop early ---")
-    details_t3 = {"type": "emergency_break", "message": "Mandatory break time!", "tier": 3, "duration": 5}
+    details_t3 = {"type": "emergency_break", "message": "Mandatory break time!", "tier": 3, "duration": 0.5}
     intervention_engine.start_intervention(details_t3)
-    time.sleep(1.5)
+    time.sleep(0.1)
     intervention_engine.stop_intervention()
-    time.sleep(1)
+    time.sleep(0.1)
 
     print("\n--- Test 4: Start Intervention with missing type/message ---")
     intervention_engine.start_intervention({"message": "This will fail", "duration": 1})
@@ -302,39 +325,39 @@ if __name__ == '__main__':
     time.sleep(0.5)
 
     print("\n--- Test 5: Attempt to start intervention while another is active ---")
-    details_active = {"type": "break_reminder", "message": "Take a break!", "duration": 3}
+    details_active = {"type": "break_reminder", "message": "Take a break!", "duration": 0.2}
     intervention_engine.start_intervention(details_active)
-    time.sleep(0.5)
-    details_ignored = {"type": "second_break", "message": "Seriously, break time!", "tier": 1, "duration": 3}
+    time.sleep(0.1)
+    details_ignored = {"type": "second_break", "message": "Seriously, break time!", "tier": 1, "duration": 0.1}
     intervention_engine.start_intervention(details_ignored) # Should be ignored
-    time.sleep(3.5)
+    time.sleep(0.2)
 
     print("\n--- Test 6: Intervention suppressed due to mode not 'active' ---")
     mock_logic_engine.set_mode("paused")
-    details_paused = {"type": "posture_check_paused", "message": "Posture in pause?", "duration": 2}
+    details_paused = {"type": "posture_check_paused", "message": "Posture in pause?", "duration": 0.1}
     intervention_engine.start_intervention(details_paused)
     mock_logic_engine.set_mode("active")
-    time.sleep(0.5)
+    time.sleep(0.1)
 
     print("\n--- Test 7: Intervention suppressed due to MIN_TIME_BETWEEN_INTERVENTIONS ---")
-    config.MIN_TIME_BETWEEN_INTERVENTIONS = 30
-    intervention_engine.last_intervention_time = time.time() - 5
-    details_too_soon = {"type": "too_soon_test", "message": "Am I too soon?", "duration": 2}
+    config.MIN_TIME_BETWEEN_INTERVENTIONS = 5
+    intervention_engine.last_intervention_time = time.time() - 1
+    details_too_soon = {"type": "too_soon_test", "message": "Am I too soon?", "duration": 0.1}
     intervention_engine.start_intervention(details_too_soon)
-    time.sleep(0.5)
-    config.MIN_TIME_BETWEEN_INTERVENTIONS = 10 # Reset for other tests
+    time.sleep(0.1)
+    config.MIN_TIME_BETWEEN_INTERVENTIONS = 0.1 # Reset for other tests
 
 
     print("\n--- Test 8: Feedback for a Tier 2 completed intervention ---")
-    details_feedback = {"type": "feedback_test_tier2", "message": "Was this Tier 2 helpful?", "tier": 2, "duration": 1}
+    details_feedback = {"type": "feedback_test_tier2", "message": "Was this Tier 2 helpful?", "tier": 2, "duration": 0.1}
     intervention_engine.start_intervention(details_feedback)
-    time.sleep(1.5)
+    time.sleep(0.2)
     intervention_engine.register_feedback("helpful")
-    time.sleep(0.5)
+    time.sleep(0.1)
 
     print("\n--- Test 9: Mode Change Notification (separate from threaded interventions) ---")
     intervention_engine.notify_mode_change("snoozed")
-    time.sleep(0.5)
+    time.sleep(0.1)
 
     if intervention_engine.intervention_thread and intervention_engine.intervention_thread.is_alive():
         print("Waiting for active intervention thread to finish before exiting test...")

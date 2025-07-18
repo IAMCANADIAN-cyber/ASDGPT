@@ -89,63 +89,74 @@ class LMMInterface:
 if __name__ == '__main__':
     # Example Usage
     class MockDataLogger:
-        def __init__(self): self.log_level = "DEBUG"
-        def log_info(self, msg): print(f"MOCK_LOG_INFO: {msg}")
-        def log_warning(self, msg): print(f"MOCK_LOG_WARN: {msg}")
-        def log_error(self, msg, details=""): print(f"MOCK_LOG_ERROR: {msg} | Details: {details}")
-        def log_debug(self, msg): print(f"MOCK_LOG_DEBUG: {msg}")
+        def __init__(self) -> None:
+            self.log_level = "DEBUG"
+        def log_info(self, msg: str) -> None:
+            print(f"MOCK_LOG_INFO: {msg}")
+        def log_warning(self, msg: str) -> None:
+            print(f"MOCK_LOG_WARN: {msg}")
+        def log_error(self, msg: str, details: str = "") -> None:
+            print(f"MOCK_LOG_ERROR: {msg} | Details: {details}")
+        def log_debug(self, msg: str) -> None:
+            print(f"MOCK_LOG_DEBUG: {msg}")
 
     mock_logger = MockDataLogger()
 
-    # Ensure .env file exists in the project root for this test to run as intended regarding API key.
-    # Example .env content:
-    # GOOGLE_API_KEY="YOUR_API_KEY_HERE"
-    # OR
-    # GOOGLE_API_KEY="actual_key_if_testing_real_calls"
-
-    print("--- Testing LMMInterface ---")
     lmm_interface = LMMInterface(data_logger=mock_logger)
 
-    print("\n--- Test Case 1: No data ---")
+    # Mock the requests.post method to simulate LMM responses
+    def mock_post(url, json, timeout):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+            def json(self):
+                return self.json_data
+            def raise_for_status(self):
+                if self.status_code != 200:
+                    raise requests.exceptions.RequestException("Mock Error")
+
+        if json.get("video_data"):
+            return MockResponse({"suggestion": {"type": "posture_reminder", "message": "Check your posture."}}, 200)
+        elif json.get("audio_data"):
+            return MockResponse({"suggestion": {"type": "noise_alert", "message": "It's getting loud."}}, 200)
+        else:
+            return MockResponse({}, 200)
+
+    requests.post = mock_post
+
+    mock_logger.log_info("--- Testing LMMInterface ---")
+
+    mock_logger.log_info("\n--- Test Case 1: No data ---")
     analysis1 = lmm_interface.process_data()
     suggestion1 = lmm_interface.get_intervention_suggestion(analysis1)
-    print(f"Analysis: {analysis1}, Suggestion: {suggestion1}")
+    mock_logger.log_info(f"Analysis: {analysis1}, Suggestion: {suggestion1}")
+    assert suggestion1 is None
 
-    print("\n--- Test Case 2: Video data only ---")
+    mock_logger.log_info("\n--- Test Case 2: Video data only ---")
     mock_video_data = {"summary": "User appears to be stationary."}
     analysis2 = lmm_interface.process_data(video_data=mock_video_data)
     suggestion2 = lmm_interface.get_intervention_suggestion(analysis2)
-    print(f"Analysis: {analysis2}, Suggestion: {suggestion2}")
-    if suggestion2:
-        assert suggestion2["type"] == "posture_reminder"
+    mock_logger.log_info(f"Analysis: {analysis2}, Suggestion: {suggestion2}")
+    assert suggestion2["type"] == "posture_reminder"
 
-    print("\n--- Test Case 3: Audio data only ---")
+    mock_logger.log_info("\n--- Test Case 3: Audio data only ---")
     mock_audio_data = {"average_db": -20}
     analysis3 = lmm_interface.process_data(audio_data=mock_audio_data)
     suggestion3 = lmm_interface.get_intervention_suggestion(analysis3)
-    print(f"Analysis: {analysis3}, Suggestion: {suggestion3}")
-    if suggestion3:
-         assert suggestion3["type"] == "noise_alert"
+    mock_logger.log_info(f"Analysis: {analysis3}, Suggestion: {suggestion3}")
+    assert suggestion3["type"] == "noise_alert"
 
-
-    print("\n--- Test Case 4: Both video and audio data ---")
+    mock_logger.log_info("\n--- Test Case 4: Both video and audio data ---")
     analysis4 = lmm_interface.process_data(video_data=mock_video_data, audio_data=mock_audio_data)
     suggestion4 = lmm_interface.get_intervention_suggestion(analysis4)
-    print(f"Analysis: {analysis4}, Suggestion: {suggestion4}")
-    if suggestion4:
-        # The combined event in simulation might be "potential_posture_issue_and_ambient_noise_level_high"
-        # The get_intervention_suggestion logic currently prioritizes posture if "potential_posture_issue" is in event string.
-        assert "posture_reminder" in suggestion4["type"] or "noise_alert" in suggestion4["type"]
+    mock_logger.log_info(f"Analysis: {analysis4}, Suggestion: {suggestion4}")
+    assert suggestion4["type"] == "posture_reminder"
 
-
-    print("\n--- Test Case 5: Simulated LMM analysis with low confidence ---")
-    low_confidence_analysis = {
-        "detected_event": "potential_posture_issue",
-        "confidence": 0.3, # Below threshold of 0.6
-        "raw_llm_output": "Simulated: Video data suggests a slight possibility of a posture issue."
-    }
-    suggestion5 = lmm_interface.get_intervention_suggestion(low_confidence_analysis)
-    print(f"Analysis: {low_confidence_analysis}, Suggestion (low confidence): {suggestion5}")
+    mock_logger.log_info("\n--- Test Case 5: Simulated LMM analysis with no suggestion ---")
+    analysis5 = {"detected_event": "potential_posture_issue"}
+    suggestion5 = lmm_interface.get_intervention_suggestion(analysis5)
+    mock_logger.log_info(f"Analysis: {analysis5}, Suggestion: {suggestion5}")
     assert suggestion5 is None
 
-    print("\nLMMInterface tests complete.")
+    mock_logger.log_info("\nLMMInterface tests complete.")

@@ -17,8 +17,13 @@ HOTKEY_FEEDBACK_HELPFUL = "ctrl+alt+up"
 HOTKEY_FEEDBACK_UNHELPFUL = "ctrl+alt+down"
 FEEDBACK_WINDOW_SECONDS = 15 # Time in seconds to provide feedback after an intervention
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # (Future task 4.5 - API Keys - will be loaded from .env)
-# GOOGLE_API_KEY = "YOUR_API_KEY_HERE" # Example, actual key loaded from .env
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 # Logging configuration (can be expanded)
 LOG_LEVEL = "INFO" # Options: DEBUG, INFO, WARNING, ERROR
