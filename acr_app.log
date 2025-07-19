@@ -69,3 +69,5 @@
 2025-07-18T20:02:06.926878 [INFO] Intervention attempt ignored: An intervention ('posture_reminder') is already active.
 2025-07-18T20:02:10.351484 [INFO] Intervention attempt ignored: An intervention ('posture_reminder') is already active.
 2025-07-18T20:02:33.490230 [INFO] Intervention (Type: posture_reminder, Tier: 1): Completed (duration: 30.0s).
+2025-07-19T00:10:31.621210 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-07-19T00:10:31.621459 [INFO] LogicEngine initialized. Mode: active
