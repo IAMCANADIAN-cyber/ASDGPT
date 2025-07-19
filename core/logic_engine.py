@@ -4,9 +4,10 @@ import threading
 from typing import Optional, Callable, Any
 import numpy as np
 from .data_logger import DataLogger
+from .lmm_interface import LMMInterface
 
 class LogicEngine:
-    def __init__(self, audio_sensor: Optional[Any] = None, video_sensor: Optional[Any] = None, logger: Optional[DataLogger] = None) -> None:
+    def __init__(self, audio_sensor: Optional[Any] = None, video_sensor: Optional[Any] = None, logger: Optional[DataLogger] = None, lmm_interface: Optional[LMMInterface] = None) -> None:
         self.current_mode: str = config.DEFAULT_MODE
         self.snooze_end_time: float = 0
         self.previous_mode_before_pause: str = config.DEFAULT_MODE
@@ -14,6 +15,7 @@ class LogicEngine:
         self.audio_sensor: Optional[Any] = audio_sensor
         self.video_sensor: Optional[Any] = video_sensor
         self.logger: DataLogger = logger if logger else DataLogger()
+        self.lmm_interface: Optional[LMMInterface] = lmm_interface
         self._lock: threading.Lock = threading.Lock()
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
