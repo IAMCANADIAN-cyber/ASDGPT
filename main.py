@@ -9,6 +9,7 @@ from core.logic_engine import LogicEngine
 from core.intervention_engine import InterventionEngine
 from core.system_tray import ACRTrayIcon
 from core.data_logger import DataLogger
+from core.lmm_interface import LMMInterface
 from sensors.video_sensor import VideoSensor
 from sensors.audio_sensor import AudioSensor
 
@@ -21,11 +22,15 @@ class Application:
         self.video_sensor = VideoSensor(config.CAMERA_INDEX, self.data_logger)
         self.audio_sensor = AudioSensor(self.data_logger)
 
+        # Initialize LMM Interface
+        self.lmm_interface = LMMInterface(self.data_logger)
+
         # Pass sensors and logger to LogicEngine
         self.logic_engine = LogicEngine(
             audio_sensor=self.audio_sensor,
             video_sensor=self.video_sensor,
-            logger=self.data_logger
+            logger=self.data_logger,
+            lmm_interface=self.lmm_interface
         )
         self.intervention_engine: InterventionEngine = InterventionEngine(self.logic_engine, self)
 
