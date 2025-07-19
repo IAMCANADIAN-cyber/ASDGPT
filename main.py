@@ -1,6 +1,6 @@
 import time
 import signal
-import keyboard
+# import keyboard
 import threading
 import queue
 from typing import Optional, Any
@@ -49,7 +49,7 @@ class Application:
         self.tray_icon: ACRTrayIcon = ACRTrayIcon(self)
         self.logic_engine.tray_callback = self.update_tray_status_and_notify
 
-        self._setup_hotkeys()
+        # self._setup_hotkeys()
 
         self.data_logger.log_info(f"ACR Initialized. Mode: {self.logic_engine.get_mode()}.")
         self.data_logger.log_info(f"Press Esc to quit.")
@@ -57,24 +57,24 @@ class Application:
         self.data_logger.log_info(f"Feedback Hotkeys: Helpful ({config.HOTKEY_FEEDBACK_HELPFUL}), Unhelpful ({config.HOTKEY_FEEDBACK_UNHELPFUL})")
 
 
-    def _setup_hotkeys(self) -> None:
-        self.data_logger.log_info("Setting up hotkeys...")
-        try:
-            # Mode control hotkeys
-            keyboard.add_hotkey(config.HOTKEY_CYCLE_MODE, lambda: self.on_cycle_mode_pressed(), suppress=True)
-            keyboard.add_hotkey(config.HOTKEY_PAUSE_RESUME, lambda: self.on_pause_resume_pressed(), suppress=True)
-
-            # Feedback hotkeys (Task 4.4)
-            keyboard.add_hotkey(config.HOTKEY_FEEDBACK_HELPFUL, lambda: self.on_feedback_helpful_pressed(), suppress=True)
-            keyboard.add_hotkey(config.HOTKEY_FEEDBACK_UNHELPFUL, lambda: self.on_feedback_unhelpful_pressed(), suppress=True)
-
-            # Quit hotkey
-            keyboard.add_hotkey("esc", self.quit_application_hotkey_wrapper, suppress=True)
-
-            self.data_logger.log_info("Hotkeys registered successfully (Mode, Feedback, Quit).")
-        except Exception as e:
-            log_msg = f"Error setting up hotkeys: {e}. This might require admin/sudo rights."
-            self.data_logger.log_error(log_msg)
+    # def _setup_hotkeys(self) -> None:
+    #     self.data_logger.log_info("Setting up hotkeys...")
+    #     try:
+    #         # Mode control hotkeys
+    #         keyboard.add_hotkey(config.HOTKEY_CYCLE_MODE, lambda: self.on_cycle_mode_pressed(), suppress=True)
+    #         keyboard.add_hotkey(config.HOTKEY_PAUSE_RESUME, lambda: self.on_pause_resume_pressed(), suppress=True)
+    #
+    #         # Feedback hotkeys (Task 4.4)
+    #         keyboard.add_hotkey(config.HOTKEY_FEEDBACK_HELPFUL, lambda: self.on_feedback_helpful_pressed(), suppress=True)
+    #         keyboard.add_hotkey(config.HOTKEY_FEEDBACK_UNHELPFUL, lambda: self.on_feedback_unhelpful_pressed(), suppress=True)
+    #
+    #         # Quit hotkey
+    #         keyboard.add_hotkey("esc", self.quit_application_hotkey_wrapper, suppress=True)
+    #
+    #         self.data_logger.log_info("Hotkeys registered successfully (Mode, Feedback, Quit).")
+    #     except Exception as e:
+    #         log_msg = f"Error setting up hotkeys: {e}. This might require admin/sudo rights."
+    #         self.data_logger.log_error(log_msg)
 
     # --- Feedback Hotkey Handlers (Task 4.4) ---
     def on_feedback_helpful_pressed(self) -> None:
@@ -245,6 +245,7 @@ class Application:
         loop_counter = 0
 
         while self.running:
+            print(f"Main loop iteration: {loop_counter}")
             loop_counter += 1
             if loop_counter % 10 == 0: # Check sensors slightly less often than main loop spins
                  self._check_sensors()
