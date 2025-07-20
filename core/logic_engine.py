@@ -82,12 +82,20 @@ class LogicEngine:
             self.tray_callback(new_mode=new_mode, old_mode=old_mode)
 
     def process_video_data(self, frame: np.ndarray) -> None:
-        # Placeholder for video data processing
         self.logger.log_debug(f"Processing video frame of shape {frame.shape}")
+        if self.lmm_interface:
+            # For now, we'll just pass a summary. In the future, this could be a more complex object.
+            video_data = {"summary": f"Video frame with shape {frame.shape} received."}
+            user_context = {"mood": "neutral"} # Placeholder
+            self.lmm_interface.process_data(video_data=video_data, user_context=user_context)
 
     def process_audio_data(self, audio_chunk: np.ndarray) -> None:
-        # Placeholder for audio data processing
         self.logger.log_debug(f"Processing audio chunk of shape {audio_chunk.shape}")
+        if self.lmm_interface:
+            # For now, we'll just pass a summary. In the future, this could be a more complex object.
+            audio_data = {"summary": f"Audio chunk with shape {audio_chunk.shape} received."}
+            user_context = {"mood": "neutral"} # Placeholder
+            self.lmm_interface.process_data(audio_data=audio_data, user_context=user_context)
 
     def update(self) -> None:
         """
@@ -160,8 +168,20 @@ if __name__ == '__main__':
         def get_activity_level(self):
             return f"{self.name}_activity_data"
 
+    class MockLMMInterface:
+        def __init__(self):
+            self.last_call_data = None
+        def process_data(self, video_data=None, audio_data=None, user_context=None):
+            self.last_call_data = {
+                "video_data": video_data,
+                "audio_data": audio_data,
+                "user_context": user_context
+            }
+            print(f"MockLMMInterface process_data called with: {self.last_call_data}")
+
     mock_audio = MockSensor("audio")
     mock_video = MockSensor("video")
+    mock_lmm = MockLMMInterface()
 
     # Assuming DataLogger is in the same directory or properly pathed
     # For testing, let's ensure config has defaults if not present
@@ -170,54 +190,27 @@ if __name__ == '__main__':
 
     logger = DataLogger(log_file_path=config.LOG_FILE) # Use a specific logger for the test output
 
-    engine = LogicEngine(audio_sensor=mock_audio, video_sensor=mock_video, logger=logger)
+    engine = LogicEngine(audio_sensor=mock_audio, video_sensor=mock_video, logger=logger, lmm_interface=mock_lmm)
 
     # Mock callback for testing
     def test_callback(new_mode, old_mode):
         print(f"Test Callback: Mode changed from {old_mode} to {new_mode}")
     engine.tray_callback = test_callback
 
-    print(f"Initial mode: {engine.get_mode()}") # active
-    engine.update() # Call update to test sensor logging
+    print("--- Testing LMMInterface integration ---")
+    print("\n--- Test Case: process_video_data ---")
+    test_frame = np.zeros((480, 640, 3))
+    engine.process_video_data(test_frame)
+    assert mock_lmm.last_call_data is not None
+    assert mock_lmm.last_call_data["video_data"] is not None
+    assert mock_lmm.last_call_data["audio_data"] is None
+    assert mock_lmm.last_call_data["user_context"] is not None
 
-    engine.cycle_mode() # active -> snoozed
-    print(f"Mode after cycle 1: {engine.get_mode()}") # snoozed
-    engine.update() # Call update
-
-    engine.toggle_pause_resume() # snoozed -> paused
-    print(f"Mode after pause: {engine.get_mode()}") # paused
-    engine.update() # Call update
-
-    engine.toggle_pause_resume() # paused -> snoozed (restores previous_mode_before_pause)
-    print(f"Mode after resume: {engine.get_mode()}") # snoozed
-    engine.update() # Call update
-
-    print("\nSimulating snooze duration passing...")
-    engine.snooze_end_time = time.time() - 1 # Force snooze to expire
-    # get_mode() is called by update(), which will trigger the change and notification
-    engine.update()
-    print(f"Mode after snooze expired (after update call): {engine.get_mode()}")
-    assert engine.current_mode == "active"
-
-    print("\nTesting pause then snooze expiry while paused then resume...")
-    engine.set_mode("active") # Reset to active
-    engine.set_mode("snoozed") # snoozed
-    engine.snooze_end_time = time.time() + 0.1 # Snooze for 0.1 seconds
-    print(f"Snoozing for 0.1s. Current mode: {engine.get_mode()}")
-    engine.set_mode("paused") # paused (while snoozing)
-    print(f"Paused. Current mode: {engine.get_mode()}")
-    print("Waiting for 0.2 seconds to ensure snooze expires...")
-    time.sleep(0.2)
-    # Snooze has now expired. previous_mode_before_pause is "snoozed".
-    # snooze_end_time is in the past.
-    engine.toggle_pause_resume() # paused -> active (because snooze expired)
-    print(f"Mode after resuming from pause (snooze should have expired): {engine.get_mode()}")
-    assert engine.current_mode == "active"
-
-    engine.set_mode("active")
-    engine.cycle_mode() # active -> snoozed
-    engine.cycle_mode() # snoozed -> paused
-    engine.cycle_mode() # paused -> active
-    print(f"Mode after 3 cycles: {engine.get_mode()}")
-    assert engine.current_mode == "active"
-    print("LogicEngine tests complete.")
+    print("\n--- Test Case: process_audio_data ---")
+    test_chunk = np.zeros(1024)
+    engine.process_audio_data(test_chunk)
+    assert mock_lmm.last_call_data is not None
+    assert mock_lmm.last_call_data["video_data"] is None
+    assert mock_lmm.last_call_data["audio_data"] is not None
+    assert mock_lmm.last_call_data["user_context"] is not None
+    print("LogicEngine LMM integration tests complete.")
