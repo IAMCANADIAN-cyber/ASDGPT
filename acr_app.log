@@ -1,3 +1,11 @@
+2025-12-31T04:34:35.673510 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-12-31T04:34:35.673812 [INFO] LogicEngine initialized. Mode: active
+2025-12-31T04:34:35.675019 [INFO] Triggering LMM analysis (Reason: periodic_check)...
+2025-12-31T04:34:35.675120 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
+2025-12-31T04:34:35.675700 [INFO] Triggering LMM analysis (Reason: high_audio_level)...
+2025-12-31T04:34:35.675790 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
+2025-12-31T04:34:35.677811 [INFO] Triggering LMM analysis (Reason: high_video_activity)...
+2025-12-31T04:34:35.677888 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
 2025-07-18T01:23:10.745058 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
 2025-07-18T01:23:10.745240 [INFO] LogicEngine initialized. Mode: active
 2025-07-18T19:53:54.108616 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
