@@ -1,0 +1,535 @@
+[
+  {
+    "id": "stress_spike_00",
+    "description": "Synthetic stress_spike event",
+    "duration_seconds": 49,
+    "input": {
+      "audio_level": 0.753,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_audio_level",
+      "state_change": {
+        "arousal": "increase",
+        "focus": "decrease"
+      },
+      "intervention": "noise_alert"
+    }
+  },
+  {
+    "id": "pacing_00",
+    "description": "Synthetic pacing event",
+    "duration_seconds": 32,
+    "input": {
+      "audio_level": 0.125,
+      "video_activity": 48.5
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_video_activity",
+      "state_change": {
+        "arousal": "increase",
+        "energy": "increase"
+      },
+      "intervention": "movement_check"
+    }
+  },
+  {
+    "id": "silence_00",
+    "description": "Synthetic silence event",
+    "duration_seconds": 13,
+    "input": {
+      "audio_level": 0.042,
+      "video_activity": 0.2
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "state_change": {
+        "arousal": "decrease"
+      },
+      "intervention": null
+    }
+  },
+  {
+    "id": "stress_spike_01",
+    "description": "Synthetic stress_spike event",
+    "duration_seconds": 49,
+    "input": {
+      "audio_level": 0.811,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_audio_level",
+      "state_change": {
+        "arousal": "increase",
+        "focus": "decrease"
+      },
+      "intervention": "noise_alert"
+    }
+  },
+  {
+    "id": "pacing_01",
+    "description": "Synthetic pacing event",
+    "duration_seconds": 52,
+    "input": {
+      "audio_level": 0.061,
+      "video_activity": 50.2
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_video_activity",
+      "state_change": {
+        "arousal": "increase",
+        "energy": "increase"
+      },
+      "intervention": "movement_check"
+    }
+  },
+  {
+    "id": "silence_01",
+    "description": "Synthetic silence event",
+    "duration_seconds": 37,
+    "input": {
+      "audio_level": 0.025,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "state_change": {
+        "arousal": "decrease"
+      },
+      "intervention": null
+    }
+  },
+  {
+    "id": "stress_spike_02",
+    "description": "Synthetic stress_spike event",
+    "duration_seconds": 19,
+    "input": {
+      "audio_level": 0.848,
+      "video_activity": 1.4
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_audio_level",
+      "state_change": {
+        "arousal": "increase",
+        "focus": "decrease"
+      },
+      "intervention": "noise_alert"
+    }
+  },
+  {
+    "id": "pacing_02",
+    "description": "Synthetic pacing event",
+    "duration_seconds": 16,
+    "input": {
+      "audio_level": 0.058,
+      "video_activity": 50.2
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_video_activity",
+      "state_change": {
+        "arousal": "increase",
+        "energy": "increase"
+      },
+      "intervention": "movement_check"
+    }
+  },
+  {
+    "id": "silence_02",
+    "description": "Synthetic silence event",
+    "duration_seconds": 11,
+    "input": {
+      "audio_level": 0.064,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "state_change": {
+        "arousal": "decrease"
+      },
+      "intervention": null
+    }
+  },
+  {
+    "id": "stress_spike_03",
+    "description": "Synthetic stress_spike event",
+    "duration_seconds": 35,
+    "input": {
+      "audio_level": 0.837,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_audio_level",
+      "state_change": {
+        "arousal": "increase",
+        "focus": "decrease"
+      },
+      "intervention": "noise_alert"
+    }
+  },
+  {
+    "id": "pacing_03",
+    "description": "Synthetic pacing event",
+    "duration_seconds": 27,
+    "input": {
+      "audio_level": 0.055,
+      "video_activity": 51.7
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_video_activity",
+      "state_change": {
+        "arousal": "increase",
+        "energy": "increase"
+      },
+      "intervention": "movement_check"
+    }
+  },
+  {
+    "id": "silence_03",
+    "description": "Synthetic silence event",
+    "duration_seconds": 31,
+    "input": {
+      "audio_level": 0.005,
+      "video_activity": 1.2
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "state_change": {
+        "arousal": "decrease"
+      },
+      "intervention": null
+    }
+  },
+  {
+    "id": "stress_spike_04",
+    "description": "Synthetic stress_spike event",
+    "duration_seconds": 58,
+    "input": {
+      "audio_level": 0.805,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_audio_level",
+      "state_change": {
+        "arousal": "increase",
+        "focus": "decrease"
+      },
+      "intervention": "noise_alert"
+    }
+  },
+  {
+    "id": "pacing_04",
+    "description": "Synthetic pacing event",
+    "duration_seconds": 47,
+    "input": {
+      "audio_level": 0.106,
+      "video_activity": 48.3
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_video_activity",
+      "state_change": {
+        "arousal": "increase",
+        "energy": "increase"
+      },
+      "intervention": "movement_check"
+    }
+  },
+  {
+    "id": "silence_04",
+    "description": "Synthetic silence event",
+    "duration_seconds": 18,
+    "input": {
+      "audio_level": 0.093,
+      "video_activity": 1.6
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "state_change": {
+        "arousal": "decrease"
+      },
+      "intervention": null
+    }
+  },
+  {
+    "id": "stress_spike_05",
+    "description": "Synthetic stress_spike event",
+    "duration_seconds": 31,
+    "input": {
+      "audio_level": 0.781,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_audio_level",
+      "state_change": {
+        "arousal": "increase",
+        "focus": "decrease"
+      },
+      "intervention": "noise_alert"
+    }
+  },
+  {
+    "id": "pacing_05",
+    "description": "Synthetic pacing event",
+    "duration_seconds": 50,
+    "input": {
+      "audio_level": 0.086,
+      "video_activity": 49.5
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_video_activity",
+      "state_change": {
+        "arousal": "increase",
+        "energy": "increase"
+      },
+      "intervention": "movement_check"
+    }
+  },
+  {
+    "id": "silence_05",
+    "description": "Synthetic silence event",
+    "duration_seconds": 51,
+    "input": {
+      "audio_level": 0.007,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "state_change": {
+        "arousal": "decrease"
+      },
+      "intervention": null
+    }
+  },
+  {
+    "id": "stress_spike_06",
+    "description": "Synthetic stress_spike event",
+    "duration_seconds": 32,
+    "input": {
+      "audio_level": 0.805,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_audio_level",
+      "state_change": {
+        "arousal": "increase",
+        "focus": "decrease"
+      },
+      "intervention": "noise_alert"
+    }
+  },
+  {
+    "id": "pacing_06",
+    "description": "Synthetic pacing event",
+    "duration_seconds": 37,
+    "input": {
+      "audio_level": 0.07,
+      "video_activity": 48.2
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_video_activity",
+      "state_change": {
+        "arousal": "increase",
+        "energy": "increase"
+      },
+      "intervention": "movement_check"
+    }
+  },
+  {
+    "id": "silence_06",
+    "description": "Synthetic silence event",
+    "duration_seconds": 30,
+    "input": {
+      "audio_level": 0.025,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "state_change": {
+        "arousal": "decrease"
+      },
+      "intervention": null
+    }
+  },
+  {
+    "id": "stress_spike_07",
+    "description": "Synthetic stress_spike event",
+    "duration_seconds": 37,
+    "input": {
+      "audio_level": 0.84,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_audio_level",
+      "state_change": {
+        "arousal": "increase",
+        "focus": "decrease"
+      },
+      "intervention": "noise_alert"
+    }
+  },
+  {
+    "id": "pacing_07",
+    "description": "Synthetic pacing event",
+    "duration_seconds": 38,
+    "input": {
+      "audio_level": 0.063,
+      "video_activity": 48.3
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_video_activity",
+      "state_change": {
+        "arousal": "increase",
+        "energy": "increase"
+      },
+      "intervention": "movement_check"
+    }
+  },
+  {
+    "id": "silence_07",
+    "description": "Synthetic silence event",
+    "duration_seconds": 29,
+    "input": {
+      "audio_level": 0.044,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "state_change": {
+        "arousal": "decrease"
+      },
+      "intervention": null
+    }
+  },
+  {
+    "id": "stress_spike_08",
+    "description": "Synthetic stress_spike event",
+    "duration_seconds": 12,
+    "input": {
+      "audio_level": 0.82,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_audio_level",
+      "state_change": {
+        "arousal": "increase",
+        "focus": "decrease"
+      },
+      "intervention": "noise_alert"
+    }
+  },
+  {
+    "id": "pacing_08",
+    "description": "Synthetic pacing event",
+    "duration_seconds": 48,
+    "input": {
+      "audio_level": 0.14,
+      "video_activity": 50.3
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_video_activity",
+      "state_change": {
+        "arousal": "increase",
+        "energy": "increase"
+      },
+      "intervention": "movement_check"
+    }
+  },
+  {
+    "id": "silence_08",
+    "description": "Synthetic silence event",
+    "duration_seconds": 45,
+    "input": {
+      "audio_level": 0.078,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "state_change": {
+        "arousal": "decrease"
+      },
+      "intervention": null
+    }
+  },
+  {
+    "id": "stress_spike_09",
+    "description": "Synthetic stress_spike event",
+    "duration_seconds": 37,
+    "input": {
+      "audio_level": 0.774,
+      "video_activity": 0.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_audio_level",
+      "state_change": {
+        "arousal": "increase",
+        "focus": "decrease"
+      },
+      "intervention": "noise_alert"
+    }
+  },
+  {
+    "id": "pacing_09",
+    "description": "Synthetic pacing event",
+    "duration_seconds": 56,
+    "input": {
+      "audio_level": 0.14,
+      "video_activity": 51.1
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_video_activity",
+      "state_change": {
+        "arousal": "increase",
+        "energy": "increase"
+      },
+      "intervention": "movement_check"
+    }
+  },
+  {
+    "id": "silence_09",
+    "description": "Synthetic silence event",
+    "duration_seconds": 27,
+    "input": {
+      "audio_level": 0.033,
+      "video_activity": 1.3
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "state_change": {
+        "arousal": "decrease"
+      },
+      "intervention": null
+    }
+  },
+  {
+    "id": "mixed_high_activity_noise",
+    "description": "Loud noise and high activity",
+    "duration_seconds": 15,
+    "input": {
+      "audio_level": 0.9,
+      "video_activity": 60.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "high_audio_level",
+      "state_change": {
+        "arousal": "increase",
+        "overload": "increase"
+      },
+      "intervention": "overstimulation_alert"
+    }
+  },
+  {
+    "id": "near_threshold_silence",
+    "description": "Just below threshold silence",
+    "duration_seconds": 30,
+    "input": {
+      "audio_level": 0.45,
+      "video_activity": 18.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "state_change": {
+        "arousal": "stable"
+      },
+      "intervention": null
+    }
+  }
+]
