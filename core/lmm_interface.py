@@ -54,7 +54,7 @@ class LMMInterface:
             return None
 
         payload = {
-            "model": "deepseek/deepseek-r1-0528-qwen3-8b",
+            "model": config.LOCAL_LLM_MODEL_ID,
             "video_data": video_data,
             "audio_data": audio_data,
             "user_context": user_context

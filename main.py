@@ -33,6 +33,7 @@ class Application:
             lmm_interface=self.lmm_interface
         )
         self.intervention_engine: InterventionEngine = InterventionEngine(self.logic_engine, self)
+        self.logic_engine.set_intervention_engine(self.intervention_engine)
 
         self.running: bool = True
         self.sensor_error_active: bool = False
@@ -290,25 +291,14 @@ class Application:
                 except queue.Empty:
                     pass # No new audio chunk
 
-                # --- Example of triggering a test intervention for feedback ---
-                # This might need adjustment based on how frequently the loop runs now
-                if loop_counter % 120 == 0 : # Approx every ~6s if loop is ~50ms
-                    self.data_logger.log_debug("Triggering simulated intervention for feedback testing.")
-                    self.intervention_engine.start_intervention(
-                        intervention_details={
-                            "type": "posture_reminder", # Specific type
-                            "message": "How's your posture right now? Take a moment to adjust if needed."
-                        }
-                    )
-                # --- End of example ---
+            # Let the logic engine handle its own periodic updates, including LMM calls
+            self.logic_engine.update()
 
-            # Adjust sleep time:
-            # If we processed data, we can sleep less or not at all to check queues again quickly.
-            # If no data, sleep a bit to prevent busy loop.
+            # Adjust sleep time based on whether we processed sensor data
             if not video_data_processed and not audio_data_processed:
-                time.sleep(0.05) # Sleep a bit if no data from queues to yield CPU
+                time.sleep(0.05)
             else:
-                time.sleep(0.01) # Shorter sleep if we got data, to stay responsive
+                time.sleep(0.01)
 
         self._shutdown()
 
