@@ -15,6 +15,9 @@ class InterventionEngine:
         self.intervention_thread: Optional[threading.Thread] = None
         self._current_intervention_details: Dict[str, Any] = {}
 
+        # Dictionary to store suppressed interventions: {intervention_id_or_type: expiry_timestamp}
+        self.suppressed_interventions: Dict[str, float] = {}
+
         self.last_feedback_eligible_intervention: Dict[str, Any] = {
             "message": None,
             "type": None,
@@ -158,6 +161,19 @@ class InterventionEngine:
                      final_details["message"] = final_details["description"]
 
         intervention_type = final_details.get("type")
+        # Check suppression
+        current_time = time.time()
+        if intervention_type in self.suppressed_interventions:
+            expiry = self.suppressed_interventions[intervention_type]
+            if current_time < expiry:
+                msg = f"Intervention '{intervention_type}' suppressed by user feedback until {datetime.datetime.fromtimestamp(expiry).strftime('%H:%M:%S')}."
+                if logger: logger.log_info(msg)
+                else: print(msg)
+                return False
+            else:
+                # Expired, clean up
+                del self.suppressed_interventions[intervention_type]
+
         # We relax the check for 'message' if 'sequence' is present
         has_sequence = "sequence" in final_details and len(final_details["sequence"]) > 0
         message = final_details.get("message")
@@ -275,6 +291,15 @@ class InterventionEngine:
             "timestamp_of_feedback": datetime.datetime.now().isoformat(),
             "time_delta_seconds": round(time_since_intervention, 2)
         }
+
+        # Apply suppression if feedback is unhelpful
+        if feedback_value.lower() == "unhelpful":
+            suppression_minutes = config.FEEDBACK_SUPPRESSION_MINUTES if hasattr(config, 'FEEDBACK_SUPPRESSION_MINUTES') else 240
+            expiry = time.time() + (suppression_minutes * 60)
+            int_type = self.last_feedback_eligible_intervention["type"]
+            self.suppressed_interventions[int_type] = expiry
+            if logger:
+                logger.log_info(f"Feedback 'unhelpful' received. Suppressing '{int_type}' for {suppression_minutes} minutes.")
 
         log_msg_console = f"Feedback '{feedback_value}' logged for intervention: '{self.last_feedback_eligible_intervention['message']}'"
         if logger:
