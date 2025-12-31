@@ -20,6 +20,9 @@ class InterventionEngine:
         }
         self.feedback_window: int = config.FEEDBACK_WINDOW_SECONDS if hasattr(config, 'FEEDBACK_WINDOW_SECONDS') else 15
 
+        # Dictionary to track suppressed interventions: {intervention_type: expiry_timestamp}
+        self.suppressed_interventions: Dict[str, float] = {}
+
         log_message = "InterventionEngine initialized."
         if self.app and hasattr(self.app, 'data_logger'):
             self.app.data_logger.log_info(log_message)
@@ -131,6 +134,17 @@ class InterventionEngine:
         self._intervention_active.clear()
         self._current_intervention_details = {}
 
+    def suppress_intervention(self, intervention_type: str, duration_minutes: int) -> None:
+        """Suppress a specific intervention type for a duration."""
+        expiry_time = time.time() + (duration_minutes * 60)
+        self.suppressed_interventions[intervention_type] = expiry_time
+
+        msg = f"Intervention type '{intervention_type}' suppressed for {duration_minutes} minutes."
+        if self.app and hasattr(self.app, 'data_logger'):
+            self.app.data_logger.log_info(msg)
+        else:
+            print(msg)
+
     def start_intervention(self, intervention_details: Dict[str, Any]) -> bool:
         """
         Starts an intervention based on the provided details.
@@ -148,6 +162,20 @@ class InterventionEngine:
             else:
                 print("Intervention attempt failed: 'type' and 'message' are required.")
             return False
+
+        # Check for suppression
+        if intervention_type in self.suppressed_interventions:
+            expiry = self.suppressed_interventions[intervention_type]
+            if time.time() < expiry:
+                remaining_mins = int((expiry - time.time()) / 60)
+                if logger:
+                    logger.log_info(f"Intervention '{intervention_type}' skipped (suppressed for {remaining_mins} more mins).")
+                else:
+                    print(f"Intervention '{intervention_type}' skipped (suppressed for {remaining_mins} more mins).")
+                return False
+            else:
+                # Expired, remove from list
+                del self.suppressed_interventions[intervention_type]
 
         if self._intervention_active.is_set():
             if logger:
@@ -262,6 +290,11 @@ class InterventionEngine:
             logger.log_info(log_msg_console)
         else:
             print(f"DataLogger not available. Feedback event: {feedback_payload}")
+
+        # Apply suppression if feedback is unhelpful
+        if feedback_value.lower() == "unhelpful":
+            suppression_time = config.FEEDBACK_SUPPRESSION_MINUTES if hasattr(config, 'FEEDBACK_SUPPRESSION_MINUTES') else 240
+            self.suppress_intervention(self.last_feedback_eligible_intervention["type"], suppression_time)
 
         self.last_feedback_eligible_intervention = {"message": None, "type": None, "timestamp": None}
 

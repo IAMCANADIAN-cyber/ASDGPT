@@ -16,6 +16,7 @@ HOTKEY_PAUSE_RESUME = "ctrl+alt+p" # Toggle between paused and previously active
 HOTKEY_FEEDBACK_HELPFUL = "ctrl+alt+up"
 HOTKEY_FEEDBACK_UNHELPFUL = "ctrl+alt+down"
 FEEDBACK_WINDOW_SECONDS = 15 # Time in seconds to provide feedback after an intervention
+FEEDBACK_SUPPRESSION_MINUTES = 240 # Suppress "unhelpful" interventions for 4 hours
 
 import os
 from dotenv import load_dotenv
