@@ -6,3 +6,167 @@
 2025-12-31T04:34:35.675790 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
 2025-12-31T04:34:35.677811 [INFO] Triggering LMM analysis (Reason: high_video_activity)...
 2025-12-31T04:34:35.677888 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
+2025-07-18T01:23:10.745058 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-07-18T01:23:10.745240 [INFO] LogicEngine initialized. Mode: active
+2025-07-18T19:53:54.108616 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-07-18T19:53:54.109050 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-07-18T19:53:54.110198 [INFO] ACR Application Initializing...
+2025-07-18T19:53:54.110536 [INFO] VideoSensor: Attempting to initialize video capture on index 0...
+2025-07-18T19:53:55.415152 [INFO] VideoSensor: Video capture initialized successfully on index 0.
+2025-07-18T19:53:55.797501 [INFO] VideoSensor: Initial frame read successfully.
+2025-07-18T19:53:55.798358 [INFO] AudioSensor: Available audio devices:    0 Microsoft Sound Mapper - Input, MME (2 in, 0 out)
+>  1 Microphone (EMEET Piko+), MME (1 in, 0 out)
+   2 EMEET Virtual Audio (EMEET Virt, MME (2 in, 0 out)
+   3 Microsoft Sound Mapper - Output, MME (0 in, 2 out)
+<  4 Speakers (Realtek(R) Audio), MME (0 in, 8 out)
+   5 Realtek Digital Output (Realtek, MME (0 in, 2 out)
+   6 P24h-10 (NVIDIA High Definition, MME (0 in, 2 out)
+   7 Primary Sound Capture Driver, Windows DirectSound (2 in, 0 out)
+   8 Microphone (EMEET Piko+), Windows DirectSound (1 in, 0 out)
+   9 EMEET Virtual Audio (EMEET Virtual Camera), Windows DirectSound (2 in, 0 out)
+  10 Primary Sound Driver, Windows DirectSound (0 in, 2 out)
+  11 Speakers (Realtek(R) Audio), Windows DirectSound (0 in, 8 out)
+  12 Realtek Digital Output (Realtek(R) Audio), Windows DirectSound (0 in, 2 out)
+  13 P24h-10 (NVIDIA High Definition Audio), Windows DirectSound (0 in, 2 out)
+  14 Realtek Digital Output (Realtek(R) Audio), Windows WASAPI (0 in, 2 out)
+  15 Speakers (Realtek(R) Audio), Windows WASAPI (0 in, 2 out)
+  16 P24h-10 (NVIDIA High Definition Audio), Windows WASAPI (0 in, 2 out)
+  17 EMEET Virtual Audio (EMEET Virtual Camera), Windows WASAPI (2 in, 0 out)
+  18 Microphone (EMEET Piko+), Windows WASAPI (1 in, 0 out)
+  19 Microphone (Realtek HD Audio Mic input), Windows WDM-KS (2 in, 0 out)
+  20 Stereo Mix (Realtek HD Audio Stereo input), Windows WDM-KS (2 in, 0 out)
+  21 SPDIF Out (Realtek HDA SPDIF Out), Windows WDM-KS (0 in, 2 out)
+  22 Speakers (Realtek HD Audio output), Windows WDM-KS (0 in, 8 out)
+  23 Line In (Realtek HD Audio Line input), Windows WDM-KS (2 in, 0 out)
+  24 Output (), Windows WDM-KS (0 in, 2 out)
+  25 Microphone (EMEET Piko+), Windows WDM-KS (1 in, 0 out)
+  26 EMEET Virtual Audio (EMEET Wave), Windows WDM-KS (2 in, 0 out)
+2025-07-18T19:53:55.799825 [INFO] AudioSensor: Default input audio device: {'name': 'Microphone (EMEET Piko+)', 'index': 1, 'hostapi': 0, 'max_input_channels': 1, 'max_output_channels': 0, 'default_low_input_latency': 0.09, 'default_low_output_latency': 0.09, 'default_high_input_latency': 0.18, 'default_high_output_latency': 0.18, 'default_samplerate': 44100.0}
+2025-07-18T19:53:55.800098 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2025-07-18T19:53:55.813380 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2025-07-18T19:53:55.813826 [INFO] LogicEngine initialized. Mode: active
+2025-07-18T19:53:55.814243 [INFO] InterventionEngine initialized.
+2025-07-18T19:53:55.939675 [INFO] Setting up hotkeys...
+2025-07-18T19:53:56.011606 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2025-07-18T19:53:56.012091 [INFO] ACR Initialized. Mode: active.
+2025-07-18T19:53:56.013070 [INFO] Press Esc to quit.
+2025-07-18T19:53:56.013330 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2025-07-18T19:53:56.013633 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2025-07-18T19:53:56.014339 [INFO] Video worker thread started.
+2025-07-18T19:53:56.014534 [INFO] Audio worker thread started.
+2025-07-18T19:53:59.468958 [INFO] Intervention (Type: posture_reminder, Tier: 1): Started. Message: 'How's your posture right now? Take a moment to adjust if needed.'. Max duration: 30s.
+2025-07-18T19:53:59.468992 [INFO] Intervention 'posture_reminder' (Tier 1) initiated.
+2025-07-18T19:53:59.469526 [INFO] SPEAKING: 'How's your posture right now? Take a moment to adjust if needed.'
+2025-07-18T19:54:02.976483 [INFO] Intervention attempt ignored: An intervention ('posture_reminder') is already active.
+2025-07-18T19:54:06.481046 [INFO] Intervention attempt ignored: An intervention ('posture_reminder') is already active.
+2025-07-18T19:54:09.945821 [INFO] Intervention attempt ignored: An intervention ('posture_reminder') is already active.
+2025-07-18T19:54:13.449782 [INFO] Intervention attempt ignored: An intervention ('posture_reminder') is already active.
+2025-07-18T19:54:16.914046 [INFO] Intervention attempt ignored: An intervention ('posture_reminder') is already active.
+2025-07-18T19:54:20.418293 [INFO] Intervention attempt ignored: An intervention ('posture_reminder') is already active.
+2025-07-18T19:54:23.842249 [INFO] Intervention attempt ignored: An intervention ('posture_reminder') is already active.
+2025-07-18T19:54:27.306228 [INFO] Intervention attempt ignored: An intervention ('posture_reminder') is already active.
+2025-07-18T19:54:29.494584 [INFO] Intervention (Type: posture_reminder, Tier: 1): Completed (duration: 30.0s).
+2025-07-18T19:54:30.769712 [INFO] Intervention 'posture_reminder' suppressed: Too soon since last intervention.
+2025-07-18T19:54:34.233317 [INFO] Intervention 'posture_reminder' suppressed: Too soon since last intervention.
+2025-07-18T19:54:37.657185 [INFO] Intervention 'posture_reminder' suppressed: Too soon since last intervention.
+2025-07-18T19:54:41.161010 [INFO] Intervention 'posture_reminder' suppressed: Too soon since last intervention.
+2025-07-18T19:54:44.624519 [INFO] Intervention 'posture_reminder' suppressed: Too soon since last intervention.
+2025-07-18T20:02:03.461608 [INFO] Intervention (Type: posture_reminder, Tier: 1): Started. Message: 'How's your posture right now? Take a moment to adjust if needed.'. Max duration: 30s.
+2025-07-18T20:02:03.461641 [INFO] Intervention 'posture_reminder' (Tier 1) initiated.
+2025-07-18T20:02:03.462025 [INFO] SPEAKING: 'How's your posture right now? Take a moment to adjust if needed.'
+2025-07-18T20:02:06.926878 [INFO] Intervention attempt ignored: An intervention ('posture_reminder') is already active.
+2025-07-18T20:02:10.351484 [INFO] Intervention attempt ignored: An intervention ('posture_reminder') is already active.
+2025-07-18T20:02:33.490230 [INFO] Intervention (Type: posture_reminder, Tier: 1): Completed (duration: 30.0s).
+2025-07-19T00:10:31.621210 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-07-19T00:10:31.621459 [INFO] LogicEngine initialized. Mode: active
+2025-07-18T23:28:30.690836 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-07-18T23:28:30.691286 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-07-18T23:28:30.692424 [INFO] ACR Application Initializing...
+2025-07-18T23:28:30.692706 [INFO] VideoSensor: Attempting to initialize video capture on index 0...
+2025-07-18T23:28:31.894310 [INFO] VideoSensor: Video capture initialized successfully on index 0.
+2025-07-18T23:28:32.285090 [INFO] VideoSensor: Initial frame read successfully.
+2025-07-18T23:28:32.285922 [INFO] AudioSensor: Available audio devices:    0 Microsoft Sound Mapper - Input, MME (2 in, 0 out)
+>  1 Microphone (EMEET Piko+), MME (1 in, 0 out)
+   2 EMEET Virtual Audio (EMEET Virt, MME (2 in, 0 out)
+   3 Microsoft Sound Mapper - Output, MME (0 in, 2 out)
+<  4 Speakers (Realtek(R) Audio), MME (0 in, 8 out)
+   5 Realtek Digital Output (Realtek, MME (0 in, 2 out)
+   6 P24h-10 (NVIDIA High Definition, MME (0 in, 2 out)
+   7 Primary Sound Capture Driver, Windows DirectSound (2 in, 0 out)
+   8 Microphone (EMEET Piko+), Windows DirectSound (1 in, 0 out)
+   9 EMEET Virtual Audio (EMEET Virtual Camera), Windows DirectSound (2 in, 0 out)
+  10 Primary Sound Driver, Windows DirectSound (0 in, 2 out)
+  11 Speakers (Realtek(R) Audio), Windows DirectSound (0 in, 8 out)
+  12 Realtek Digital Output (Realtek(R) Audio), Windows DirectSound (0 in, 2 out)
+  13 P24h-10 (NVIDIA High Definition Audio), Windows DirectSound (0 in, 2 out)
+  14 Realtek Digital Output (Realtek(R) Audio), Windows WASAPI (0 in, 2 out)
+  15 Speakers (Realtek(R) Audio), Windows WASAPI (0 in, 2 out)
+  16 P24h-10 (NVIDIA High Definition Audio), Windows WASAPI (0 in, 2 out)
+  17 EMEET Virtual Audio (EMEET Virtual Camera), Windows WASAPI (2 in, 0 out)
+  18 Microphone (EMEET Piko+), Windows WASAPI (1 in, 0 out)
+  19 Microphone (Realtek HD Audio Mic input), Windows WDM-KS (2 in, 0 out)
+  20 Stereo Mix (Realtek HD Audio Stereo input), Windows WDM-KS (2 in, 0 out)
+  21 SPDIF Out (Realtek HDA SPDIF Out), Windows WDM-KS (0 in, 2 out)
+  22 Speakers (Realtek HD Audio output), Windows WDM-KS (0 in, 8 out)
+  23 Line In (Realtek HD Audio Line input), Windows WDM-KS (2 in, 0 out)
+  24 Output (), Windows WDM-KS (0 in, 2 out)
+  25 Microphone (EMEET Piko+), Windows WDM-KS (1 in, 0 out)
+  26 EMEET Virtual Audio (EMEET Wave), Windows WDM-KS (2 in, 0 out)
+2025-07-18T23:28:32.287020 [INFO] AudioSensor: Default input audio device: {'name': 'Microphone (EMEET Piko+)', 'index': 1, 'hostapi': 0, 'max_input_channels': 1, 'max_output_channels': 0, 'default_low_input_latency': 0.09, 'default_low_output_latency': 0.09, 'default_high_input_latency': 0.18, 'default_high_output_latency': 0.18, 'default_samplerate': 44100.0}
+2025-07-18T23:28:32.287315 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2025-07-18T23:28:32.300593 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2025-07-18T23:28:32.301144 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234
+2025-07-18T23:28:32.301502 [ERROR] Unhandled exception in main execution: LogicEngine.__init__() got an unexpected keyword argument 'lmm_interface' | Details: <traceback object at 0x0000028C439658C0>
+2025-07-18T23:28:32.581077 [INFO] Main script execution finished.
+2025-07-18T23:30:51.289806 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-07-18T23:30:51.290276 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-07-18T23:30:51.291290 [INFO] ACR Application Initializing...
+2025-07-18T23:30:51.291599 [INFO] VideoSensor: Attempting to initialize video capture on index 0...
+2025-07-18T23:30:52.498791 [INFO] VideoSensor: Video capture initialized successfully on index 0.
+2025-07-18T23:30:52.871227 [INFO] VideoSensor: Initial frame read successfully.
+2025-07-18T23:30:52.872190 [INFO] AudioSensor: Available audio devices:    0 Microsoft Sound Mapper - Input, MME (2 in, 0 out)
+>  1 Microphone (EMEET Piko+), MME (1 in, 0 out)
+   2 EMEET Virtual Audio (EMEET Virt, MME (2 in, 0 out)
+   3 Microsoft Sound Mapper - Output, MME (0 in, 2 out)
+<  4 Speakers (Realtek(R) Audio), MME (0 in, 8 out)
+   5 Realtek Digital Output (Realtek, MME (0 in, 2 out)
+   6 P24h-10 (NVIDIA High Definition, MME (0 in, 2 out)
+   7 Primary Sound Capture Driver, Windows DirectSound (2 in, 0 out)
+   8 Microphone (EMEET Piko+), Windows DirectSound (1 in, 0 out)
+   9 EMEET Virtual Audio (EMEET Virtual Camera), Windows DirectSound (2 in, 0 out)
+  10 Primary Sound Driver, Windows DirectSound (0 in, 2 out)
+  11 Speakers (Realtek(R) Audio), Windows DirectSound (0 in, 8 out)
+  12 Realtek Digital Output (Realtek(R) Audio), Windows DirectSound (0 in, 2 out)
+  13 P24h-10 (NVIDIA High Definition Audio), Windows DirectSound (0 in, 2 out)
+  14 Realtek Digital Output (Realtek(R) Audio), Windows WASAPI (0 in, 2 out)
+  15 Speakers (Realtek(R) Audio), Windows WASAPI (0 in, 2 out)
+  16 P24h-10 (NVIDIA High Definition Audio), Windows WASAPI (0 in, 2 out)
+  17 EMEET Virtual Audio (EMEET Virtual Camera), Windows WASAPI (2 in, 0 out)
+  18 Microphone (EMEET Piko+), Windows WASAPI (1 in, 0 out)
+  19 Microphone (Realtek HD Audio Mic input), Windows WDM-KS (2 in, 0 out)
+  20 Stereo Mix (Realtek HD Audio Stereo input), Windows WDM-KS (2 in, 0 out)
+  21 SPDIF Out (Realtek HDA SPDIF Out), Windows WDM-KS (0 in, 2 out)
+  22 Speakers (Realtek HD Audio output), Windows WDM-KS (0 in, 8 out)
+  23 Line In (Realtek HD Audio Line input), Windows WDM-KS (2 in, 0 out)
+  24 Output (), Windows WDM-KS (0 in, 2 out)
+  25 Microphone (EMEET Piko+), Windows WDM-KS (1 in, 0 out)
+  26 EMEET Virtual Audio (EMEET Wave), Windows WDM-KS (2 in, 0 out)
+2025-07-18T23:30:52.873048 [INFO] AudioSensor: Default input audio device: {'name': 'Microphone (EMEET Piko+)', 'index': 1, 'hostapi': 0, 'max_input_channels': 1, 'max_output_channels': 0, 'default_low_input_latency': 0.09, 'default_low_output_latency': 0.09, 'default_high_input_latency': 0.18, 'default_high_output_latency': 0.18, 'default_samplerate': 44100.0}
+2025-07-18T23:30:52.873340 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2025-07-18T23:30:52.887324 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2025-07-18T23:30:52.887860 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234
+2025-07-18T23:30:52.888194 [ERROR] Unhandled exception in main execution: LogicEngine.__init__() got an unexpected keyword argument 'lmm_interface' | Details: <traceback object at 0x0000024037AC5A00>
+2025-07-18T23:30:53.155970 [INFO] Main script execution finished.
+2025-10-11T00:51:27.235079 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-10-11T00:51:27.235194 [INFO] LogicEngine initialized. Mode: active
+2025-10-11T00:51:27.239187 [INFO] Sending data to LMM...
+2025-10-11T00:51:27.239467 [INFO] Sending data to LMM...
+2025-12-31T04:31:35.215437 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-12-31T04:31:35.215617 [INFO] LogicEngine initialized. Mode: active
+2025-12-31T04:31:35.220977 [INFO] Sending data to LMM...
+2025-12-31T04:31:35.221104 [INFO] LMM suggested intervention: {'type': 'stress_reduction', 'message': 'Take a deep breath.'}
+2025-12-31T04:31:35.221160 [INFO] LogicEngine: Changing mode from active to snoozed
+2025-12-31T04:31:35.221217 [INFO] Snooze activated. Will return to active mode in 60 minutes.
+2025-12-31T04:31:35.221254 [INFO] LogicEngine Notification: Mode changed from active to snoozed
+2025-12-31T04:31:35.224596 [INFO] Sending data to LMM...
+2025-12-31T04:31:35.224708 [INFO] LMM suggested intervention (suppressed due to mode): {'type': 'stress_reduction', 'message': 'Take a deep breath.'}
