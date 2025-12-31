@@ -97,6 +97,17 @@ Details for contributing will be added later. For now, focus on understanding th
 *   User-configurable intervention rules and preferences.
 *   Expanded GUI for settings and data visualization.
 *   Comprehensive test suite.
+
+## Design & Mental Model
+
+For a deep dive into the system's core philosophy, state definitions, and intervention strategies, please refer to the [Mental Model & Design Specification](docs/MENTAL_MODEL.md). This document serves as the engineering spec for the system's logic, covering:
+
+*   **Mental Model**: 4 layers from sensors to learning.
+*   **Signals & Checks**: Specific audio/video features to monitor.
+*   **States**: 5D state estimation (Arousal, Overload, Focus, Energy, Mood).
+*   **Interventions**: Structured intervention library and policy.
+*   **Personalization**: How the system adapts to the user.
+
 ---
 
 *This README provides a basic overview. Further details on specific components can be found in their respective source files.*
