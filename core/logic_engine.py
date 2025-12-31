@@ -8,6 +8,7 @@ import base64
 from .data_logger import DataLogger
 from .lmm_interface import LMMInterface
 from .intervention_engine import InterventionEngine
+from .state_engine import StateEngine
 
 
 class LogicEngine:
@@ -21,6 +22,7 @@ class LogicEngine:
         self.logger: DataLogger = logger if logger else DataLogger()
         self.lmm_interface: Optional[LMMInterface] = lmm_interface
         self.intervention_engine: Optional[InterventionEngine] = None
+        self.state_engine: StateEngine = StateEngine(logger=self.logger)
         self._lock: threading.Lock = threading.Lock()
 
         # Sensor data storage
@@ -170,7 +172,8 @@ class LogicEngine:
                 "sensor_metrics": {
                     "audio_level": float(self.audio_level),
                     "video_activity": float(self.video_activity)
-                }
+                },
+                "current_state_estimation": self.state_engine.get_state()
             }
 
             return {
@@ -202,6 +205,10 @@ class LogicEngine:
             audio_data=lmm_payload["audio_data"],
             user_context=lmm_payload["user_context"]
         )
+
+        if analysis:
+            # Update state estimation
+            self.state_engine.update(analysis)
 
         if analysis and self.intervention_engine:
             suggestion = self.lmm_interface.get_intervention_suggestion(analysis)
@@ -292,7 +299,10 @@ if __name__ == '__main__':
                 "user_context": user_context
             }
             print(f"MockLMMInterface process_data called. Reason: {user_context.get('trigger_reason')}")
-            return {"suggestion": {"type": "test_intervention", "message": "Test"}}
+            return {
+                "suggestion": {"type": "test_intervention", "message": "Test"},
+                "state_estimation": {"arousal": 55, "overload": 10, "focus": 60, "energy": 75, "mood": 55}
+            }
 
         def get_intervention_suggestion(self, analysis):
             return analysis.get("suggestion")

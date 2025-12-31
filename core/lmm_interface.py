@@ -53,8 +53,31 @@ class LMMInterface:
             self._log_warning("No video or audio data provided to LMM process_data.")
             return None
 
+        # Add system prompt instructions to the user context or a separate field if supported by the local LLM.
+        # Since we are using a generic structure, we will add it to the user_context or a 'system_instruction' field.
+        # This instructs the LLM on the expected JSON output format for state estimation.
+        system_instruction = """
+        You are an autonomous co-regulator. Analyze the sensor data and context.
+        Output a valid JSON object with the following structure:
+        {
+          "state_estimation": {
+            "arousal": <int 0-100>,
+            "overload": <int 0-100>,
+            "focus": <int 0-100>,
+            "energy": <int 0-100>,
+            "mood": <int 0-100>
+          },
+          "suggestion": {
+            "type": "<intervention_type_string>",
+            "message": "<text_to_speak>"
+          }
+        }
+        Return ONLY the JSON.
+        """
+
         payload = {
             "model": config.LOCAL_LLM_MODEL_ID,
+            "system": system_instruction, # Assuming the local LLM server accepts 'system' or we prepend it to prompt
             "video_data": video_data,
             "audio_data": audio_data,
             "user_context": user_context
