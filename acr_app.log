@@ -149,3 +149,7 @@
 2025-07-18T23:30:52.887860 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234
 2025-07-18T23:30:52.888194 [ERROR] Unhandled exception in main execution: LogicEngine.__init__() got an unexpected keyword argument 'lmm_interface' | Details: <traceback object at 0x0000024037AC5A00>
 2025-07-18T23:30:53.155970 [INFO] Main script execution finished.
+2025-10-11T00:51:27.235079 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2025-10-11T00:51:27.235194 [INFO] LogicEngine initialized. Mode: active
+2025-10-11T00:51:27.239187 [INFO] Sending data to LMM...
+2025-10-11T00:51:27.239467 [INFO] Sending data to LMM...

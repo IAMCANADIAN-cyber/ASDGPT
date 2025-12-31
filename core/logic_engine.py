@@ -3,8 +3,12 @@ import config
 import threading
 from typing import Optional, Callable, Any
 import numpy as np
+import cv2
+import base64
 from .data_logger import DataLogger
 from .lmm_interface import LMMInterface
+from .intervention_engine import InterventionEngine
+
 
 class LogicEngine:
     def __init__(self, audio_sensor: Optional[Any] = None, video_sensor: Optional[Any] = None, logger: Optional[DataLogger] = None, lmm_interface: Optional[LMMInterface] = None) -> None:
@@ -16,7 +20,13 @@ class LogicEngine:
         self.video_sensor: Optional[Any] = video_sensor
         self.logger: DataLogger = logger if logger else DataLogger()
         self.lmm_interface: Optional[LMMInterface] = lmm_interface
+        self.intervention_engine: Optional[InterventionEngine] = None
         self._lock: threading.Lock = threading.Lock()
+
+        self.last_video_frame: Optional[np.ndarray] = None
+        self.last_audio_chunk: Optional[np.ndarray] = None
+        self.last_lmm_call_time: float = 0
+        self.lmm_call_interval: int = 5  # seconds
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
@@ -76,26 +86,71 @@ class LogicEngine:
             else:
                 self._set_mode_unlocked("paused")
 
+    def set_intervention_engine(self, intervention_engine: InterventionEngine) -> None:
+        """Sets the intervention engine for the logic engine to use."""
+        self.intervention_engine = intervention_engine
+
     def _notify_mode_change(self, old_mode: str, new_mode: str, from_snooze_expiry: bool = False) -> None:
         self.logger.log_info(f"LogicEngine Notification: Mode changed from {old_mode} to {new_mode}{' (due to snooze expiry)' if from_snooze_expiry else ''}")
         if self.tray_callback:
             self.tray_callback(new_mode=new_mode, old_mode=old_mode)
 
     def process_video_data(self, frame: np.ndarray) -> None:
-        self.logger.log_debug(f"Processing video frame of shape {frame.shape}")
-        if self.lmm_interface:
-            # For now, we'll just pass a summary. In the future, this could be a more complex object.
-            video_data = {"summary": f"Video frame with shape {frame.shape} received."}
-            user_context = {"mood": "neutral"} # Placeholder
-            self.lmm_interface.process_data(video_data=video_data, user_context=user_context)
+        with self._lock:
+            self.last_video_frame = frame
+        self.logger.log_debug(f"Stored latest video frame of shape {frame.shape}")
 
     def process_audio_data(self, audio_chunk: np.ndarray) -> None:
-        self.logger.log_debug(f"Processing audio chunk of shape {audio_chunk.shape}")
-        if self.lmm_interface:
-            # For now, we'll just pass a summary. In the future, this could be a more complex object.
-            audio_data = {"summary": f"Audio chunk with shape {audio_chunk.shape} received."}
-            user_context = {"mood": "neutral"} # Placeholder
-            self.lmm_interface.process_data(audio_data=audio_data, user_context=user_context)
+        with self._lock:
+            self.last_audio_chunk = audio_chunk
+        self.logger.log_debug(f"Stored latest audio chunk of shape {audio_chunk.shape}")
+
+    def _prepare_lmm_data(self) -> Optional[dict]:
+        with self._lock:
+            if self.last_video_frame is None and self.last_audio_chunk is None:
+                return None
+
+            video_data_b64 = None
+            if self.last_video_frame is not None:
+                _, buffer = cv2.imencode('.jpg', self.last_video_frame)
+                video_data_b64 = base64.b64encode(buffer).decode('utf-8')
+
+            audio_data_list = None
+            if self.last_audio_chunk is not None:
+                audio_data_list = self.last_audio_chunk.tolist()
+
+            # Clear the data after preparing it
+            self.last_video_frame = None
+            self.last_audio_chunk = None
+
+            return {
+                "video_data": video_data_b64,
+                "audio_data": audio_data_list,
+                "user_context": {"current_mode": self.current_mode}
+            }
+
+    def _trigger_lmm_analysis(self) -> None:
+        if not self.lmm_interface:
+            self.logger.log_warning("LMM interface not available.")
+            return
+
+        lmm_payload = self._prepare_lmm_data()
+        if not lmm_payload:
+            self.logger.log_debug("No new sensor data to send to LMM.")
+            return
+
+        self.logger.log_info("Sending data to LMM...")
+        analysis = self.lmm_interface.process_data(
+            video_data=lmm_payload["video_data"],
+            audio_data=lmm_payload["audio_data"],
+            user_context=lmm_payload["user_context"]
+        )
+
+        if analysis and self.intervention_engine:
+            suggestion = self.lmm_interface.get_intervention_suggestion(analysis)
+            if suggestion:
+                self.logger.log_info(f"LMM suggested intervention: {suggestion}")
+                self.intervention_engine.start_intervention(suggestion)
 
     def update(self) -> None:
         """
@@ -111,51 +166,11 @@ class LogicEngine:
         current_mode = self.get_mode()
         self.logger.log_debug(f"LogicEngine update. Current mode: {current_mode}")
 
-        # Placeholder for sensor interaction
-        if self.audio_sensor:
-            try:
-                audio_level = self.audio_sensor.get_level() # Assuming this method will exist
-                self.logger.log_debug(f"Audio level: {audio_level}")
-            except AttributeError:
-                self.logger.log_warning("audio_sensor does not have get_level method or sensor not available.")
-            except Exception as e:
-                self.logger.log_error(f"Error getting audio level: {e}")
-
-
-        if self.video_sensor:
-            try:
-                video_activity = self.video_sensor.get_activity_level() # Assuming this method will exist
-                self.logger.log_debug(f"Video activity: {video_activity}")
-            except AttributeError:
-                self.logger.log_warning("video_sensor does not have get_activity_level method or sensor not available.")
-            except Exception as e:
-                self.logger.log_error(f"Error getting video activity: {e}")
-
-        # Mode-Driven Behavior Conceptual Outline
         if current_mode == "active":
-            self.logger.log_debug("LogicEngine: Mode is ACTIVE. Evaluating conditions...")
-            # TODO: Implement logic for active mode:
-            # 1. Process sensor data (e.g., audio_level, video_activity).
-            # 2. If conditions warrant, consult LMM.
-            # 3. Based on LMM response or rules, decide if an intervention is needed.
-            # 4. Trigger intervention via InterventionEngine (to be integrated).
-            # 5. Potentially change mode (e.g., to "error" if a sensor fails critically).
-            pass
-        elif current_mode == "snoozed":
-            self.logger.log_debug("LogicEngine: Mode is SNOOZED. Minimal processing.")
-            # TODO: Snooze specific logic, if any (e.g. light monitoring without intervention)
-            pass
-        elif current_mode == "paused":
-            self.logger.log_debug("LogicEngine: Mode is PAUSED. No active processing.")
-            # TODO: Paused specific logic, if any.
-            pass
-        elif current_mode == "error":
-            self.logger.log_debug("LogicEngine: Mode is ERROR. Attempting to handle or log.")
-            # TODO: Error handling logic:
-            # 1. Log detailed error information.
-            # 2. Attempt recovery if possible.
-            # 3. Notify user of persistent error state.
-            pass
+            current_time = time.time()
+            if current_time - self.last_lmm_call_time >= self.lmm_call_interval:
+                self.last_lmm_call_time = current_time
+                self._trigger_lmm_analysis()
 
 
 if __name__ == '__main__':
@@ -191,6 +206,7 @@ if __name__ == '__main__':
     logger = DataLogger(log_file_path=config.LOG_FILE) # Use a specific logger for the test output
 
     engine = LogicEngine(audio_sensor=mock_audio, video_sensor=mock_video, logger=logger, lmm_interface=mock_lmm)
+    engine.lmm_call_interval = 0  # Force immediate LMM calls for testing
 
     # Mock callback for testing
     def test_callback(new_mode, old_mode):
@@ -198,17 +214,19 @@ if __name__ == '__main__':
     engine.tray_callback = test_callback
 
     print("--- Testing LMMInterface integration ---")
-    print("\n--- Test Case: process_video_data ---")
+    print("\n--- Test Case: process_video_data and update ---")
     test_frame = np.zeros((480, 640, 3))
     engine.process_video_data(test_frame)
+    engine.update() # This should trigger the LMM call
     assert mock_lmm.last_call_data is not None
     assert mock_lmm.last_call_data["video_data"] is not None
     assert mock_lmm.last_call_data["audio_data"] is None
     assert mock_lmm.last_call_data["user_context"] is not None
 
-    print("\n--- Test Case: process_audio_data ---")
+    print("\n--- Test Case: process_audio_data and update ---")
     test_chunk = np.zeros(1024)
     engine.process_audio_data(test_chunk)
+    engine.update() # This should trigger the LMM call
     assert mock_lmm.last_call_data is not None
     assert mock_lmm.last_call_data["video_data"] is None
     assert mock_lmm.last_call_data["audio_data"] is not None
