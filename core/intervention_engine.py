@@ -3,11 +3,13 @@ import config
 import datetime
 import threading
 from typing import Optional, Any, Dict
+from .intervention_library import InterventionLibrary
 
 class InterventionEngine:
     def __init__(self, logic_engine: Any, app_instance: Optional[Any] = None) -> None:
         self.logic_engine = logic_engine
         self.app = app_instance
+        self.library = InterventionLibrary()
         self.last_intervention_time: float = 0
         self._intervention_active: threading.Event = threading.Event()
         self.intervention_thread: Optional[threading.Thread] = None
@@ -63,90 +65,108 @@ class InterventionEngine:
 
     def _run_intervention_thread(self) -> None:
         """The actual intervention logic run in a separate thread."""
-        intervention_type = self._current_intervention_details.get("type", "unknown_intervention")
-        message = self._current_intervention_details.get("message", "No message provided.")
-        max_duration = self._current_intervention_details.get("duration", config.MIN_TIME_BETWEEN_INTERVENTIONS)
-        tier = self._current_intervention_details.get("tier", 1) # Default to Tier 1
+        details = self._current_intervention_details
+        intervention_type = details.get("type", "unknown_intervention")
+        # message field might be overridden by the sequence, but keeps backward compatibility
+        message = details.get("message", "Intervention started.")
+
+        # Determine sequence
+        sequence = details.get("sequence", [])
+        if not sequence:
+            # Fallback to legacy single-message behavior if no sequence provided
+            sequence = [{"action": "speak", "text": message}]
+
+        # Duration is less strict now, as sequence drives it, but we keep a safety timeout
+        max_duration = details.get("duration", 300)
 
         start_time = time.time()
-        elapsed_time = 0
 
-        log_prefix = f"Intervention (Type: {intervention_type}, Tier: {tier})"
+        log_prefix = f"Intervention (Type: {intervention_type})"
         logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
 
         def log_info(msg: str) -> None:
-            if logger:
-                logger.log_info(msg)
-            else:
-                print(msg)
+            if logger: logger.log_info(msg)
+            else: print(msg)
 
-        def log_debug(msg: str) -> None:
-            if logger:
-                logger.log_debug(msg)
-            else:
-                print(msg)
+        log_info(f"{log_prefix}: Started.")
 
-        log_info(f"{log_prefix}: Started. Message: '{message}'. Max duration: {max_duration}s.")
-
-        # --- Tier-based intervention execution ---
-        if tier == 1: # Simple text prompt
-            self._speak(message)
-        elif tier == 2: # Guided breathing, calming image/audio
-            self._speak(message) # Initial prompt
-            # Example: Play a short calming sound
-            self._play_sound("path/to/tier2_calm_sound.wav") # Placeholder path
-            log_info(f"{log_prefix}: Tier 2 action (e.g., sound) performed.")
-        elif tier == 3: # Force break, alert support contact
-            self._speak(f"Important: {message}") # More insistent
-            # Example: Show a visual prompt to take a break
-            self._show_visual_prompt("Take a 5-minute break now.") # Placeholder
-            log_info(f"{log_prefix}: Tier 3 action (e.g., visual prompt) performed.")
-        else: # Default or unknown tier
-            self._speak(message)
-            log_info(f"{log_prefix}: Executed default action for unknown tier {tier}.")
-
-        # Store for feedback *after* primary action of intervention, so it's a "delivered" intervention
+        # Store for feedback immediately (or we could do it after, but user might feedback during)
         if intervention_type not in ["mode_change_notification", "error_notification_spoken"]:
-            self._store_last_intervention(message, intervention_type) # Storing original type for feedback consistency
+            self._store_last_intervention(message, intervention_type)
 
-        # Flash tray icon if applicable
+        # Flash tray icon
         current_app_mode = self.logic_engine.get_mode()
         if self.app and hasattr(self.app, 'tray_icon') and self.app.tray_icon:
-            if intervention_type not in ["mode_change_notification"]:
-                log_debug(f"{log_prefix}: Flashing tray icon.")
+             if intervention_type not in ["mode_change_notification"]:
                 flash_icon_type = "error" if "error" in intervention_type else "active"
                 self.app.tray_icon.flash_icon(flash_status=flash_icon_type, original_status=current_app_mode)
 
-        # Main loop for the intervention duration, allowing for early stop
-        while self._intervention_active.is_set() and elapsed_time < max_duration:
-            # Tier-specific ongoing actions could be added here if needed (e.g. repeating a sound softly)
-            time.sleep(0.1) # Check frequently for stop signal
-            elapsed_time = time.time() - start_time
+        # Execute Sequence
+        for step in sequence:
+            if not self._intervention_active.is_set():
+                log_info(f"{log_prefix}: Stopped early by request.")
+                break
 
-        if not self._intervention_active.is_set():
-            log_info(f"{log_prefix}: Stopped early by request.")
-        elif elapsed_time >= max_duration:
-            log_info(f"{log_prefix}: Completed (duration: {elapsed_time:.1f}s).")
+            action = step.get("action")
 
+            if action == "speak":
+                text = step.get("text", "")
+                self._speak(text)
+            elif action == "wait":
+                duration = step.get("duration", 1)
+                # Wait in small chunks to allow interruption
+                waited = 0
+                while waited < duration and self._intervention_active.is_set():
+                    time.sleep(0.1)
+                    waited += 0.1
+            elif action == "play_sound":
+                self._play_sound(step.get("file", "default.wav"))
+            elif action == "show_visual":
+                self._show_visual_prompt(step.get("content", ""))
+
+            # Check total timeout
+            if (time.time() - start_time) > max_duration:
+                log_info(f"{log_prefix}: Max duration exceeded.")
+                break
+
+        log_info(f"{log_prefix}: Completed.")
         self._intervention_active.clear()
         self._current_intervention_details = {}
 
     def start_intervention(self, intervention_details: Dict[str, Any]) -> bool:
         """
-        Starts an intervention based on the provided details.
-        intervention_details (dict): Must contain 'type', 'message'.
-                                     Optional: 'duration', 'tier', and other parameters.
+        Starts an intervention.
+        intervention_details can be:
+        1. A full dict with 'type', 'message' (legacy)
+        2. A dict with 'id' pointing to a library intervention.
         """
         logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
 
-        intervention_type = intervention_details.get("type")
-        custom_message = intervention_details.get("message")
+        # Resolve intervention from library if 'id' is present
+        final_details = intervention_details.copy()
+        if "id" in final_details:
+             lib_entry = self.library.get_intervention(final_details["id"])
+             if lib_entry:
+                 # Merge library entry, letting passed details override (e.g. custom message)
+                 # But usually library entry is the source of truth for sequence
+                 final_details = {**lib_entry, **final_details}
+                 # Map 'id' to 'type' if 'type' is missing, for consistency
+                 if "type" not in final_details:
+                     final_details["type"] = final_details["id"]
+                 # Ensure 'message' exists for logging/feedback if not in details
+                 if "message" not in final_details and "description" in final_details:
+                     final_details["message"] = final_details["description"]
 
-        if not intervention_type or not custom_message:
+        intervention_type = final_details.get("type")
+        # We relax the check for 'message' if 'sequence' is present
+        has_sequence = "sequence" in final_details and len(final_details["sequence"]) > 0
+        message = final_details.get("message")
+
+        if not intervention_type or (not message and not has_sequence):
             if logger:
-                logger.log_warning("Intervention attempt failed: 'type' and 'message' are required.")
+                logger.log_warning("Intervention attempt failed: 'type' and ('message' or 'sequence') are required.")
             else:
-                print("Intervention attempt failed: 'type' and 'message' are required.")
+                print("Intervention attempt failed: 'type' and ('message' or 'sequence') are required.")
             return False
 
         if self._intervention_active.is_set():
@@ -175,25 +195,25 @@ class InterventionEngine:
 
         self._intervention_active.set()
 
-        # Populate _current_intervention_details, ensuring defaults
-        self._current_intervention_details = {
-            "type": intervention_type,
-            "message": custom_message,
-            "duration": intervention_details.get("duration", config.DEFAULT_INTERVENTION_DURATION), # Use new default duration
-            "tier": intervention_details.get("tier", 1), # Default to Tier 1
-            # Allow any other parameters to be passed through
-            **{k: v for k, v in intervention_details.items() if k not in ["type", "message", "duration", "tier"]}
-        }
+        # Populate details with defaults
+        if "duration" not in final_details:
+            # Estimate duration from sequence if possible?
+            # For now use default max
+            final_details["duration"] = config.DEFAULT_INTERVENTION_DURATION * 2 # sequences might be long
 
-        self.last_intervention_time = current_time # Update last intervention time *when it starts*
+        self._current_intervention_details = final_details
+        self.last_intervention_time = current_time
 
         self.intervention_thread = threading.Thread(target=self._run_intervention_thread)
         self.intervention_thread.daemon = True
         self.intervention_thread.start()
-        if logger:
-            logger.log_info(f"Intervention '{intervention_type}' (Tier {self._current_intervention_details['tier']}) initiated.")
-        else:
-            print(f"Intervention '{intervention_type}' (Tier {self._current_intervention_details['tier']}) initiated.")
+
+        log_msg = f"Intervention '{intervention_type}' initiated."
+        if has_sequence: log_msg += f" (Sequence len: {len(final_details['sequence'])})"
+
+        if logger: logger.log_info(log_msg)
+        else: print(log_msg)
+
         return True
 
     def stop_intervention(self) -> None:
@@ -307,10 +327,18 @@ if __name__ == '__main__':
     intervention_engine.start_intervention(details_t1)
     time.sleep(0.2)
 
-    print("\n--- Test 2: Tier 2 Intervention ---")
-    details_t2 = {"type": "calm_down", "message": "Feeling stressed? Try this sound.", "tier": 2, "duration": 0.1}
-    intervention_engine.start_intervention(details_t2)
-    time.sleep(0.2)
+    print("\n--- Test 2: Library Intervention (Box Breathing) ---")
+    # We modify the sequence in library for test speed
+    box_breathing_id = "phys_box_breathing"
+    lib_entry = intervention_engine.library.get_intervention(box_breathing_id)
+    # Patch the sequence to be faster for test
+    lib_entry["sequence"] = [
+        {"action": "speak", "text": "Start test breathing."},
+        {"action": "wait", "duration": 0.1},
+        {"action": "speak", "text": "End test breathing."}
+    ]
+    intervention_engine.start_intervention({"id": box_breathing_id})
+    time.sleep(0.5)
 
     print("\n--- Test 3: Tier 3 Intervention and stop early ---")
     details_t3 = {"type": "emergency_break", "message": "Mandatory break time!", "tier": 3, "duration": 0.5}
