@@ -179,8 +179,7 @@ class LogicEngine:
                 "user_context": context
             }
 
-    def _trigger_lmm_analysis(self, reason: str) -> None:
-    def _trigger_lmm_analysis(self, allow_intervention: bool = True) -> None:
+    def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
         if not self.lmm_interface:
             self.logger.log_warning("LMM interface not available.")
             return
@@ -269,7 +268,6 @@ class LogicEngine:
             # (Note: Main application handles sensor hardware errors.
             # LogicEngine could handle logical errors, e.g., if we consistently get black frames
             # but no hardware error is reported. For now, we leave that to future expansion.)
-                self._trigger_lmm_analysis(allow_intervention=True)
         elif current_mode == "snoozed":
             self.logger.log_debug("LogicEngine: Mode is SNOOZED. Performing light monitoring without intervention.")
             current_time = time.time()
