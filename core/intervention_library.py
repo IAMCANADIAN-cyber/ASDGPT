@@ -27,6 +27,18 @@ class InterventionLibrary:
         self.library: Dict[str, List[Dict[str, Any]]] = {
             "physiology": [
                 {
+                    "id": "arousal_redirect",
+                    "tier": 3,
+                    "description": "Guided mindful masturbation session to resolve high arousal and return to focus.",
+                    "sequence": [
+                        {"action": "speak", "content": "Hey Austin, I think you're pretty turned on right now and it is causing you to waste time scrolling."},
+                        {"action": "speak", "content": "What I want you to do is lay down in bed, put away your phone, and I'll walk you through a guided mindful masturbation session and I will watch and listen to you while we do it."},
+                        # Ideally this would trigger a longer specific session logic, but for now we represent it as a sequence.
+                        {"action": "wait", "duration": 5},
+                        {"action": "speak", "content": "Let's begin."}
+                    ]
+                },
+                {
                     "id": "box_breathing",
                     "tier": 2,
                     "description": "4-4-4-4 Box Breathing exercise",
@@ -100,6 +112,16 @@ class InterventionLibrary:
             ],
             "cognitive": [
                 {
+                    "id": "doom_scroll_breaker",
+                    "tier": 2,
+                    "description": "Intervention for prolonged phone use/zoning out.",
+                    "sequence": [
+                        {"action": "speak", "content": "Hey Austin, I see you've been zoned out on your phone for a while. You look a bit restless."},
+                        {"action": "speak", "content": "Why don't you put the phone down, and I'll guide you through a quick reset?"},
+                        {"action": "wait", "duration": 5}
+                    ]
+                },
+                {
                     "id": "context_switch",
                     "tier": 2,
                     "description": "Clear the mental buffer",
@@ -126,6 +148,35 @@ class InterventionLibrary:
                     "sequence": [
                         {"action": "speak", "content": "If you feel stuck, write down the next 3 smallest steps you can take."},
                         {"action": "visual_prompt", "content": "Write down 3 small steps."}
+                    ]
+                }
+            ],
+            "creative": [
+                {
+                    "id": "content_pivot",
+                    "tier": 1,
+                    "description": "Leverage high energy/arousal for content creation.",
+                    "sequence": [
+                        {"action": "speak", "content": "I noticed you're feeling good right now."},
+                        {"action": "speak", "content": "Based on what I'm seeing, if you clean up that specific spot on your desk—move those boxes—I had an idea for a video we could post to Threads. Use that energy."}
+                    ]
+                },
+                {
+                    "id": "sultry_persona_prompt",
+                    "tier": 1,
+                    "description": "Prompt for private/sultry content creation.",
+                    "sequence": [
+                        {"action": "speak", "content": "The way the light is hitting you right now is perfect for the private story."},
+                        {"action": "speak", "content": "Don't move—let's capture a loop. It’s magnetic."}
+                    ]
+                },
+                {
+                    "id": "public_persona_prompt",
+                    "tier": 1,
+                    "description": "Prompt for public/professional content creation.",
+                    "sequence": [
+                        {"action": "speak", "content": "You look sharp and focused."},
+                        {"action": "speak", "content": "Let's snap a candid for the public account with a caption about the tech project you're building. It shows ambition without revealing too much."}
                     ]
                 }
             ]
