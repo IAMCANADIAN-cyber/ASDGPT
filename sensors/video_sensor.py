@@ -1,5 +1,6 @@
 import cv2
 import time
+import os
 import config # For CAMERA_INDEX
 
 class VideoSensor:
@@ -11,6 +12,10 @@ class VideoSensor:
         self.last_error_message = ""
         self.retry_delay = 30  # seconds
         self.last_retry_time = 0
+
+        # Initialize Face Detector
+        self.face_cascade = None
+        self._initialize_face_detector()
 
         self._initialize_capture()
 
@@ -27,6 +32,24 @@ class VideoSensor:
         if self.logger: self.logger.log_error(full_message, details)
         else: print(f"ERROR: {full_message} | Details: {details}")
         self.last_error_message = message # Store the most recent error
+
+    def _initialize_face_detector(self):
+        try:
+            # cv2.data.haarcascades points to the directory containing cascade files
+            cascade_path = os.path.join(cv2.data.haarcascades, 'haarcascade_frontalface_default.xml')
+            if not os.path.exists(cascade_path):
+                 self._log_warning(f"Haar cascade file not found at {cascade_path}. Face detection disabled.")
+                 return
+
+            self.face_cascade = cv2.CascadeClassifier(cascade_path)
+            if self.face_cascade.empty():
+                self._log_warning("Failed to load Haar cascade classifier. Face detection disabled.")
+                self.face_cascade = None
+            else:
+                self._log_info(f"Face detector initialized using {cascade_path}")
+        except Exception as e:
+            self._log_error("Exception initializing face detector.", str(e))
+            self.face_cascade = None
 
     def _initialize_capture(self):
         self._log_info(f"Attempting to initialize video capture on index {self.camera_index}...")
@@ -113,6 +136,46 @@ class VideoSensor:
 
     def get_last_error(self):
         return self.last_error_message
+
+    def analyze_frame(self, frame):
+        """
+        Analyzes the frame for features (e.g., faces).
+        Returns a dictionary of metrics.
+        """
+        metrics = {
+            "face_detected": False,
+            "face_count": 0,
+            "face_locations": [] # List of (x, y, w, h) tuples
+        }
+
+        if frame is None:
+            return metrics
+
+        if not self.face_cascade:
+            return metrics
+
+        try:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # Detect faces
+            # scaleFactor=1.1, minNeighbors=5, minSize=(30, 30) are standard defaults
+            faces = self.face_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=5,
+                minSize=(30, 30),
+                flags=cv2.CASCADE_SCALE_IMAGE
+            )
+
+            if len(faces) > 0:
+                metrics["face_detected"] = True
+                metrics["face_count"] = len(faces)
+                # Convert numpy array to list of lists/tuples for JSON serializability
+                metrics["face_locations"] = [tuple(map(int, f)) for f in faces]
+
+        except Exception as e:
+            self._log_error("Error during frame analysis (face detection).", str(e))
+
+        return metrics
 
 if __name__ == '__main__':
     # Example Usage (requires a webcam or will show errors)
