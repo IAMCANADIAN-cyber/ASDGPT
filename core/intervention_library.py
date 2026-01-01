@@ -62,6 +62,14 @@ class InterventionLibrary:
                         {"action": "wait", "duration": 20},
                         {"action": "sound", "file": "assets/sounds/chime.wav"} # Placeholder path
                     ]
+                },
+                {
+                   "id": "arousal_redirect",
+                   "tier": 3,
+                   "description": "Direct intervention to resolve urge efficiently and return to baseline",
+                   "sequence": [
+                       {"action": "speak", "content": "Hey Austin, I think you're pretty turned on right now and it is causing you to waste time scrolling. What I want you to do is lay down in bed, put away your phone, and I'll walk you through a guided mindful masturbation session and I will watch and listen to you while we do it."}
+                   ]
                 }
             ],
             "sensory": [
@@ -126,6 +134,42 @@ class InterventionLibrary:
                     "sequence": [
                         {"action": "speak", "content": "If you feel stuck, write down the next 3 smallest steps you can take."},
                         {"action": "visual_prompt", "content": "Write down 3 small steps."}
+                    ]
+                },
+                {
+                    "id": "doom_scroll_breaker",
+                    "tier": 2,
+                    "description": "Intervention for zoned-out scrolling",
+                    "sequence": [
+                        {"action": "speak", "content": "Hey Austin, I see you've been zoned out on your phone for a while. You look a bit restless. Why don't you put the phone down, and I'll guide you through a quick reset?"}
+                    ]
+                }
+            ],
+            "creative": [
+                {
+                    "id": "content_pivot",
+                    "tier": 1,
+                    "description": "Pivot from high energy/messy room to content creation",
+                    "sequence": [
+                        {"action": "speak", "content": "I noticed you're feeling good right now. Based on what I'm seeing, if you clean up that specific spot on your desk—move those boxes—I had an idea for a video we could post to Threads. Use that energy."}
+                    ]
+                },
+                {
+                    "id": "sultry_persona_prompt",
+                    "tier": 1,
+                    "description": "Prompt for private/sultry content creation",
+                    "sequence": [
+                        {"action": "speak", "content": "The way the light is hitting you right now is perfect for the private story. Don't move—let's capture a loop. It’s magnetic."},
+                        {"action": "capture_image", "content": "Capturing sultry image..."}
+                    ]
+                },
+                {
+                    "id": "public_persona_prompt",
+                    "tier": 1,
+                    "description": "Prompt for public/professional content creation",
+                    "sequence": [
+                        {"action": "speak", "content": "You look sharp and focused. Let's snap a candid for the public account with a caption about the tech project you're building. It shows ambition without revealing too much."},
+                        {"action": "capture_image", "content": "Capturing public image..."}
                     ]
                 }
             ]
@@ -192,7 +236,7 @@ if __name__ == "__main__":
     # Test 2: Get by Category
     cat_list = lib.get_interventions_by_category("physiology")
     print(f"Test 2 (Get by Category): Found {len(cat_list)} in 'physiology'")
-    assert len(cat_list) >= 3
+    assert len(cat_list) >= 4 # Updated count
 
     # Test 3: Get by Tier
     tier_list = lib.get_interventions_by_tier(3)
@@ -203,5 +247,11 @@ if __name__ == "__main__":
     rand_i = lib.get_random_intervention(category="cognitive", tier=1)
     print(f"Test 4 (Random Cognitive Tier 1): {rand_i['id'] if rand_i else 'None'}")
     assert rand_i["tier"] == 1
+
+    # Test 5: Verify new V4 interventions
+    v4_ids = ["doom_scroll_breaker", "arousal_redirect", "content_pivot", "sultry_persona_prompt", "public_persona_prompt"]
+    for vid in v4_ids:
+        assert lib.get_intervention_by_id(vid) is not None, f"Missing {vid}"
+    print("All V4 interventions found.")
 
     print("InterventionLibrary tests passed.")

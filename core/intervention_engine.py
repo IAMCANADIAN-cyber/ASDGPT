@@ -65,6 +65,23 @@ class InterventionEngine:
         else:
             print(log_message)
 
+    def _capture_image(self, details: str) -> None:
+        # Placeholder for capturing an image
+        log_message = f"CAPTURING_IMAGE: '{details}'"
+        if self.app and self.app.data_logger:
+            self.app.data_logger.log_info(log_message)
+        else:
+            print(log_message)
+        # In a real implementation, this would trigger the video sensor to save a snapshot
+
+    def _record_video(self, details: str) -> None:
+        # Placeholder for recording video
+        log_message = f"RECORDING_VIDEO: '{details}'"
+        if self.app and self.app.data_logger:
+            self.app.data_logger.log_info(log_message)
+        else:
+            print(log_message)
+
     def _wait(self, duration: float) -> None:
         """Waits for a specified duration, respecting the stop signal."""
         start = time.time()
@@ -92,6 +109,14 @@ class InterventionEngine:
             elif action == "visual_prompt":
                 content = step.get("content", "")
                 self._show_visual_prompt(content)
+
+            elif action == "capture_image":
+                content = step.get("content", "")
+                self._capture_image(content)
+
+            elif action == "record_video":
+                content = step.get("content", "")
+                self._record_video(content)
 
             elif action == "wait":
                 duration = step.get("duration", 0)
@@ -420,5 +445,12 @@ if __name__ == '__main__':
     intervention_engine.start_intervention(details_t1)
     mock_logic_engine.set_mode("active")
     time.sleep(0.1)
+
+    print("\n--- Test 6: Capture Image Action ---")
+    intervention_engine.last_intervention_time = 0
+    details_t6 = {"id": "sultry_persona_prompt"}
+    intervention_engine.start_intervention(details_t6)
+    time.sleep(0.2)
+    intervention_engine.stop_intervention()
 
     print("\nInterventionEngine tests complete.")
