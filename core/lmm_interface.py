@@ -3,6 +3,9 @@
 
 import config
 import requests
+import json
+import re
+import time
 
 class LMMInterface:
     def __init__(self, data_logger=None):
@@ -11,7 +14,13 @@ class LMMInterface:
         - data_logger: An instance of DataLogger for logging.
         """
         self.logger = data_logger
-        self.llm_url = config.LOCAL_LLM_URL
+        # Ensure URL ends with v1/chat/completions for OpenAI compatibility
+        base_url = config.LOCAL_LLM_URL.rstrip('/')
+        if not base_url.endswith("/v1/chat/completions"):
+             self.llm_url = f"{base_url}/v1/chat/completions"
+        else:
+             self.llm_url = base_url
+
         self._log_info(f"LMMInterface initializing with URL: {self.llm_url}")
 
     def _log_info(self, message):
@@ -30,34 +39,45 @@ class LMMInterface:
     def _log_debug(self, message):
         if self.logger and hasattr(self.logger, 'log_debug'):
             self.logger.log_debug(f"LMMInterface: {message}")
-        # Fallback for basic logging if logger has no log_debug but level is DEBUG
         elif self.logger and hasattr(self.logger, 'log_level') and self.logger.log_level == "DEBUG":
              self.logger.log_info(f"LMMInterface-DEBUG: {message}")
 
+    def check_connection(self):
+        """Checks if the LMM server is reachable."""
+        try:
+            # Try a simple models list check if available, or just a dummy completion
+            # Usually /v1/models is standard
+            models_url = self.llm_url.replace("/chat/completions", "/models")
+            response = requests.get(models_url, timeout=2)
+            if response.status_code == 200:
+                return True
+        except:
+            pass
+        return False
 
     def process_data(self, video_data=None, audio_data=None, user_context=None):
         """
-        Processes incoming sensor data and user context by sending it to the local LMM.
+        Processes incoming sensor data and user context by sending it to the local LMM
+        using an OpenAI-compatible chat completion endpoint.
 
         Args:
-            video_data: Data from the video sensor.
-            audio_data: Data from the audio sensor.
-            user_context: Additional context.
+            video_data: Base64 encoded image data from the video sensor.
+            audio_data: Data from the audio sensor (list of floats).
+            user_context: Additional context dictionary (includes metrics).
 
         Returns:
             A dictionary with the LMM's response or None on failure.
         """
         self._log_info("Sending data to local LMM...")
 
-        if video_data is None and audio_data is None:
-            self._log_warning("No video or audio data provided to LMM process_data.")
+        if video_data is None and audio_data is None and not user_context:
+            self._log_warning("No data provided to LMM process_data.")
             return None
 
-        # Add system prompt instructions to the user context or a separate field if supported by the local LLM.
-        # Since we are using a generic structure, we will add it to the user_context or a 'system_instruction' field.
-        # This instructs the LLM on the expected JSON output format for state estimation.
+        # System Instruction
         system_instruction = """
-        You are an autonomous co-regulator. Analyze the sensor data and context.
+        You are an autonomous co-regulator. Analyze the provided sensor metrics and context to estimate the user's state.
+
         Output a valid JSON object with the following structure:
         {
           "state_estimation": {
@@ -69,66 +89,128 @@ class LMMInterface:
           },
           "suggestion": {
             "type": "<intervention_type_string>",
-            "message": "<text_to_speak>"
+            "message": "<text_to_speak_to_user>"
           }
         }
-        Return ONLY the JSON.
+
+        If no intervention is needed, set "suggestion" to null.
+        Ensure your response is ONLY valid JSON, no markdown formatting.
         """
 
+        # Construct User Message
+        content_parts = []
+
+        # 1. Text Context & Metrics
+        context_str = "Analyze the following user status:\n"
+        if user_context:
+            context_str += f"Current Mode: {user_context.get('current_mode', 'unknown')}\n"
+            context_str += f"Trigger Reason: {user_context.get('trigger_reason', 'unknown')}\n"
+            metrics = user_context.get('sensor_metrics', {})
+            context_str += f"Audio Level (RMS): {metrics.get('audio_level', 0.0):.4f}\n"
+            context_str += f"Video Activity (Motion): {metrics.get('video_activity', 0.0):.2f}\n"
+
+            est = user_context.get('current_state_estimation')
+            if est:
+                 context_str += f"Previous State: {est}\n"
+
+        content_parts.append({"type": "text", "text": context_str})
+
+        # 2. Image (Video Frame)
+        # Note: We assume the local model supports vision if we send an image.
+        # If it doesn't, this might error out depending on the backend,
+        # but standard OpenAI format handles this.
+        if video_data:
+            content_parts.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{video_data}"
+                }
+            })
+
+        # Payload
         payload = {
             "model": config.LOCAL_LLM_MODEL_ID,
-            "system": system_instruction, # Assuming the local LLM server accepts 'system' or we prepend it to prompt
-            "video_data": video_data,
-            "audio_data": audio_data,
-            "user_context": user_context
+            "messages": [
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": content_parts}
+            ],
+            "temperature": 0.2, # Low temp for consistent JSON
+            "max_tokens": 500
         }
 
-        try:
-            response = requests.post(self.llm_url, json=payload, timeout=10)
-            response.raise_for_status()  # Raise an exception for bad status codes
-            self._log_info(f"Received response from LMM: {response.json()}")
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            self._log_error(f"Failed to connect to LMM at {self.llm_url}", str(e))
-            return None
+        # Retry logic
+        retries = 3
+        for attempt in range(retries):
+            try:
+                response = requests.post(self.llm_url, json=payload, timeout=20)
+                response.raise_for_status()
+
+                response_json = response.json()
+                content = response_json['choices'][0]['message']['content']
+
+                # Clean content (remove markdown code blocks if present)
+                clean_content = self._clean_json_string(content)
+
+                parsed_result = json.loads(clean_content)
+                self._log_info(f"Received valid JSON from LMM.")
+                self._log_debug(f"LMM Response: {parsed_result}")
+                return parsed_result
+
+            except requests.exceptions.RequestException as e:
+                self._log_warning(f"Connection error (Attempt {attempt+1}/{retries}): {e}")
+                time.sleep(1)
+            except json.JSONDecodeError as e:
+                self._log_error(f"Failed to parse JSON response: {e}", details=f"Raw content: {content}")
+                # Don't retry immediately on parse error unless we want to try prompting again (out of scope)
+                return None
+            except KeyError as e:
+                self._log_error(f"Unexpected response structure: {e}", details=f"Response: {response_json}")
+                return None
+
+        self._log_error(f"Failed to get valid response from LMM after {retries} attempts.")
+        return None
+
+    def _clean_json_string(self, text):
+        """Removes markdown code blocks and whitespace."""
+        # Remove ```json ... ``` or ``` ... ```
+        text = re.sub(r'^```json\s*', '', text, flags=re.MULTILINE)
+        text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
+        text = re.sub(r'```$', '', text, flags=re.MULTILINE)
+        return text.strip()
 
     def get_intervention_suggestion(self, processed_analysis):
         """
         Extracts an intervention suggestion from the LMM's analysis.
-        Assumes the LMM can directly provide a suggestion.
-
-        Args:
-            processed_analysis: The JSON response from the LMM.
-
-        Returns:
-            A dictionary describing the suggested intervention or None.
         """
         if not processed_analysis:
             return None
-
-        # Example: LMM returns a dict with a "suggestion" key
-        # a valid suggestion would be like: {"type": "posture_reminder", "message": "Check your posture."}
         return processed_analysis.get("suggestion")
 
 if __name__ == '__main__':
-    # Example Usage
+    # Test suite
     class MockDataLogger:
         def __init__(self) -> None:
             self.log_level = "DEBUG"
         def log_info(self, msg: str) -> None:
-            print(f"MOCK_LOG_INFO: {msg}")
+            print(f"INFO: {msg}")
         def log_warning(self, msg: str) -> None:
-            print(f"MOCK_LOG_WARN: {msg}")
+            print(f"WARN: {msg}")
         def log_error(self, msg: str, details: str = "") -> None:
-            print(f"MOCK_LOG_ERROR: {msg} | Details: {details}")
+            print(f"ERROR: {msg} | Details: {details}")
         def log_debug(self, msg: str) -> None:
-            print(f"MOCK_LOG_DEBUG: {msg}")
+            print(f"DEBUG: {msg}")
 
     mock_logger = MockDataLogger()
-
     lmm_interface = LMMInterface(data_logger=mock_logger)
 
-    # Mock the requests.post method to simulate LMM responses
+    # Verify URL construction
+    expected_url = config.LOCAL_LLM_URL.rstrip('/') + "/v1/chat/completions"
+    if lmm_interface.llm_url != expected_url:
+        print(f"FAILED: URL construction. Got {lmm_interface.llm_url}, expected {expected_url}")
+    else:
+        print(f"PASSED: URL construction: {lmm_interface.llm_url}")
+
+    # Mock requests
     def mock_post(url, json, timeout):
         class MockResponse:
             def __init__(self, json_data, status_code):
@@ -140,47 +222,97 @@ if __name__ == '__main__':
                 if self.status_code != 200:
                     raise requests.exceptions.RequestException("Mock Error")
 
-        if json.get("video_data"):
-            return MockResponse({"suggestion": {"type": "posture_reminder", "message": "Check your posture."}}, 200)
-        elif json.get("audio_data"):
-            return MockResponse({"suggestion": {"type": "noise_alert", "message": "It's getting loud."}}, 200)
-        else:
-            return MockResponse({}, 200)
+        # Inspect payload
+        messages = json['messages']
+        user_content = messages[1]['content']
 
-    requests.post = mock_post
+        has_text = any(p['type'] == 'text' for p in user_content)
+        has_image = any(p['type'] == 'image_url' for p in user_content)
 
-    mock_logger.log_info("--- Testing LMMInterface ---")
+        # Simulate response based on content
+        response_content = {
+            "state_estimation": {"arousal": 50, "overload": 20, "focus": 80, "energy": 60, "mood": 50},
+            "suggestion": None
+        }
 
-    mock_logger.log_info("\n--- Test Case 1: No data ---")
-    analysis1 = lmm_interface.process_data()
-    suggestion1 = lmm_interface.get_intervention_suggestion(analysis1)
-    mock_logger.log_info(f"Analysis: {analysis1}, Suggestion: {suggestion1}")
-    assert suggestion1 is None
+        if has_image:
+             response_content["suggestion"] = {"type": "vision_check", "message": "I see you."}
 
-    mock_logger.log_info("\n--- Test Case 2: Video data only ---")
-    mock_video_data = {"summary": "User appears to be stationary."}
-    analysis2 = lmm_interface.process_data(video_data=mock_video_data)
-    suggestion2 = lmm_interface.get_intervention_suggestion(analysis2)
-    mock_logger.log_info(f"Analysis: {analysis2}, Suggestion: {suggestion2}")
-    assert suggestion2["type"] == "posture_reminder"
+        return MockResponse({
+            "choices": [{
+                "message": {
+                    "content": f"```json\n{json.dumps(response_content)}\n```"
+                }
+            }]
+        }, 200)
 
-    mock_logger.log_info("\n--- Test Case 3: Audio data only ---")
-    mock_audio_data = {"average_db": -20}
-    analysis3 = lmm_interface.process_data(audio_data=mock_audio_data)
-    suggestion3 = lmm_interface.get_intervention_suggestion(analysis3)
-    mock_logger.log_info(f"Analysis: {analysis3}, Suggestion: {suggestion3}")
-    assert suggestion3["type"] == "noise_alert"
+    # We need to import json in the mock scope or use the outer one, but since we are overriding requests.post
+    # inside the test block, and 'json' argument name shadows the module 'json'.
+    # I'll rename the argument to 'json_payload'.
 
-    mock_logger.log_info("\n--- Test Case 4: Both video and audio data ---")
-    analysis4 = lmm_interface.process_data(video_data=mock_video_data, audio_data=mock_audio_data)
-    suggestion4 = lmm_interface.get_intervention_suggestion(analysis4)
-    mock_logger.log_info(f"Analysis: {analysis4}, Suggestion: {suggestion4}")
-    assert suggestion4["type"] == "posture_reminder"
+    def mock_post_corrected(url, json=None, timeout=None):
+        json_payload = json
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+            def json(self):
+                return self.json_data
+            def raise_for_status(self):
+                if self.status_code != 200:
+                    raise requests.exceptions.RequestException("Mock Error")
 
-    mock_logger.log_info("\n--- Test Case 5: Simulated LMM analysis with no suggestion ---")
-    analysis5 = {"detected_event": "potential_posture_issue"}
-    suggestion5 = lmm_interface.get_intervention_suggestion(analysis5)
-    mock_logger.log_info(f"Analysis: {analysis5}, Suggestion: {suggestion5}")
-    assert suggestion5 is None
+        # Inspect payload
+        messages = json_payload['messages']
+        user_content = messages[1]['content']
 
-    mock_logger.log_info("\nLMMInterface tests complete.")
+        has_text = any(p['type'] == 'text' for p in user_content)
+        has_image = any(p['type'] == 'image_url' for p in user_content)
+
+        # Simulate response based on content
+        response_content = {
+            "state_estimation": {"arousal": 50, "overload": 20, "focus": 80, "energy": 60, "mood": 50},
+            "suggestion": None
+        }
+
+        if has_image:
+             response_content["suggestion"] = {"type": "vision_check", "message": "I see you."}
+
+        import json as json_module
+        return MockResponse({
+            "choices": [{
+                "message": {
+                    "content": f"```json\n{json_module.dumps(response_content)}\n```"
+                }
+            }]
+        }, 200)
+
+    requests.post = mock_post_corrected
+
+    print("\n--- Test 1: Text only ---")
+    res1 = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.1}})
+    if res1 and res1["suggestion"] is None:
+        print("PASSED: Text only response parsed.")
+    else:
+        print(f"FAILED: Text only. Result: {res1}")
+
+    print("\n--- Test 2: With Image ---")
+    res2 = lmm_interface.process_data(video_data="base64str", user_context={})
+    if res2 and res2["suggestion"] and res2["suggestion"]["type"] == "vision_check":
+        print("PASSED: Image content handled.")
+    else:
+        print(f"FAILED: Image content. Result: {res2}")
+
+    print("\n--- Test 3: JSON Parsing Error Handling ---")
+    def mock_post_fail(url, json, timeout):
+        return type('obj', (object,), {
+            'json': lambda: {'choices': [{'message': {'content': 'Invalid JSON'}}]},
+            'raise_for_status': lambda: None
+        })
+    requests.post = mock_post_fail
+    res3 = lmm_interface.process_data(user_context={})
+    if res3 is None:
+        print("PASSED: Invalid JSON handled.")
+    else:
+        print(f"FAILED: Invalid JSON not handled. Result: {res3}")
+
