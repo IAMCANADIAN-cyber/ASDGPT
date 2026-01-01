@@ -108,6 +108,10 @@ For a deep dive into the system's core philosophy, state definitions, and interv
 *   **Interventions**: Structured intervention library and policy.
 *   **Personalization**: How the system adapts to the user.
 
+## Project Specification (Guardian Angel & Creative Director)
+
+For the detailed Master Specification (v4) outlining the "Guardian Angel" and "Creative Director" architecture, including the local tech stack, functional modules, and specific intervention protocols, please refer to the [Project Specification](docs/PROJECT_SPECIFICATION.md).
+
 ---
 
 *This README provides a basic overview. Further details on specific components can be found in their respective source files.*
