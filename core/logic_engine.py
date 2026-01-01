@@ -34,6 +34,10 @@ class LogicEngine:
         self.audio_level: float = 0.0
         self.video_activity: float = 0.0
 
+        # Tic Detection State
+        self.tic_counts = [] # List of timestamps
+        self.tic_window = 600 # 10 minutes in seconds
+
         # LMM trigger logic
         self.last_lmm_call_time: float = 0
         self.lmm_call_interval: int = 5  # Periodic check interval (seconds)
@@ -139,6 +143,27 @@ class LogicEngine:
             else:
                 self.audio_level = 0.0
 
+        # Check for Tic Events (using AudioSensor's detection logic if available)
+        # We assume audio_sensor is accessible or we do it here.
+        # Since logic_engine has audio_sensor reference:
+        if self.audio_sensor and hasattr(self.audio_sensor, 'detect_event'):
+            event = self.audio_sensor.detect_event(audio_chunk)
+            if event == "loud_noise": # Placeholder for 'snorting'
+                 # We treat loud noise as potential tic for now if threshold matches
+                 # But in reality, detect_event should be more specific.
+                 # For this plan step, we assume 'loud_noise' maps to tic for testing flow.
+                 # However, to avoid spamming "Tic" on every loud noise, we might want stricter logic.
+                 # For now, let's just log it or call register_tic_event if it matches a specific signature.
+                 # To prevent False Positives during this dev phase, let's ONLY register if it returns "snort"
+                 # (which it doesn't yet, so this is safe).
+                 if event == "snort":
+                     self.register_tic_event()
+
+        # NOTE: Since audio_sensor.detect_event currently returns "loud_noise" for RMS > 0.5,
+        # and we don't want to break existing tests or annoy the user,
+        # we will temporarily use "loud_noise" as a trigger but maybe log it differently
+        # or just leave the hook ready for the real model.
+
         self.logger.log_debug(f"Processed audio chunk. Level: {self.audio_level:.4f}")
 
     def _prepare_lmm_data(self, trigger_reason: str = "periodic") -> Optional[dict]:
@@ -219,6 +244,34 @@ class LogicEngine:
                 else:
                     self.logger.log_info(f"LMM suggested intervention (suppressed due to mode): {suggestion}")
 
+    def _check_watchdog(self, current_time: float) -> None:
+        """
+        Runs continuous watchdog checks (e.g. Tic Detection).
+        """
+        # Clean up old tic timestamps
+        self.tic_counts = [t for t in self.tic_counts if current_time - t <= self.tic_window]
+
+        # Check Tic Threshold (>3 in 10 mins)
+        if len(self.tic_counts) > 3:
+            if self.intervention_engine:
+                # Reset tic counts to avoid spamming? Or just debounce?
+                # For now, clear them to treat this as one "Flare-up" handled.
+                self.tic_counts = []
+
+                self.logger.log_info("Tic Flare-up detected (Watchdog). Triggering intervention.")
+                # Direct intervention for tic flare-up
+                self.intervention_engine.start_intervention({
+                    "id": "box_breathing", # Using box_breathing as the "reset" for now
+                    "message": "I'm hearing that snorting tic again. Stress levels are rising. Let's do a 60-second breathing reset."
+                })
+
+    def register_tic_event(self) -> None:
+        """Call this when a specific audio signature is detected."""
+        with self._lock:
+            self.tic_counts.append(time.time())
+            count = len(self.tic_counts)
+        self.logger.log_info(f"Tic event registered. Count in last 10m: {count}")
+
     def update(self) -> None:
         """
         Periodically called to update the logic engine's state and evaluations.
@@ -238,6 +291,9 @@ class LogicEngine:
             current_time = time.time()
             trigger_lmm = False
             trigger_reason = ""
+
+            # 0.5 Run Watchdog Checks
+            self._check_watchdog(current_time)
 
             # 1. Process sensor data & Evaluate conditions (Metrics updated in process_* methods)
             # We access metrics (atomic reads roughly safe, but better with lock if precise)

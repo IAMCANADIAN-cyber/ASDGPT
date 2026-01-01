@@ -1,5 +1,7 @@
 import cv2
 import time
+import threading
+import os
 import config # For CAMERA_INDEX
 
 class VideoSensor:
@@ -11,6 +13,10 @@ class VideoSensor:
         self.last_error_message = ""
         self.retry_delay = 30  # seconds
         self.last_retry_time = 0
+
+        self.recording = False
+        self.video_writer = None
+        self.recording_lock = threading.Lock()
 
         self._initialize_capture()
 
@@ -94,6 +100,14 @@ class VideoSensor:
                 self.error_state = False
                 self.last_error_message = ""
 
+            # Handle recording if active
+            with self.recording_lock:
+                if self.recording and self.video_writer:
+                    try:
+                        self.video_writer.write(frame)
+                    except Exception as e:
+                        self._log_error(f"Error writing frame to video file: {e}")
+
             return frame, None # Return frame and no error
         except Exception as e:
             self.error_state = True
@@ -101,7 +115,66 @@ class VideoSensor:
             self._log_error(error_msg, str(e))
             return None, error_msg
 
+    def save_snapshot(self, filepath):
+        """Captures the current frame and saves it to the specified filepath."""
+        frame, error = self.get_frame()
+        if error or frame is None:
+            self._log_error(f"Cannot save snapshot: {error}")
+            return False
+
+        try:
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            cv2.imwrite(filepath, frame)
+            self._log_info(f"Snapshot saved to {filepath}")
+            return True
+        except Exception as e:
+            self._log_error(f"Failed to save snapshot to {filepath}", str(e))
+            return False
+
+    def start_recording(self, filepath, fps=20.0, width=640, height=480):
+        """Starts recording video to the specified filepath."""
+        with self.recording_lock:
+            if self.recording:
+                self._log_warning("Already recording. Stop current recording first.")
+                return False
+
+            try:
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                # Define codec and create VideoWriter object
+                # cv2.VideoWriter_fourcc(*'mp4v') or *'XVID'
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                self.video_writer = cv2.VideoWriter(filepath, fourcc, fps, (width, height))
+
+                if not self.video_writer.isOpened():
+                    self._log_error(f"Failed to open video writer for {filepath}")
+                    self.video_writer = None
+                    return False
+
+                self.recording = True
+                self._log_info(f"Started recording video to {filepath}")
+                return True
+            except Exception as e:
+                self._log_error(f"Failed to start recording: {e}")
+                return False
+
+    def stop_recording(self):
+        """Stops the current video recording."""
+        with self.recording_lock:
+            if not self.recording:
+                return
+
+            try:
+                if self.video_writer:
+                    self.video_writer.release()
+                    self.video_writer = None
+                self.recording = False
+                self._log_info("Stopped recording video.")
+            except Exception as e:
+                self._log_error(f"Error stopping recording: {e}")
+
     def release(self):
+        self.stop_recording()
         if self.cap and self.cap.isOpened():
             self._log_info("Releasing video capture device.")
             self.cap.release()

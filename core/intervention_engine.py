@@ -73,6 +73,33 @@ class InterventionEngine:
                 break
             time.sleep(0.1)
 
+    def _capture_image(self, filename_prefix: str = "snapshot") -> None:
+        if self.app and hasattr(self.app, 'video_sensor') and self.app.video_sensor:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            filepath = f"captured_media/images/{filename_prefix}_{timestamp}.jpg"
+            if self.app.video_sensor.save_snapshot(filepath):
+                self.app.data_logger.log_info(f"Image captured: {filepath}")
+            else:
+                self.app.data_logger.log_warning("Failed to capture image.")
+        else:
+             if self.app and self.app.data_logger:
+                self.app.data_logger.log_warning("VideoSensor not available for image capture.")
+
+    def _record_video(self, duration: int, filename_prefix: str = "recording") -> None:
+        if self.app and hasattr(self.app, 'video_sensor') and self.app.video_sensor:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            filepath = f"captured_media/videos/{filename_prefix}_{timestamp}.mp4"
+            if self.app.video_sensor.start_recording(filepath):
+                self.app.data_logger.log_info(f"Started recording: {filepath}")
+                self._wait(duration)
+                self.app.video_sensor.stop_recording()
+                self.app.data_logger.log_info("Stopped recording.")
+            else:
+                self.app.data_logger.log_warning("Failed to start recording.")
+        else:
+             if self.app and self.app.data_logger:
+                self.app.data_logger.log_warning("VideoSensor not available for video recording.")
+
     def _run_sequence(self, sequence: List[Dict[str, Any]], logger: Any) -> None:
         """Executes a sequence of actions."""
         for step in sequence:
@@ -96,6 +123,14 @@ class InterventionEngine:
             elif action == "wait":
                 duration = step.get("duration", 0)
                 self._wait(duration)
+
+            elif action == "capture_image":
+                # Spec mentions "zoom snap" - basic snap for now
+                self._capture_image()
+
+            elif action == "record_video":
+                duration = step.get("duration", 10) # Default 10s if not specified
+                self._record_video(duration)
 
             else:
                 if logger:

@@ -148,6 +148,25 @@ class AudioSensor:
     def get_last_error(self):
         return self.last_error_message
 
+    def detect_event(self, chunk):
+        """
+        Placeholder for Sound Event Detection (SED).
+        In the future, this will run OpenAudio S1 Mini or similar.
+        For now, it can return simple threshold-based events or None.
+        """
+        if chunk is None:
+            return None
+
+        # Simple RMS check
+        rms = np.sqrt(np.mean(chunk**2))
+
+        # Placeholder for "snorting" detection (high frequency energy + rhythm?)
+        # For now, we'll just return 'loud_noise' if RMS is very high
+        if rms > 0.5: # Arbitrary high threshold
+            return "loud_noise"
+
+        return None
+
 if __name__ == '__main__':
     class MockDataLogger:
         def log_info(self, msg): print(f"MOCK_LOG_INFO: {msg}")

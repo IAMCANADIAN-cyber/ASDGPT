@@ -9,3 +9,14 @@
 2025-12-31T13:03:05.338539 [INFO] Triggering LMM analysis (Reason: high_video_activity)...
 2025-12-31T13:03:05.338627 [INFO] StateEngine: Updated state to {'arousal': 55, 'overload': 10, 'focus': 60, 'energy': 75, 'mood': 55}
 2025-12-31T13:03:05.338675 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
+2026-01-01T01:11:56.712276 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-01T01:11:56.712484 [INFO] LogicEngine initialized. Mode: active
+2026-01-01T01:11:56.713277 [INFO] Triggering LMM analysis (Reason: periodic_check)...
+2026-01-01T01:11:56.713393 [INFO] StateEngine: Updated state to {'arousal': 55, 'overload': 10, 'focus': 60, 'energy': 75, 'mood': 55}
+2026-01-01T01:11:56.713441 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
+2026-01-01T01:11:56.713737 [INFO] Triggering LMM analysis (Reason: high_audio_level)...
+2026-01-01T01:11:56.713816 [INFO] StateEngine: Updated state to {'arousal': 55, 'overload': 10, 'focus': 60, 'energy': 75, 'mood': 55}
+2026-01-01T01:11:56.713860 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
+2026-01-01T01:11:56.714570 [INFO] Triggering LMM analysis (Reason: high_video_activity)...
+2026-01-01T01:11:56.714662 [INFO] StateEngine: Updated state to {'arousal': 55, 'overload': 10, 'focus': 60, 'energy': 75, 'mood': 55}
+2026-01-01T01:11:56.714705 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
