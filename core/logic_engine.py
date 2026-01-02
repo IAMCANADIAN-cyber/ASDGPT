@@ -25,6 +25,9 @@ class LogicEngine:
         self.state_engine: StateEngine = StateEngine(logger=self.logger)
         self._lock: threading.Lock = threading.Lock()
 
+        # Async LMM handling
+        self.lmm_thread: Optional[threading.Thread] = None
+
         # Sensor data storage
         self.last_video_frame: Optional[np.ndarray] = None
         self.previous_video_frame: Optional[np.ndarray] = None
@@ -198,9 +201,40 @@ class LogicEngine:
                 "user_context": context
             }
 
+    def _run_lmm_analysis_async(self, lmm_payload: dict, allow_intervention: bool) -> None:
+        """Background worker for LMM analysis."""
+        try:
+            analysis = self.lmm_interface.process_data(
+                video_data=lmm_payload["video_data"],
+                audio_data=lmm_payload["audio_data"],
+                user_context=lmm_payload["user_context"]
+            )
+
+            if analysis:
+                # Update state estimation (StateEngine should be thread-safe or we assume simple updates)
+                self.state_engine.update(analysis)
+                self.logger.log_info("LMM analysis complete and state updated.")
+
+            if analysis and self.intervention_engine:
+                suggestion = self.lmm_interface.get_intervention_suggestion(analysis)
+                if suggestion:
+                    if allow_intervention:
+                        self.logger.log_info(f"LMM suggested intervention: {suggestion}")
+                        # start_intervention is generally thread-safe as it just sets an event/launches another thread
+                        self.intervention_engine.start_intervention(suggestion)
+                    else:
+                        self.logger.log_info(f"LMM suggested intervention (suppressed due to mode): {suggestion}")
+        except Exception as e:
+            self.logger.log_error(f"Error in async LMM analysis: {e}")
+
     def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
         if not self.lmm_interface:
             self.logger.log_warning("LMM interface not available.")
+            return
+
+        # Check if previous analysis is still running
+        if self.lmm_thread and self.lmm_thread.is_alive():
+            self.logger.log_info(f"Skipping LMM trigger ({reason}): Previous analysis still running.")
             return
 
         lmm_payload = self._prepare_lmm_data(trigger_reason=reason)
@@ -210,30 +244,13 @@ class LogicEngine:
 
         self.logger.log_info(f"Triggering LMM analysis (Reason: {reason})...")
 
-        # We can run this in a separate thread if process_data is blocking and slow,
-        # but for now we keep it simple as LogicEngine.update is called from main loop.
-        # If LMM call is slow, it might block the main loop (GUI/Sensors).
-        # Ideally, LMM interface should be async or threaded.
-        # For this implementation, we assume LMMInterface handles it or we accept the delay.
-
-        analysis = self.lmm_interface.process_data(
-            video_data=lmm_payload["video_data"],
-            audio_data=lmm_payload["audio_data"],
-            user_context=lmm_payload["user_context"]
+        # Run in background thread to avoid blocking main loop
+        self.lmm_thread = threading.Thread(
+            target=self._run_lmm_analysis_async,
+            args=(lmm_payload, allow_intervention),
+            daemon=True
         )
-
-        if analysis:
-            # Update state estimation
-            self.state_engine.update(analysis)
-
-        if analysis and self.intervention_engine:
-            suggestion = self.lmm_interface.get_intervention_suggestion(analysis)
-            if suggestion:
-                if allow_intervention:
-                    self.logger.log_info(f"LMM suggested intervention: {suggestion}")
-                    self.intervention_engine.start_intervention(suggestion)
-                else:
-                    self.logger.log_info(f"LMM suggested intervention (suppressed due to mode): {suggestion}")
+        self.lmm_thread.start()
 
     def update(self) -> None:
         """
@@ -349,6 +366,8 @@ if __name__ == '__main__':
     # Test 1: Periodic Check
     print("\nTest 1: Periodic Check (No data initially)")
     engine.update() # Should trigger periodic because last_call_time is 0
+    # Wait for async thread if any (should generally be none here as no data)
+    if engine.lmm_thread: engine.lmm_thread.join()
     assert mock_lmm.last_call_data is None # No data prepared, so no call actually goes out (log says "No new sensor data")
 
     # Feed some data
@@ -359,6 +378,10 @@ if __name__ == '__main__':
     # Reset timer for controlled test
     engine.last_lmm_call_time = time.time() - 5
     engine.update()
+
+    # Wait for async thread to complete
+    if engine.lmm_thread: engine.lmm_thread.join()
+
     assert mock_lmm.last_call_data is not None
     assert mock_lmm.last_call_data["user_context"]["trigger_reason"] == "periodic_check"
     print("Periodic check passed.")
@@ -372,6 +395,10 @@ if __name__ == '__main__':
     engine.process_audio_data(loud_audio)
 
     engine.update()
+
+    # Wait for async thread to complete
+    if engine.lmm_thread: engine.lmm_thread.join()
+
     assert mock_lmm.last_call_data["user_context"]["trigger_reason"] == "high_audio_level"
     assert mock_lmm.last_call_data["user_context"]["sensor_metrics"]["audio_level"] > 0.5
     print("High audio trigger passed.")
@@ -389,6 +416,10 @@ if __name__ == '__main__':
     engine.process_video_data(white_frame)
 
     engine.update()
+
+    # Wait for async thread to complete
+    if engine.lmm_thread: engine.lmm_thread.join()
+
     assert mock_lmm.last_call_data["user_context"]["trigger_reason"] == "high_video_activity"
     assert mock_lmm.last_call_data["user_context"]["sensor_metrics"]["video_activity"] > 10.0
     print("High video activity trigger passed.")
