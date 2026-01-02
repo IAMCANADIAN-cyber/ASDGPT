@@ -7,9 +7,10 @@ import json
 import re
 import time
 from typing import Optional, Dict, Any, List
+from .intervention_library import InterventionLibrary
 
 class LMMInterface:
-    SYSTEM_INSTRUCTION = """
+    BASE_SYSTEM_INSTRUCTION = """
     You are an autonomous co-regulator. Analyze the provided sensor metrics and context to estimate the user's state.
 
     Sensor Interpretations:
@@ -38,10 +39,7 @@ class LMMInterface:
     If no intervention is needed, set "suggestion" to null.
 
     Available Interventions (by ID):
-    [Physiology]: box_breathing, shoulder_drop, eye_strain_release, arousal_redirect
-    [Sensory]: audio_grounding, visual_scan, cold_water
-    [Cognitive]: context_switch, reality_check, task_chunking, doom_scroll_breaker
-    [Creative]: content_pivot, sultry_persona_prompt, public_persona_prompt
+    {interventions_list}
 
     If you suggest one of these, use its exact ID in the "id" field. You may omit "message" if using an ID, as the system will handle the sequence.
     If you need a custom ad-hoc intervention, leave "id" null and provide "type" and "message".
@@ -49,12 +47,21 @@ class LMMInterface:
     Ensure your response is ONLY valid JSON, no markdown formatting.
     """
 
-    def __init__(self, data_logger=None):
+    def __init__(self, data_logger=None, intervention_library: Optional[InterventionLibrary] = None):
         """
         Initializes the LMMInterface.
         - data_logger: An instance of DataLogger for logging.
+        - intervention_library: Optional InterventionLibrary instance.
         """
         self.logger = data_logger
+
+        # Initialize Intervention Library
+        self.intervention_library = intervention_library if intervention_library else InterventionLibrary()
+
+        # Construct System Instruction
+        interventions_info = self.intervention_library.get_all_interventions_info()
+        self.SYSTEM_INSTRUCTION = self.BASE_SYSTEM_INSTRUCTION.replace("{interventions_list}", interventions_info)
+
         # Ensure URL ends with v1/chat/completions for OpenAI compatibility
         base_url = config.LOCAL_LLM_URL.rstrip('/')
         if not base_url.endswith("/v1/chat/completions"):

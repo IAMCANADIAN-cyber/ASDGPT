@@ -221,6 +221,21 @@ class InterventionLibrary:
 
         return random.choice(candidates)
 
+    def get_all_interventions_info(self) -> str:
+        """
+        Returns a formatted string listing all interventions by category.
+        Used for LMM prompt generation.
+        """
+        lines = []
+        for category, interventions in self.library.items():
+            # Format: [Category]: id1, id2, id3
+            # Capitalize category name for display
+            cat_display = category.capitalize()
+            ids = [i["id"] for i in interventions]
+            line = f"[{cat_display}]: {', '.join(ids)}"
+            lines.append(line)
+        return "\n".join(lines)
+
 if __name__ == "__main__":
     # Test the library
     lib = InterventionLibrary()
