@@ -88,3 +88,8 @@ LOCAL_LLM_MODEL_ID = "deepseek/deepseek-r1-0528-qwen3-8b"
 
 USER_DATA_DIR = "user_data"
 SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
+
+# LMM Reliability Settings
+LMM_FALLBACK_ENABLED = True
+LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
+LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds

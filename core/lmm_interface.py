@@ -6,8 +6,26 @@ import requests
 import json
 import re
 import time
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, TypedDict, Union
 from .intervention_library import InterventionLibrary
+
+# Define schema types for better clarity and future validation
+class StateEstimation(TypedDict):
+    arousal: int
+    overload: int
+    focus: int
+    energy: int
+    mood: int
+
+class Suggestion(TypedDict, total=False):
+    id: Optional[str]
+    type: Optional[str]
+    message: Optional[str]
+
+class LMMResponse(TypedDict):
+    state_estimation: StateEstimation
+    suggestion: Optional[Suggestion]
+    _meta: Optional[Dict[str, Any]] # For internal flags like is_fallback
 
 class LMMInterface:
     BASE_SYSTEM_INSTRUCTION = """
@@ -142,7 +160,21 @@ class LMMInterface:
 
         return True
 
-    def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[Dict[str, Any]]:
+    def get_fallback_response(self) -> LMMResponse:
+        """Returns a safe, neutral response when the LMM is unavailable."""
+        return {
+            "state_estimation": {
+                "arousal": 50,
+                "overload": 0,
+                "focus": 50,
+                "energy": 50,
+                "mood": 50
+            },
+            "suggestion": None,
+            "_meta": {"is_fallback": True}
+        }
+
+    def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[LMMResponse]:
         """
         Processes incoming sensor data and user context by sending it to the local LMM
         using an OpenAI-compatible chat completion endpoint.
@@ -252,6 +284,11 @@ class LMMInterface:
                 time.sleep(0.5)
 
         self._log_error(f"Failed to get valid response from LMM after {retries} attempts.")
+
+        if config.LMM_FALLBACK_ENABLED:
+             self._log_warning("Returning fallback response due to LMM failure.")
+             return self.get_fallback_response()
+
         return None
 
     def _clean_json_string(self, text):
@@ -262,7 +299,7 @@ class LMMInterface:
         text = re.sub(r'```$', '', text, flags=re.MULTILINE)
         return text.strip()
 
-    def get_intervention_suggestion(self, processed_analysis):
+    def get_intervention_suggestion(self, processed_analysis: LMMResponse) -> Optional[Dict[str, Any]]:
         """
         Extracts an intervention suggestion from the LMM's analysis.
         """
@@ -343,11 +380,15 @@ if __name__ == '__main__':
 
     requests.post = mock_post_invalid_key
     # Provide minimal context to pass the "No data provided" check
+    # Disable fallback for this test to check validation failure
+    orig_fallback = config.LMM_FALLBACK_ENABLED
+    config.LMM_FALLBACK_ENABLED = False
+
     res2 = lmm_interface.process_data(user_context={"sensor_metrics": {}})
     if res2 is None:
-        print("PASSED: Invalid schema rejected.")
+        print("PASSED: Invalid schema rejected (Fallback disabled).")
     else:
-        print(f"FAILED: Invalid schema accepted. Result: {res2}")
+        print(f"FAILED: Invalid schema accepted or fallback used. Result: {res2}")
 
     print("\n--- Test 3: Invalid Schema (Out of Bounds) ---")
     def mock_post_invalid_bounds(url, json=None, timeout=None):
@@ -376,3 +417,16 @@ if __name__ == '__main__':
     else:
         print(f"FAILED: Out of bounds value accepted. Result: {res3}")
 
+    print("\n--- Test 4: Fallback Behavior ---")
+    config.LMM_FALLBACK_ENABLED = True
+    def mock_post_fail(url, json=None, timeout=None):
+        raise requests.exceptions.ConnectionError("Failed")
+
+    requests.post = mock_post_fail
+    res4 = lmm_interface.process_data(user_context={"sensor_metrics": {}})
+    if res4 and res4.get("_meta", {}).get("is_fallback"):
+        print("PASSED: Fallback response received.")
+    else:
+         print(f"FAILED: Fallback not received. Result: {res4}")
+
+    config.LMM_FALLBACK_ENABLED = orig_fallback
