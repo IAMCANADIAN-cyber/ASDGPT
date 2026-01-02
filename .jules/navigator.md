@@ -11,3 +11,7 @@
 ## 2026-01-02 - [Async LMM Processing]
 **Learning:** `LogicEngine` was synchronously waiting for `LMMInterface` (local LLM calls), which froze the main loop for seconds, causing sensor data drops and UI lag.
 **Action:** Refactored `LogicEngine` to run LMM analysis in a background thread (`_run_lmm_analysis_async`). Added `tests/test_async_logic.py` to verify non-blocking behavior.
+
+## 2026-01-02 - [LMM Benchmark]
+**Learning:** High latency in the LMM loop is a critical risk for an "always-on" co-regulator. A dedicated benchmark script (`tools/lmm_benchmark.py`) is needed to continuously monitor round-trip times and catch regressions.
+**Action:** Created `tools/lmm_benchmark.py` and validated it with a mock mode. Future runs should run this against the actual local LLM to verify the <2s latency target.
