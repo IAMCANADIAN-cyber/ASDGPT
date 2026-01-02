@@ -108,12 +108,33 @@ class ACRTrayIcon:
             self.current_icon_state = status
             if self.tray_icon:
                 self.tray_icon.icon = self.icons[status]
-            print(f"Tray icon updated to: {status}")
+            # Logging handled by caller or kept minimal to avoid spam
         else:
             self.current_icon_state = "default"
             if self.tray_icon:
                 self.tray_icon.icon = self.icons["default"]
             print(f"Tray icon updated to default (unknown status: {status})")
+
+    def update_tooltip(self, state_info):
+        """
+        Updates the tooltip with the provided state information.
+        :param state_info: A dictionary or string containing state details.
+        """
+        if not self.tray_icon:
+            return
+
+        tooltip_text = config.APP_NAME # Default
+
+        if isinstance(state_info, dict):
+            # Format: "A: 50 | E: 80 | F: 50" (Shortened for tooltip)
+            arousal = state_info.get("arousal", "?")
+            energy = state_info.get("energy", "?")
+            focus = state_info.get("focus", "?")
+            tooltip_text = f"{config.APP_NAME}\nA: {arousal} | E: {energy} | F: {focus}"
+        elif isinstance(state_info, str):
+            tooltip_text = f"{config.APP_NAME}\n{state_info}"
+
+        self.tray_icon.title = tooltip_text
 
     def flash_icon(self, flash_status="active", original_status=None, duration=0.5, flashes=2):
         """Briefly changes the icon to indicate an event (e.g., intervention)."""

@@ -49,6 +49,7 @@ class Application:
 
         self.tray_icon: ACRTrayIcon = ACRTrayIcon(self)
         self.logic_engine.tray_callback = self.update_tray_status_and_notify
+        self.logic_engine.state_update_callback = self.update_tray_tooltip
         self.logic_engine.notification_callback = self.send_notification
 
         # self._setup_hotkeys()
@@ -112,6 +113,10 @@ class Application:
             self.data_logger.log_info(log_msg)
             if new_mode == "active" and old_mode == "snoozed":
                  self.intervention_engine.notify_mode_change(new_mode, "Snooze ended. Co-regulator active.")
+
+    def update_tray_tooltip(self, state_info: dict) -> None:
+        if self.tray_icon:
+            self.tray_icon.update_tooltip(state_info)
 
     def on_cycle_mode_pressed(self, from_tray: bool = False) -> None:
         with self._sensor_lock:
