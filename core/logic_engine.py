@@ -40,6 +40,7 @@ class LogicEngine:
         self.video_activity: float = 0.0
         self.face_metrics: dict = {"face_detected": False, "face_count": 0}
         self.video_analysis: dict = {}
+        self.audio_analysis: dict = {}
 
         # LMM trigger logic
         self.last_lmm_call_time: float = 0
@@ -165,11 +166,17 @@ class LogicEngine:
         with self._lock:
             self.last_audio_chunk = audio_chunk
 
-            # Calculate audio level (RMS)
-            if len(audio_chunk) > 0:
-                self.audio_level = np.sqrt(np.mean(audio_chunk**2))
+            # Use AudioSensor analysis if available
+            if self.audio_sensor and hasattr(self.audio_sensor, 'analyze_chunk'):
+                self.audio_analysis = self.audio_sensor.analyze_chunk(audio_chunk)
+                self.audio_level = self.audio_analysis.get('rms', 0.0)
             else:
-                self.audio_level = 0.0
+                # Fallback calculation
+                if len(audio_chunk) > 0:
+                    self.audio_level = np.sqrt(np.mean(audio_chunk**2))
+                else:
+                    self.audio_level = 0.0
+                self.audio_analysis = {"rms": self.audio_level}
 
         self.logger.log_debug(f"Processed audio chunk. Level: {self.audio_level:.4f}")
 
@@ -206,7 +213,8 @@ class LogicEngine:
                     "video_activity": float(self.video_activity),
                     "face_detected": bool(self.face_metrics.get("face_detected", False)),
                     "face_count": int(self.face_metrics.get("face_count", 0)),
-                    "video_analysis": self.video_analysis
+                    "video_analysis": self.video_analysis,
+                    "audio_analysis": self.audio_analysis
                 },
                 "current_state_estimation": self.state_engine.get_state()
             }
