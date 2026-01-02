@@ -17,6 +17,7 @@ class LogicEngine:
         self.snooze_end_time: float = 0
         self.previous_mode_before_pause: str = config.DEFAULT_MODE
         self.tray_callback: Optional[Callable[[str, Optional[str]], None]] = None
+        self.state_update_callback: Optional[Callable[[dict], None]] = None
         self.notification_callback: Optional[Callable[[str, str], None]] = None
         self.audio_sensor: Optional[Any] = audio_sensor
         self.video_sensor: Optional[Any] = video_sensor
@@ -229,6 +230,10 @@ class LogicEngine:
                 # Update state estimation (StateEngine should be thread-safe or we assume simple updates)
                 self.state_engine.update(analysis)
                 self.logger.log_info("LMM analysis complete and state updated.")
+
+                # Update tray tooltip with new state
+                if hasattr(self, 'state_update_callback') and self.state_update_callback:
+                    self.state_update_callback(self.state_engine.get_state())
 
             if analysis and self.intervention_engine:
                 suggestion = self.lmm_interface.get_intervention_suggestion(analysis)
