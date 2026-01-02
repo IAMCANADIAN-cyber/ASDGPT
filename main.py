@@ -49,6 +49,7 @@ class Application:
 
         self.tray_icon: ACRTrayIcon = ACRTrayIcon(self)
         self.logic_engine.tray_callback = self.update_tray_status_and_notify
+        self.logic_engine.notification_callback = self.send_notification
 
         # self._setup_hotkeys()
 
@@ -91,6 +92,11 @@ class Application:
         self.intervention_engine.register_feedback("unhelpful")
         if self.tray_icon: # Example: quick flash
              self.tray_icon.flash_icon(flash_status=self.logic_engine.get_mode(), duration=0.3, flashes=1)
+
+    def send_notification(self, title: str, message: str) -> None:
+        """Sends a notification to the user via the tray icon."""
+        if self.tray_icon:
+            self.tray_icon.notify_user(title, message)
 
     # --- Existing Methods (potentially updated) ---
     def update_tray_status_and_notify(self, new_mode: str, old_mode: Optional[str] = None) -> None:
