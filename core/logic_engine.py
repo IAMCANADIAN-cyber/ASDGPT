@@ -239,6 +239,9 @@ class LogicEngine:
                 self.state_engine.update(analysis)
                 self.logger.log_info("LMM analysis complete and state updated.")
 
+                # Log state update event
+                self.logger.log_event("state_update", self.state_engine.get_state())
+
                 # Update tray tooltip with new state
                 if hasattr(self, 'state_update_callback') and self.state_update_callback:
                     self.state_update_callback(self.state_engine.get_state())
@@ -271,6 +274,7 @@ class LogicEngine:
             return
 
         self.logger.log_info(f"Triggering LMM analysis (Reason: {reason})...")
+        self.logger.log_event("lmm_trigger", {"reason": reason})
 
         # Run in background thread to avoid blocking main loop
         self.lmm_thread = threading.Thread(
