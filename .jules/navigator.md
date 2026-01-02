@@ -7,3 +7,7 @@
 **Action:** Created `tools/intervention_replay_harness.py` and used it to verify Milestone 2.
 **Learning:** LMM reliability improves significantly when "grounded" to specific IDs. By injecting the list of available intervention IDs into the system prompt, we ensure the LMM outputs valid actions that the system can execute, rather than hallucinating generic advice.
 **Action:** Updated `LMMInterface` system instruction to include the library's intervention IDs.
+
+## 2026-01-02 - [Async LMM Processing]
+**Learning:** `LogicEngine` was synchronously waiting for `LMMInterface` (local LLM calls), which froze the main loop for seconds, causing sensor data drops and UI lag.
+**Action:** Refactored `LogicEngine` to run LMM analysis in a background thread (`_run_lmm_analysis_async`). Added `tests/test_async_logic.py` to verify non-blocking behavior.
