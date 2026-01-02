@@ -5,6 +5,16 @@ import threading
 from typing import Optional, Any, Dict, List
 from .intervention_library import InterventionLibrary
 
+# For sound playback
+try:
+    import sounddevice as sd
+    import scipy.io.wavfile as wav
+    import numpy as np
+    SOUND_AVAILABLE = True
+except ImportError:
+    SOUND_AVAILABLE = False
+    print("Warning: sounddevice or scipy not available. Sound playback disabled.")
+
 class InterventionEngine:
     def __init__(self, logic_engine: Any, app_instance: Optional[Any] = None) -> None:
         self.logic_engine = logic_engine
@@ -50,12 +60,31 @@ class InterventionEngine:
             print(log_message)
 
     def _play_sound(self, sound_file_path: str) -> None:
-        # Placeholder for playing a sound
+        """Plays a sound file using sounddevice if available."""
         log_message = f"PLAYING_SOUND: '{sound_file_path}'"
         if self.app and self.app.data_logger:
             self.app.data_logger.log_info(log_message)
         else:
             print(log_message)
+
+        if not SOUND_AVAILABLE:
+            if self.app and self.app.data_logger:
+                self.app.data_logger.log_warning("Sound playback skipped: dependencies missing.")
+            return
+
+        try:
+            # Read and play the file
+            # Note: This is a synchronous (blocking) play in this thread, which is what we want for the sequence
+            # unless we want to start it and wait.
+            fs, data = wav.read(sound_file_path)
+            sd.play(data, fs)
+            sd.wait() # Wait until file is done playing
+        except Exception as e:
+            err_msg = f"Failed to play sound '{sound_file_path}': {e}"
+            if self.app and self.app.data_logger:
+                self.app.data_logger.log_error(err_msg)
+            else:
+                print(f"ERROR: {err_msg}")
 
     def _show_visual_prompt(self, image_path_or_text: str) -> None:
         # Placeholder for showing a visual prompt (e.g., a window with an image or text)
