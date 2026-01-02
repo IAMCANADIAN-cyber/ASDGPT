@@ -1,119 +1,248 @@
 import cv2
 import time
-import numpy as np
+import os
+import config # For CAMERA_INDEX
 
 class VideoSensor:
-    def __init__(self, camera_index=0):
-        self.camera_index = camera_index
+    def __init__(self, camera_index=None, data_logger=None):
+        self.camera_index = camera_index if camera_index is not None else config.CAMERA_INDEX
+        self.logger = data_logger
         self.cap = None
-        self.last_frame = None
-        self._initialize_camera()
+        self.error_state = False
+        self.last_error_message = ""
+        self.retry_delay = 30  # seconds
+        self.last_retry_time = 0
+        self.face_cascade = None
 
-        # Load Haarcascade for face detection
-        # Ensure the path is correct or use a system path
-        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        self.face_cascade = cv2.CascadeClassifier(cascade_path)
-        if self.face_cascade.empty():
-            print("Error: Could not load face cascade classifier.")
+        self._initialize_face_detection()
+        self._initialize_capture()
 
-    def _initialize_camera(self):
+    def _initialize_face_detection(self):
+        try:
+            # cv2.data.haarcascades ensures we point to the installed data directory
+            cascade_path = os.path.join(cv2.data.haarcascades, 'haarcascade_frontalface_default.xml')
+            if not os.path.exists(cascade_path):
+                self._log_warning(f"Haar cascade file not found at {cascade_path}. Face detection disabled.")
+                return
+
+            self.face_cascade = cv2.CascadeClassifier(cascade_path)
+            if self.face_cascade.empty():
+                self._log_warning("Failed to load Haar cascade classifier. Face detection disabled.")
+                self.face_cascade = None
+            else:
+                self._log_info("Face detection initialized successfully.")
+        except Exception as e:
+            self._log_warning(f"Exception initializing face detection: {e}")
+            self.face_cascade = None
+
+    def _log_info(self, message):
+        if self.logger: self.logger.log_info(f"VideoSensor: {message}")
+        else: print(f"INFO: VideoSensor: {message}")
+
+    def _log_warning(self, message):
+        if self.logger: self.logger.log_warning(f"VideoSensor: {message}")
+        else: print(f"WARNING: VideoSensor: {message}")
+
+    def _log_error(self, message, details=""):
+        full_message = f"VideoSensor: {message}"
+        if self.logger: self.logger.log_error(full_message, details)
+        else: print(f"ERROR: {full_message} | Details: {details}")
+        self.last_error_message = message # Store the most recent error
+
+    def _initialize_capture(self):
+        self._log_info(f"Attempting to initialize video capture on index {self.camera_index}...")
         try:
             self.cap = cv2.VideoCapture(self.camera_index)
             if not self.cap.isOpened():
-                print(f"Warning: Could not open video camera {self.camera_index}.")
-                self.cap = None
+                self.error_state = True
+                error_msg = f"Failed to open video capture on index {self.camera_index}."
+                self._log_error(error_msg)
+                # No return here, get_frame will handle retry if error_state is True
+            else:
+                self.error_state = False
+                self.last_error_message = ""
+                self._log_info(f"Video capture initialized successfully on index {self.camera_index}.")
+                # You might want to read a frame here to confirm it works fully
+                ret, frame = self.cap.read()
+                if not ret or frame is None:
+                    self.error_state = True
+                    error_msg = f"Successfully opened camera index {self.camera_index} but failed to read initial frame."
+                    self._log_error(error_msg)
+                    if self.cap: self.cap.release()
+                    self.cap = None
+                else:
+                    self._log_info("Initial frame read successfully.")
+
         except Exception as e:
-            print(f"Error initializing camera: {e}")
+            self.error_state = True
+            error_msg = f"Exception during video capture initialization on index {self.camera_index}."
+            self._log_error(error_msg, str(e))
+            if self.cap:
+                self.cap.release()
             self.cap = None
 
+        self.last_retry_time = time.time() # Set last_retry_time after an attempt
+
     def get_frame(self):
-        if self.cap is None or not self.cap.isOpened():
-             # Try to reconnect occasionally?
-             return None
+        if self.error_state:
+            if time.time() - self.last_retry_time >= self.retry_delay:
+                self._log_info("Attempting to re-initialize video capture due to previous error...")
+                self._initialize_capture() # Attempt to re-initialize
 
-        ret, frame = self.cap.read()
-        if not ret:
-            print("Warning: Failed to capture video frame.")
-            return None
+            if self.error_state: # If still in error state after retry attempt
+                return None, self.last_error_message # Indicate error and return last message
+            # If re-initialization was successful, error_state is false, proceed to read frame
 
-        return frame
+        if not self.cap or not self.cap.isOpened():
+            # This case should ideally be caught by error_state, but as a safeguard:
+            if not self.error_state: # If not already marked as error, something new happened
+                self._log_error("Video capture is not open, though not in persistent error state.")
+                self.error_state = True # Mark as error
+            # No retry logic here, as it's handled by the error_state check at the beginning
+            return None, "Video capture not available."
 
-    def calculate_activity(self, frame):
-        """
-        Calculates activity level for a given frame.
-        """
-        if frame is None:
-            return 0.0
+        try:
+            ret, frame = self.cap.read()
+            if not ret:
+                self.error_state = True
+                error_msg = "Failed to read frame from video capture."
+                self._log_error(error_msg)
+                return None, error_msg
 
-        # Convert to grayscale for simple diff
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # If we successfully read a frame, ensure error_state is False
+            if self.error_state: # Was in error, but now working
+                self._log_info("Video sensor recovered and reading frames.")
+                self.error_state = False
+                self.last_error_message = ""
 
-        # Resize for performance
-        gray = cv2.resize(gray, (100, 100))
-
-        activity = 0.0
-        if self.last_frame is not None:
-            # Calculate absolute difference
-            diff = cv2.absdiff(self.last_frame, gray)
-            # Mean difference
-            score = np.mean(diff)
-            # Normalize (arbitrary scaling factor based on testing)
-            activity = min(1.0, score / 50.0)
-
-        self.last_frame = gray
-        return activity
-
-    def get_activity(self):
-        """
-        Calculates a simple 'activity level' based on pixel differences between frames.
-        Returns a float 0.0 - 1.0 (normalized roughly).
-        """
-        frame = self.get_frame()
-        return self.calculate_activity(frame)
+            return frame, None # Return frame and no error
+        except Exception as e:
+            self.error_state = True
+            error_msg = "Exception while reading frame."
+            self._log_error(error_msg, str(e))
+            return None, error_msg
 
     def analyze_frame(self, frame):
         """
-        Detects faces and estimates basic posture metrics.
-        Returns a dict.
+        Analyzes the frame for specific features (currently face detection).
+        Returns a dictionary of metrics.
         """
-        if frame is None:
-            return {}
-
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-        # Detect faces
-        faces = self.face_cascade.detectMultiScale(
-            gray,
-            scaleFactor=1.1,
-            minNeighbors=5,
-            minSize=(30, 30)
-        )
-
         metrics = {
-            "face_detected": len(faces) > 0,
-            "face_count": len(faces),
-            "face_locations": [], # List of [x, y, w, h]
-            "face_size_ratio": 0.0, # Largest face width / image width
-            "vertical_position": 0.0, # Center of face Y / image height
-            "horizontal_position": 0.0 # Center of face X / image width
+            "face_detected": False,
+            "face_count": 0,
+            "face_locations": []
         }
 
-        if len(faces) > 0:
-            # Find largest face
-            largest_face = max(faces, key=lambda f: f[2] * f[3])
-            x, y, w, h = largest_face
+        if frame is None:
+            return metrics
 
-            # Convert all to list for JSON serialization
-            metrics["face_locations"] = [list(f) for f in faces]
+        if not self.face_cascade:
+             return metrics
 
-            img_h, img_w = frame.shape[:2]
+        try:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # Detect faces
+            faces = self.face_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=5,
+                minSize=(30, 30)
+            )
 
-            metrics["face_size_ratio"] = float(w) / img_w
-            metrics["vertical_position"] = float(y + h/2) / img_h
-            metrics["horizontal_position"] = float(x + w/2) / img_w
+            if len(faces) > 0:
+                metrics["face_detected"] = True
+                metrics["face_count"] = len(faces)
+                # Convert numpy int32 to python int for JSON serialization.
+                # Returning list of lists to be consistent with JSON and tests.
+                metrics["face_locations"] = [[int(x), int(y), int(w), int(h)] for (x, y, w, h) in faces]
+
+                # --- Posture / Proximity Metrics ---
+                # We take the largest face (closest/main user) for analysis
+                # faces contains (x, y, w, h)
+                # Since len(faces) > 0, this is safe
+                largest_face = max(faces, key=lambda f: f[2] * f[3])
+                x, y, w, h = largest_face
+                frame_h, frame_w = frame.shape[:2]
+
+                # 1. Face Size Ratio (Proximity/Leaning)
+                # (w * h) / (frame_w * frame_h)
+                # Larger ratio = closer to camera (leaning in)
+                metrics["face_size_ratio"] = float((w * h) / (frame_w * frame_h))
+
+                # 2. Vertical Position (Slouching vs Upright)
+                # Center Y relative to frame height (0.0 = top, 1.0 = bottom)
+                # Lower value (higher on screen) = more upright
+                # Higher value (lower on screen) = slouching
+                center_y = y + (h / 2)
+                metrics["vertical_position"] = float(center_y / frame_h)
+
+                # 3. Horizontal Position (Centering)
+                # Center X relative to frame width (0.0 = left, 1.0 = right)
+                center_x = x + (w / 2)
+                metrics["horizontal_position"] = float(center_x / frame_w)
+
+        except Exception as e:
+            self._log_error(f"Error during face detection: {e}")
 
         return metrics
 
     def release(self):
-        if self.cap:
+        if self.cap and self.cap.isOpened():
+            self._log_info("Releasing video capture device.")
             self.cap.release()
+        self.cap = None
+        self.error_state = False # Reset error state on explicit release
+
+    def has_error(self):
+        return self.error_state
+
+    def get_last_error(self):
+        return self.last_error_message
+
+if __name__ == '__main__':
+    # Example Usage (requires a webcam or will show errors)
+    # Mock DataLogger for testing
+    class MockDataLogger:
+        def log_info(self, msg): print(f"MOCK_LOG_INFO: {msg}")
+        def log_warning(self, msg): print(f"MOCK_LOG_WARN: {msg}")
+        def log_error(self, msg, details=""): print(f"MOCK_LOG_ERROR: {msg} | Details: {details}")
+
+    mock_logger = MockDataLogger()
+
+    # Test with default camera index (usually 0)
+    # Set a high index like 99 to test error case if you don't have multiple cameras
+    # test_camera_index = 99
+    test_camera_index = config.CAMERA_INDEX
+
+    print(f"--- Testing VideoSensor with camera index {test_camera_index} ---")
+    vs = VideoSensor(camera_index=test_camera_index, data_logger=mock_logger)
+
+    if vs.has_error():
+        print(f"Initial error: {vs.get_last_error()}")
+        print(f"Will attempt retry after {vs.retry_delay} seconds if get_frame is called.")
+
+    for i in range(5): # Try to get a few frames
+        print(f"\nAttempting to get frame {i+1}...")
+        frame, error = vs.get_frame()
+        if error:
+            print(f"Error getting frame: {error}")
+            if vs.has_error() and i < 2 : # If error, wait for retry period for first couple of attempts
+                 print(f"Sensor in error state. Waiting for {vs.retry_delay + 1}s to allow retry logic...")
+                 time.sleep(vs.retry_delay +1)
+            elif vs.has_error(): # If still erroring, don't wait full period for subsequent tests
+                print("Sensor still in error state. Continuing test without long wait.")
+                time.sleep(1)
+
+        elif frame is not None:
+            print(f"Frame {i+1} received successfully. Shape: {frame.shape}")
+            # cv2.imshow("Test Frame", frame) # Uncomment to display frame
+            # if cv2.waitKey(1) & 0xFF == ord('q'):
+            #    break
+            time.sleep(0.5) # Simulate some processing
+        else:
+            print(f"Frame {i+1} was None, but no explicit error string returned (should not happen). Has_Error: {vs.has_error()}")
+            time.sleep(1)
+
+    vs.release()
+    # cv2.destroyAllWindows() # If imshow was used
+    print("--- VideoSensor test finished ---")
