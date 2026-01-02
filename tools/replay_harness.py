@@ -66,6 +66,21 @@ class MockInterventionEngine:
     def start_intervention(self, suggestion):
         self.interventions_triggered.append(suggestion)
 
+class SynchronousLogicEngine(LogicEngine):
+    """
+    A subclass of LogicEngine that runs LMM analysis synchronously for testing.
+    """
+    def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
+        if not self.lmm_interface:
+            return
+
+        lmm_payload = self._prepare_lmm_data(trigger_reason=reason)
+        if not lmm_payload:
+            return
+
+        # Directly call the async worker method synchronously
+        self._run_lmm_analysis_async(lmm_payload, allow_intervention)
+
 class ReplayHarness:
     def __init__(self, dataset_path):
         self.dataset_path = dataset_path
@@ -74,12 +89,18 @@ class ReplayHarness:
         self.mock_lmm = MockLMMInterface()
         self.mock_intervention = MockInterventionEngine()
 
-        # Initialize LogicEngine with mocks
-        self.logic_engine = LogicEngine(logger=self.logger, lmm_interface=self.mock_lmm)
+        # Initialize LogicEngine with mocks using the synchronous subclass
+        self.logic_engine = SynchronousLogicEngine(logger=self.logger, lmm_interface=self.mock_lmm)
         self.logic_engine.set_intervention_engine(self.mock_intervention)
 
         # Adjust settings for faster replay
         self.logic_engine.min_lmm_interval = 0 # Allow immediate triggers
+        self.logic_engine.lmm_call_interval = 2 # Short interval
+
+        # Override thresholds to match dataset generation assumptions
+        # Assuming dataset uses values > 0.5 for high audio and > 20 for high video
+        self.logic_engine.audio_threshold_high = 0.5
+        self.logic_engine.video_activity_threshold_high = 20.0
 
     def _load_events(self):
         with open(self.dataset_path, 'r') as f:
@@ -104,23 +125,14 @@ class ReplayHarness:
             self.mock_lmm.set_expectation(event['expected_outcome'])
             self.mock_intervention.interventions_triggered = []
 
-            # 2. Inject Sensor Data
-            # LogicEngine calculates:
-            # Audio: RMS
-            # Video: Mean(AbsDiff(Frame1, Frame2))
+            # Reset LogicEngine state slightly to ensure clean slate for event
+            self.logic_engine.last_lmm_call_time = 0 # Force eligible for periodic check if needed
 
-            # To get specific Audio RMS 'L':
-            # Create array of value 'L'. Sqrt(Mean(L^2)) = L.
+            # 2. Inject Sensor Data
             target_audio = event['input']['audio_level']
             audio_chunk = np.full(1024, target_audio)
 
-            # To get specific Video Activity 'A':
-            # Frame 1: All 0s
-            # Frame 2: All 'A's
-            # Diff = A. Mean = A.
             target_video = event['input']['video_activity']
-            # Ensure target_video is within uint8 range (0-255) for this simplistic generation
-            # If it's larger (unlikely for "mean diff"), we'd need a different strategy, but max here is usually < 255.
             pixel_val = min(255, int(target_video))
 
             frame1 = np.zeros((100, 100, 3), dtype=np.uint8)
@@ -132,10 +144,6 @@ class ReplayHarness:
             self.logic_engine.process_audio_data(audio_chunk)
 
             # 3. Trigger LogicEngine Update
-            # We need to reset the timer to ensure it *can* trigger if conditions met
-            # But we also want to respect the "trigger_reason" logic.
-            # If input > threshold, it triggers.
-
             # Force time to allow trigger
             self.logic_engine.last_lmm_call_time = time.time() - 100
 
@@ -146,13 +154,16 @@ class ReplayHarness:
             actual_interventions = self.mock_intervention.interventions_triggered
 
             if expected_intervention:
-                if any(i['type'] == expected_intervention for i in actual_interventions):
+                # Check if ANY of the triggered interventions match the type
+                match = next((i for i in actual_interventions if i['type'] == expected_intervention), None)
+                if match:
                     print(f"  [SUCCESS] Triggered expected intervention: {expected_intervention}")
                     results["correct_triggers"] += 1
                     results["triggered_interventions"] += 1
                 else:
                     if len(actual_interventions) > 0:
-                        print(f"  [FAILURE] Expected {expected_intervention}, got {[i['type'] for i in actual_interventions]}")
+                        got_types = [i['type'] for i in actual_interventions]
+                        print(f"  [FAILURE] Expected {expected_intervention}, got {got_types}")
                         results["false_positives"] += 1 # Wrong one triggered
                     else:
                         print(f"  [FAILURE] Expected {expected_intervention}, got NONE")
@@ -162,16 +173,17 @@ class ReplayHarness:
                      print(f"  [SUCCESS] Correctly triggered NO intervention.")
                      results["correct_triggers"] += 1
                 else:
-                    print(f"  [FAILURE] Expected NONE, got {[i['type'] for i in actual_interventions]}")
+                    got_types = [i['type'] for i in actual_interventions]
+                    print(f"  [FAILURE] Expected NONE, got {got_types}")
                     results["false_positives"] += 1
                     results["triggered_interventions"] += 1
 
         results["duration"] = time.time() - results["start_time"]
         results["intervention_rate_per_hour_simulated"] = (results["triggered_interventions"] / len(self.events)) * (3600 / 30) # Approx
 
-        self._print_report(results)
+        return results
 
-    def _print_report(self, results):
+    def print_report(self, results):
         print("\n" + "="*40)
         print("REPLAY HARNESS REPORT")
         print("="*40)
@@ -180,9 +192,11 @@ class ReplayHarness:
         print(f"False Positives: {results['false_positives']}")
         print(f"False Negatives: {results['false_negatives']}")
         print("-" * 20)
-        print(f"Accuracy: {(results['correct_triggers'] / results['total_events']) * 100:.2f}%")
+        percentage = (results['correct_triggers'] / results['total_events']) * 100 if results['total_events'] > 0 else 0
+        print(f"Accuracy: {percentage:.2f}%")
         print("="*40)
 
 if __name__ == "__main__":
     harness = ReplayHarness("datasets/synthetic_events.json")
-    harness.run()
+    results = harness.run()
+    harness.print_report(results)
