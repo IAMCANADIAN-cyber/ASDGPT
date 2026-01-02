@@ -148,6 +148,63 @@ class AudioSensor:
     def get_last_error(self):
         return self.last_error_message
 
+    def analyze_chunk(self, chunk):
+        """
+        Analyzes an audio chunk to extract features.
+        Returns a dictionary of metrics: rms, spectral_centroid, pitch_estimation, zcr.
+        """
+        metrics = {
+            "rms": 0.0,
+            "zcr": 0.0,
+            "spectral_centroid": 0.0,
+            "pitch_estimation": 0.0
+        }
+
+        if chunk is None or len(chunk) == 0:
+            return metrics
+
+        try:
+            # Flatten if multi-channel (take first channel or average)
+            if chunk.ndim > 1:
+                audio_data = chunk[:, 0]
+            else:
+                audio_data = chunk
+
+            # 1. RMS (Loudness)
+            metrics["rms"] = float(np.sqrt(np.mean(audio_data**2)))
+
+            # Normalize for other calculations (avoid div by zero, but handle silence)
+            if metrics["rms"] < 1e-6:
+                return metrics # Silence
+
+            # 2. Zero Crossing Rate (ZCR) - Proxy for "noisiness" or high frequency content
+            zero_crossings = np.nonzero(np.diff(audio_data > 0))[0]
+            metrics["zcr"] = float(len(zero_crossings) / len(audio_data))
+
+            # 3. Spectral Features (Centroid) using FFT
+            # Windowing to reduce leakage
+            windowed_data = audio_data * np.hanning(len(audio_data))
+            spectrum = np.fft.rfft(windowed_data)
+            magnitude = np.abs(spectrum)
+            freqs = np.fft.rfftfreq(len(audio_data), d=1.0/self.sample_rate)
+
+            # Spectral Centroid: center of mass of the spectrum
+            sum_magnitude = np.sum(magnitude)
+            if sum_magnitude > 1e-6:
+                metrics["spectral_centroid"] = float(np.sum(freqs * magnitude) / sum_magnitude)
+
+            # 4. Simple Pitch Estimation (Dominant Frequency)
+            # Find peak frequency (ignoring very low freq DC/rumble < 50Hz)
+            valid_idx = np.where(freqs > 50)[0]
+            if len(valid_idx) > 0:
+                peak_idx = valid_idx[np.argmax(magnitude[valid_idx])]
+                metrics["pitch_estimation"] = float(freqs[peak_idx])
+
+        except Exception as e:
+            self._log_error(f"Error extracting audio features: {e}")
+
+        return metrics
+
 if __name__ == '__main__':
     class MockDataLogger:
         def log_info(self, msg): print(f"MOCK_LOG_INFO: {msg}")
@@ -164,7 +221,7 @@ if __name__ == '__main__':
         print(f"Initial error: {audio_sensor.get_last_error()}")
         print(f"Will attempt retry after {audio_sensor.retry_delay} seconds if get_chunk is called.")
 
-    for i in range(10): # Try to get a few chunks
+    for i in range(5): # Try to get a few chunks
         print(f"\nAttempting to get audio chunk {i+1}...")
         # Need to wait for buffer to fill if chunk_duration is long
         # time.sleep(audio_sensor.chunk_duration / 2) # Wait a bit for data to accumulate
@@ -182,6 +239,10 @@ if __name__ == '__main__':
 
         elif audio_chunk is not None:
             print(f"Audio chunk {i+1} received successfully. Shape: {audio_chunk.shape}, Max val: {np.max(audio_chunk):.4f}")
+            # Test Analysis
+            features = audio_sensor.analyze_chunk(audio_chunk)
+            print(f"Analysis: RMS={features['rms']:.4f}, ZCR={features['zcr']:.4f}, Centroid={features['spectral_centroid']:.2f}Hz, Pitch={features['pitch_estimation']:.2f}Hz")
+
             # Add some processing delay
             time.sleep(0.1)
         else:

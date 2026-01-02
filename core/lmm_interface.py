@@ -157,6 +157,13 @@ class LMMInterface:
             context_str += f"Trigger Reason: {user_context.get('trigger_reason', 'unknown')}\n"
             metrics = user_context.get('sensor_metrics', {})
             context_str += f"Audio Level (RMS): {metrics.get('audio_level', 0.0):.4f}\n"
+
+            # Add detailed audio analysis if available
+            audio_analysis = metrics.get('audio_analysis', {})
+            if audio_analysis:
+                context_str += f"Audio Pitch (est): {audio_analysis.get('pitch_estimation', 0.0):.2f} Hz\n"
+                context_str += f"Audio ZCR: {audio_analysis.get('zcr', 0.0):.4f}\n"
+
             context_str += f"Video Activity (Motion): {metrics.get('video_activity', 0.0):.2f}\n"
 
             est = user_context.get('current_state_estimation')
