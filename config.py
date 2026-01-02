@@ -89,3 +89,4 @@ LMM_FALLBACK_ENABLED = True # Return neutral state if LMM is offline
 
 USER_DATA_DIR = "user_data"
 SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
+EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")

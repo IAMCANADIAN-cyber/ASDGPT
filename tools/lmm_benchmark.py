@@ -2,6 +2,8 @@ import sys
 import os
 import time
 import logging
+import argparse
+from unittest.mock import MagicMock
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -18,7 +20,7 @@ class BenchmarkLogger:
     def log_error(self, msg, details=""): logging.error(f"{msg} | {details}")
     def log_debug(self, msg): logging.debug(msg)
 
-def run_benchmark():
+def run_benchmark(mock=False):
     print("----------------------------------------------------------------")
     print("Running LMM Benchmark")
     print("----------------------------------------------------------------")
@@ -28,6 +30,14 @@ def run_benchmark():
 
     print(f"Target URL: {lmm.llm_url}")
     print(f"Model ID: {config.LOCAL_LLM_MODEL_ID}")
+
+    if mock:
+        print("MOCK MODE ENABLED")
+        lmm.check_connection = MagicMock(return_value=True)
+        lmm.process_data = MagicMock(return_value={
+            "state_estimation": {"arousal": 50, "overload": 0, "focus": 50, "energy": 50, "mood": 50},
+            "suggestion": None
+        })
 
     # 1. Check Connection
     print("\n[1/3] Checking Connection...")
@@ -86,4 +96,8 @@ def run_benchmark():
     print("----------------------------------------------------------------")
 
 if __name__ == "__main__":
-    run_benchmark()
+    parser = argparse.ArgumentParser(description="Run LMM Benchmark")
+    parser.add_argument("--mock", action="store_true", help="Run in mock mode without actual LMM connection")
+    args = parser.parse_args()
+
+    run_benchmark(mock=args.mock)
