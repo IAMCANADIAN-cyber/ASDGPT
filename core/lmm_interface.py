@@ -285,6 +285,11 @@ class LMMInterface:
             if est:
                  context_str += f"Previous State: {est}\n"
 
+            # Add suppressed interventions
+            suppressed = user_context.get('suppressed_interventions')
+            if suppressed:
+                context_str += f"\nSuppressed Interventions (Do NOT suggest): {', '.join(suppressed)}\n"
+
         content_parts.append({"type": "text", "text": context_str})
 
         # 2. Image (Video Frame)

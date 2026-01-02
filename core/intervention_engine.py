@@ -241,6 +241,26 @@ class InterventionEngine:
         else:
             print(msg)
 
+    def get_suppressed_intervention_types(self) -> List[str]:
+        """Returns a list of currently suppressed intervention types/IDs."""
+        current_time = time.time()
+        # Clean up first (in memory, save will happen on next modification or load)
+        active_suppressions = []
+        keys_to_remove = []
+        for k, v in self.suppressed_interventions.items():
+            if v > current_time:
+                active_suppressions.append(k)
+            else:
+                keys_to_remove.append(k)
+
+        # Optional: Clean up expired ones from dict now to keep it fresh
+        if keys_to_remove:
+            for k in keys_to_remove:
+                del self.suppressed_interventions[k]
+            self._save_suppressions()
+
+        return active_suppressions
+
     def start_intervention(self, intervention_details: Dict[str, Any]) -> bool:
         """
         Starts an intervention.
