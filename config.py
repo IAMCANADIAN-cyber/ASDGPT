@@ -85,6 +85,7 @@ APP_NAME = "ACR"
 # LMM Configuration
 LOCAL_LLM_URL = "http://127.0.0.1:1234"
 LOCAL_LLM_MODEL_ID = "deepseek/deepseek-r1-0528-qwen3-8b"
+LMM_FALLBACK_ENABLED = True # Return neutral state if LMM is offline
 
 USER_DATA_DIR = "user_data"
 SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")

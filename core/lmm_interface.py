@@ -267,6 +267,60 @@ class LMMInterface:
             "max_tokens": 500
         }
 
+        # Retry logic
+        retries = 3
+        for attempt in range(retries):
+            try:
+                response = requests.post(self.llm_url, json=payload, timeout=20)
+                response.raise_for_status()
+
+                response_json = response.json()
+                content = response_json['choices'][0]['message']['content']
+
+                # Clean content (remove markdown code blocks if present)
+                clean_content = self._clean_json_string(content)
+
+                parsed_result = json.loads(clean_content)
+
+                # Validation Step
+                if self._validate_response_schema(parsed_result):
+                    self._log_info(f"Received valid JSON from LMM.")
+                    self._log_debug(f"LMM Response: {parsed_result}")
+                    return parsed_result
+                else:
+                    self._log_error(f"Response failed schema validation.", details=f"Parsed: {parsed_result}")
+                    # If schema is wrong, retrying might not help unless LLM hallucinated.
+                    # We continue loop to try again with a fresh generation.
+
+            except requests.exceptions.RequestException as e:
+                self._log_warning(f"Connection error (Attempt {attempt+1}/{retries}): {e}")
+                time.sleep(1)
+            except json.JSONDecodeError as e:
+                self._log_error(f"Failed to parse JSON response: {e}", details=f"Raw content: {content}")
+                # Retry allows chance for better formatting next time
+                time.sleep(0.5)
+            except KeyError as e:
+                self._log_error(f"Unexpected response structure: {e}", details=f"Response: {response_json}")
+                time.sleep(0.5)
+
+        self._log_error(f"Failed to get valid response from LMM after {retries} attempts.")
+
+        # Fallback to neutral state if enabled
+        if config.LMM_FALLBACK_ENABLED:
+            self._log_warning("Using offline fallback state due to LMM failure.")
+            return {
+                "state_estimation": {
+                    "arousal": 50,
+                    "overload": 0,
+                    "focus": 50,
+                    "energy": 50,
+                    "mood": 50
+                },
+                "suggestion": None,
+                "is_fallback": True
+            }
+
+        return None
         try:
             result = self._send_request_with_retry(payload)
             self._log_info(f"Received valid JSON from LMM.")
