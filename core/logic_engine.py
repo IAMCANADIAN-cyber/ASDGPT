@@ -235,6 +235,10 @@ class LogicEngine:
             )
 
             if analysis:
+                # Check if it was a fallback response
+                if analysis.get("fallback"):
+                     self.logger.log_warning("LMM analysis used fallback mechanism.")
+
                 # Update state estimation (StateEngine should be thread-safe or we assume simple updates)
                 self.state_engine.update(analysis)
                 self.logger.log_info("LMM analysis complete and state updated.")
