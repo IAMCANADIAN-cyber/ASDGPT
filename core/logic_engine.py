@@ -33,6 +33,7 @@ class LogicEngine:
 
         # Sensor metrics
         self.audio_level: float = 0.0
+        self.audio_features: dict = {}
         self.video_activity: float = 0.0
         self.face_metrics: dict = {"face_detected": False, "face_count": 0}
         self.video_analysis: dict = {}
@@ -155,13 +156,20 @@ class LogicEngine:
         with self._lock:
             self.last_audio_chunk = audio_chunk
 
-            # Calculate audio level (RMS)
-            if len(audio_chunk) > 0:
+            # Extract features (RMS, Pitch, Centroid)
+            if self.audio_sensor and hasattr(self.audio_sensor, 'extract_features'):
+                features = self.audio_sensor.extract_features(audio_chunk)
+                self.audio_level = features.get("rms", 0.0)
+                self.audio_features = features # Store full features for LMM
+            elif len(audio_chunk) > 0:
+                # Fallback to simple RMS
                 self.audio_level = np.sqrt(np.mean(audio_chunk**2))
+                self.audio_features = {"rms": self.audio_level}
             else:
                 self.audio_level = 0.0
+                self.audio_features = {}
 
-        self.logger.log_debug(f"Processed audio chunk. Level: {self.audio_level:.4f}")
+        self.logger.log_debug(f"Processed audio. RMS: {self.audio_level:.4f}, Features: {list(self.audio_features.keys())}")
 
     def _prepare_lmm_data(self, trigger_reason: str = "periodic") -> Optional[dict]:
         with self._lock:
@@ -193,6 +201,7 @@ class LogicEngine:
                 "trigger_reason": trigger_reason,
                 "sensor_metrics": {
                     "audio_level": float(self.audio_level),
+                    "audio_features": self.audio_features,
                     "video_activity": float(self.video_activity),
                     "face_detected": bool(self.face_metrics.get("face_detected", False)),
                     "face_count": int(self.face_metrics.get("face_count", 0)),

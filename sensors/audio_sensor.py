@@ -148,6 +148,72 @@ class AudioSensor:
     def get_last_error(self):
         return self.last_error_message
 
+    def extract_features(self, audio_chunk: np.ndarray) -> dict:
+        """
+        Extracts features from an audio chunk.
+        Returns a dictionary with:
+        - rms: Root Mean Square (Loudness)
+        - pitch_variance: Standard deviation of pitch (proxy for intonation)
+        - spectral_centroid: Center of mass of the spectrum (Brightness)
+        """
+        if audio_chunk is None or len(audio_chunk) == 0:
+            return {"rms": 0.0, "pitch_variance": 0.0, "spectral_centroid": 0.0}
+
+        # 1. RMS (Loudness)
+        # Handle multi-channel if necessary (take mean across channels)
+        if len(audio_chunk.shape) > 1:
+            data = np.mean(audio_chunk, axis=1)
+        else:
+            data = audio_chunk
+
+        rms = np.sqrt(np.mean(data**2))
+
+        # Avoid processing silence
+        if rms < 0.01:
+             return {"rms": float(rms), "pitch_variance": 0.0, "spectral_centroid": 0.0}
+
+        # 2. Spectral Centroid (Brightness)
+        # Compute FFT
+        fft_vals = np.fft.rfft(data)
+        fft_freqs = np.fft.rfftfreq(len(data), d=1.0/self.sample_rate)
+        magnitudes = np.abs(fft_vals)
+
+        sum_mag = np.sum(magnitudes)
+        if sum_mag > 0:
+            spectral_centroid = np.sum(fft_freqs * magnitudes) / sum_mag
+        else:
+            spectral_centroid = 0.0
+
+        # 3. Pitch Variance (Proxy using Zero Crossing Rate or Autocorrelation)
+        # Real pitch estimation (YIN, etc) is complex.
+        # For "Pitch Variance" across a single chunk (1s), we might look at
+        # variance of zero crossings or split chunk into mini-frames.
+        # Here we'll try a simple Zero Crossing Rate variance over sub-windows.
+
+        # Split 1s chunk into 10 frames (100ms each)
+        try:
+            frames = np.array_split(data, 10)
+            zcrs = []
+            for frame in frames:
+                # Count zero crossings
+                zero_crossings = np.nonzero(np.diff(frame > 0))[0]
+                zcr = len(zero_crossings) / len(frame)
+                zcrs.append(zcr)
+
+            # ZCR variance is naturally small.
+            # A constant tone has variance ~0.
+            # A chirp should have non-zero variance.
+            # We scale it up significantly to make it a readable score (0-100 range ideal).
+            pitch_variance = np.var(zcrs) * 10000
+        except Exception:
+            pitch_variance = 0.0
+
+        return {
+            "rms": float(rms),
+            "pitch_variance": float(pitch_variance),
+            "spectral_centroid": float(spectral_centroid)
+        }
+
 if __name__ == '__main__':
     class MockDataLogger:
         def log_info(self, msg): print(f"MOCK_LOG_INFO: {msg}")
