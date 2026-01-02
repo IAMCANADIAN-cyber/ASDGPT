@@ -205,6 +205,11 @@ class LogicEngine:
             # If we clear it, we might lose context if the LMM call fails and we retry.
             # However, standard practice here is to send snapshot.
 
+            # Fetch suppressed interventions if available
+            suppressed_list = []
+            if self.intervention_engine and hasattr(self.intervention_engine, 'get_suppressed_intervention_types'):
+                suppressed_list = self.intervention_engine.get_suppressed_intervention_types()
+
             context = {
                 "current_mode": self.current_mode,
                 "trigger_reason": trigger_reason,
@@ -216,7 +221,8 @@ class LogicEngine:
                     "video_analysis": self.video_analysis,
                     "audio_analysis": self.audio_analysis
                 },
-                "current_state_estimation": self.state_engine.get_state()
+                "current_state_estimation": self.state_engine.get_state(),
+                "suppressed_interventions": suppressed_list
             }
 
             return {
