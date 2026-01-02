@@ -257,7 +257,11 @@ class InterventionEngine:
                 # Expired, remove from list
                 del self.suppressed_interventions[intervention_type]
 
+        # Critical: If called from within an existing sequence or thread, this check might fail.
+        # But generally start_intervention is called from LogicEngine main thread.
+        # If an intervention is active, we generally want to ignore new ones unless we have a priority system (TODO).
         if self._intervention_active.is_set():
+            # FUTURE: If new intervention has higher priority (Tier 3 vs 1), stop current and start new.
             if logger:
                 logger.log_info(f"Intervention attempt ignored: An intervention is already active.")
             else:

@@ -22,12 +22,23 @@ class LMMInterface:
         "mood": <int 0-100>
       },
       "suggestion": {
-        "type": "<intervention_type_string>",
-        "message": "<text_to_speak_to_user>"
+        "id": "<intervention_id_string_from_library>",
+        "type": "<intervention_type_string_fallback>",
+        "message": "<text_to_speak_to_user_fallback>"
       }
     }
 
     If no intervention is needed, set "suggestion" to null.
+
+    Available Interventions (by ID):
+    [Physiology]: box_breathing, shoulder_drop, eye_strain_release, arousal_redirect
+    [Sensory]: audio_grounding, visual_scan, cold_water
+    [Cognitive]: context_switch, reality_check, task_chunking, doom_scroll_breaker
+    [Creative]: content_pivot, sultry_persona_prompt, public_persona_prompt
+
+    If you suggest one of these, use its exact ID in the "id" field. You may omit "message" if using an ID, as the system will handle the sequence.
+    If you need a custom ad-hoc intervention, leave "id" null and provide "type" and "message".
+
     Ensure your response is ONLY valid JSON, no markdown formatting.
     """
 
