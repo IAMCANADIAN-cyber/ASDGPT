@@ -252,6 +252,22 @@ class LMMInterface:
                 time.sleep(0.5)
 
         self._log_error(f"Failed to get valid response from LMM after {retries} attempts.")
+
+        # Fallback to neutral state if enabled
+        if config.LMM_FALLBACK_ENABLED:
+            self._log_warning("Using offline fallback state due to LMM failure.")
+            return {
+                "state_estimation": {
+                    "arousal": 50,
+                    "overload": 0,
+                    "focus": 50,
+                    "energy": 50,
+                    "mood": 50
+                },
+                "suggestion": None,
+                "is_fallback": True
+            }
+
         return None
 
     def _clean_json_string(self, text):
