@@ -4,6 +4,7 @@ import time
 import logging
 import argparse
 from unittest.mock import MagicMock
+import json
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -20,13 +21,75 @@ class BenchmarkLogger:
     def log_error(self, msg, details=""): logging.error(f"{msg} | {details}")
     def log_debug(self, msg): logging.debug(msg)
 
+def run_benchmark(use_mock=False):
 def run_benchmark(mock=False):
     print("----------------------------------------------------------------")
-    print("Running LMM Benchmark")
+    print(f"Running LMM Benchmark (Mock: {use_mock})")
     print("----------------------------------------------------------------")
 
     logger = BenchmarkLogger()
     lmm = LMMInterface(data_logger=logger)
+
+    if use_mock:
+        print("🛠️  Activating Mock Mode...")
+        # Patch requests.get and requests.post on the lmm instance or globally
+        import requests
+
+        # Mock Response Object
+        class MockResponse:
+            def __init__(self, json_data, status_code=200):
+                self._json_data = json_data
+                self.status_code = status_code
+
+            def json(self):
+                return self._json_data
+
+            def raise_for_status(self):
+                if self.status_code != 200:
+                    raise requests.exceptions.HTTPError(f"Mock Error {self.status_code}")
+
+        def mock_get(url, timeout=None):
+            # Simulate models endpoint
+            return MockResponse({"data": [{"id": "mock-model"}]})
+
+        def mock_post(url, json=None, timeout=None):
+            import json as json_lib  # Alias to avoid conflict with the argument 'json'
+            # Simulate latency
+            time.sleep(0.5)
+
+            # Simulate LMM response structure
+            response_content = {
+                "state_estimation": {
+                    "arousal": 42,
+                    "overload": 10,
+                    "focus": 85,
+                    "energy": 60,
+                    "mood": 75
+                },
+                "suggestion": {
+                    "id": "box_breathing",
+                    "type": "physiology",
+                    "message": "Breathe in..."
+                }
+            }
+
+            # Wrap in OpenAI format
+            full_response = {
+                "choices": [{
+                    "message": {
+                        "content": f"```json\n{json_lib.dumps(response_content)}\n```"
+                    }
+                }]
+            }
+            return MockResponse(full_response)
+
+        # Apply mocks
+        lmm.check_connection = lambda: True # Force connection check true for speed
+        requests.post = mock_post
+        # requests.get is used in check_connection, but we overrode that method directly above.
+        # But for completeness if we didn't override check_connection:
+        requests.get = mock_get
+
 
     print(f"Target URL: {lmm.llm_url}")
     print(f"Model ID: {config.LOCAL_LLM_MODEL_ID}")
@@ -97,6 +160,10 @@ def run_benchmark(mock=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run LMM Benchmark")
+    parser.add_argument("--mock", action="store_true", help="Run with mocked LMM responses")
+    args = parser.parse_args()
+
+    run_benchmark(use_mock=args.mock)
     parser.add_argument("--mock", action="store_true", help="Run in mock mode without actual LMM connection")
     args = parser.parse_args()
 

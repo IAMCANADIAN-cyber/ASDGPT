@@ -88,6 +88,12 @@ class LMMInterface:
         else:
              self.llm_url = base_url
 
+        # Circuit Breaker State
+        self.circuit_failures = 0
+        self.circuit_open_time = 0
+        self.circuit_max_failures = getattr(config, 'LMM_CIRCUIT_BREAKER_MAX_FAILURES', 5)
+        self.circuit_cooldown = getattr(config, 'LMM_CIRCUIT_BREAKER_COOLDOWN', 60)
+
         self._log_info(f"LMMInterface initializing with URL: {self.llm_url}")
 
     def _log_info(self, message):
@@ -229,6 +235,18 @@ class LMMInterface:
         """
         self._log_info("Sending data to local LMM...")
 
+        # Circuit Breaker Check
+        if self.circuit_failures >= self.circuit_max_failures:
+            if time.time() - self.circuit_open_time < self.circuit_cooldown:
+                self._log_warning(f"Circuit breaker open. Skipping LMM call. (Cooldown: {self.circuit_cooldown}s)")
+                if getattr(config, 'LMM_FALLBACK_ENABLED', False):
+                    return self._get_fallback_response()
+                return None
+            else:
+                self._log_info("Circuit breaker cooldown expired. Retrying connection.")
+                self.circuit_failures = 0
+                self.circuit_open_time = 0
+
         if video_data is None and audio_data is None and not user_context:
             self._log_warning("No data provided to LMM process_data.")
             return None
@@ -306,6 +324,8 @@ class LMMInterface:
                 if self._validate_response_schema(parsed_result):
                     self._log_info(f"Received valid JSON from LMM.")
                     self._log_debug(f"LMM Response: {parsed_result}")
+                    # Reset circuit breaker on success
+                    self.circuit_failures = 0
                     return parsed_result
                 else:
                     self._log_error(f"Response failed schema validation.", details=f"Parsed: {parsed_result}")
@@ -325,6 +345,16 @@ class LMMInterface:
 
         self._log_error(f"Failed to get valid response from LMM after {retries} attempts.")
 
+        # Increment Circuit Breaker
+        self.circuit_failures += 1
+        if self.circuit_failures >= self.circuit_max_failures:
+             self.circuit_open_time = time.time()
+             self._log_warning(f"LMM Circuit Breaker TRIPPED. Pausing calls for {self.circuit_cooldown}s.")
+
+        # Check for fallback
+        if getattr(config, 'LMM_FALLBACK_ENABLED', False):
+             self._log_info("LMM_FALLBACK_ENABLED is True. Returning neutral state.")
+             return self._get_fallback_response()
         if config.LMM_FALLBACK_ENABLED:
              self._log_warning("Returning fallback response due to LMM failure.")
              return self.get_fallback_response()
@@ -377,6 +407,26 @@ class LMMInterface:
             "mood": 50
         }
 
+    def _get_fallback_response(self):
+        """Returns a safe, neutral state when LMM is unavailable."""
+        return {
+            "state_estimation": {
+                "arousal": 50,
+                "overload": 0,
+                "focus": 50,
+                "energy": 50,
+                "mood": 50
+            },
+            "suggestion": None
+        }
+
+    def _clean_json_string(self, text):
+        """Removes markdown code blocks and whitespace."""
+        # Remove ```json ... ``` or ``` ... ```
+        text = re.sub(r'^```json\s*', '', text, flags=re.MULTILINE)
+        text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
+        text = re.sub(r'```$', '', text, flags=re.MULTILINE)
+        return text.strip()
         suggestion = None
 
         if audio_level > 0.5:
@@ -491,6 +541,10 @@ if __name__ == '__main__':
     config.LMM_FALLBACK_ENABLED = False
 
     res2 = lmm_interface.process_data(user_context={"sensor_metrics": {}})
+    if res2 and res2["suggestion"] is None and res2["state_estimation"]["arousal"] == 50:
+         print("PASSED: Invalid schema triggered fallback.")
+    else:
+         print(f"FAILED: Fallback not triggered. Result: {res2}")
     if res2 is None:
         print("PASSED: Invalid schema rejected (Fallback disabled).")
     else:
@@ -518,10 +572,10 @@ if __name__ == '__main__':
     requests.post = mock_post_invalid_bounds
     # Provide minimal context to pass the "No data provided" check
     res3 = lmm_interface.process_data(user_context={"sensor_metrics": {}})
-    if res3 is None:
-        print("PASSED: Out of bounds value rejected.")
+    if res3 and res3["suggestion"] is None and res3["state_estimation"]["arousal"] == 50:
+        print("PASSED: Out of bounds value triggered fallback.")
     else:
-        print(f"FAILED: Out of bounds value accepted. Result: {res3}")
+        print(f"FAILED: Fallback not triggered. Result: {res3}")
 
     print("\n--- Test 4: Fallback Behavior ---")
     config.LMM_FALLBACK_ENABLED = True
