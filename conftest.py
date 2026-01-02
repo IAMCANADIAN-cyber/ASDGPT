@@ -15,3 +15,7 @@ sys.modules["PIL.ImageDraw"] = MagicMock()
 # Add project root to sys.path
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
+import os
+
+# Add the project root directory to sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__))))
