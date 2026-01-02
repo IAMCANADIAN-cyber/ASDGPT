@@ -30,6 +30,10 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 LOG_LEVEL = "INFO" # Options: DEBUG, INFO, WARNING, ERROR
 LOG_FILE = "acr_app.log" # Changed from acr_log.txt for consistency with main.py
 
+# Persistence
+USER_DATA_DIR = "user_data"
+SUPPRESSIONS_FILE = "suppressions.json"
+
 # Sensor configurations (can be expanded)
 CAMERA_INDEX = 0 # Default camera index
 # AUDIO_DEVICE_INDEX = None # Example: Or specific index

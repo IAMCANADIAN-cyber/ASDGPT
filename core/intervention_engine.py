@@ -1,4 +1,6 @@
 import time
+import json
+import os
 import config
 import datetime
 import threading
@@ -24,6 +26,9 @@ class InterventionEngine:
 
         # Dictionary to track suppressed interventions: {intervention_type: expiry_timestamp}
         self.suppressed_interventions: Dict[str, float] = {}
+
+        # Load persisted suppressions
+        self._load_suppressions()
 
         log_message = "InterventionEngine initialized."
         if self.app and hasattr(self.app, 'data_logger'):
@@ -188,10 +193,61 @@ class InterventionEngine:
         self._intervention_active.clear()
         self._current_intervention_details = {}
 
+    def _get_suppressions_file_path(self):
+        user_data_dir = getattr(config, 'USER_DATA_DIR', 'user_data')
+        filename = getattr(config, 'SUPPRESSIONS_FILE', 'suppressions.json')
+        return os.path.join(user_data_dir, filename)
+
+    def _load_suppressions(self):
+        """Loads suppressions from disk and cleans up expired ones."""
+        filepath = self._get_suppressions_file_path()
+        if not os.path.exists(filepath):
+            return
+
+        try:
+            with open(filepath, 'r') as f:
+                data = json.load(f)
+
+            # Filter expired
+            current_time = time.time()
+            valid_suppressions = {}
+            for k, v in data.items():
+                if v > current_time:
+                    valid_suppressions[k] = v
+
+            self.suppressed_interventions = valid_suppressions
+
+            # If we cleaned up any expired ones, save back
+            if len(valid_suppressions) != len(data):
+                self._save_suppressions()
+
+        except Exception as e:
+            if self.app and hasattr(self.app, 'data_logger'):
+                 self.app.data_logger.log_error(f"Failed to load suppressions: {e}")
+            else:
+                 print(f"Failed to load suppressions: {e}")
+
+    def _save_suppressions(self):
+        """Saves current suppressions to disk."""
+        filepath = self._get_suppressions_file_path()
+        try:
+            # Ensure dir exists
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            with open(filepath, 'w') as f:
+                json.dump(self.suppressed_interventions, f)
+        except Exception as e:
+             if self.app and hasattr(self.app, 'data_logger'):
+                 self.app.data_logger.log_error(f"Failed to save suppressions: {e}")
+             else:
+                 print(f"Failed to save suppressions: {e}")
+
     def suppress_intervention(self, intervention_type: str, duration_minutes: int) -> None:
         """Suppress a specific intervention type for a duration."""
         expiry_time = time.time() + (duration_minutes * 60)
         self.suppressed_interventions[intervention_type] = expiry_time
+
+        # Save to disk
+        self._save_suppressions()
 
         msg = f"Intervention type '{intervention_type}' suppressed for {duration_minutes} minutes."
         if self.app and hasattr(self.app, 'data_logger'):
@@ -254,8 +310,9 @@ class InterventionEngine:
                     print(f"Intervention '{intervention_type}' skipped (suppressed for {remaining_mins} more mins).")
                 return False
             else:
-                # Expired, remove from list
+                # Expired, remove from list and save
                 del self.suppressed_interventions[intervention_type]
+                self._save_suppressions()
 
         # Critical: If called from within an existing sequence or thread, this check might fail.
         # But generally start_intervention is called from LogicEngine main thread.
