@@ -53,6 +53,9 @@ class ACRTrayIcon:
             pystray.MenuItem('Pause/Resume', self.on_toggle_pause_resume),
             pystray.MenuItem('Snooze for 1 Hour', self.on_snooze),
             pystray.Menu.SEPARATOR,
+            pystray.MenuItem('Last: Helpful', self.on_feedback_helpful),
+            pystray.MenuItem('Last: Unhelpful', self.on_feedback_unhelpful),
+            pystray.Menu.SEPARATOR,
             pystray.MenuItem('Quit', self.on_quit)
         )
 
@@ -92,6 +95,15 @@ class ACRTrayIcon:
             else: # Already snoozing, maybe unsnooze it? Or just ignore. For now, ignore.
                 print("Already snoozing.")
 
+    def on_feedback_helpful(self, icon, item):
+        print("Tray: Feedback 'Helpful' clicked")
+        if self.app and hasattr(self.app, 'on_feedback_helpful_pressed'):
+            self.app.on_feedback_helpful_pressed()
+
+    def on_feedback_unhelpful(self, icon, item):
+        print("Tray: Feedback 'Unhelpful' clicked")
+        if self.app and hasattr(self.app, 'on_feedback_unhelpful_pressed'):
+            self.app.on_feedback_unhelpful_pressed()
 
     def on_quit(self, icon, item):
         print("Tray: Quit clicked")
