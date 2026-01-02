@@ -1,13 +1,32 @@
-# LMM Interface
-# This module is responsible for interacting with a Large Language Model (LMM).
-
-import config
 import requests
 import json
 import re
 import time
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, TypedDict, Union
 from .intervention_library import InterventionLibrary
+
+# Define schema types for better clarity and future validation
+from typing import Optional, Dict, Any, TypedDict, List
+import config
+from .intervention_library import InterventionLibrary
+
+# Define response structures for type hinting
+class StateEstimation(TypedDict):
+    arousal: int
+    overload: int
+    focus: int
+    energy: int
+    mood: int
+
+class Suggestion(TypedDict, total=False):
+    id: Optional[str]
+    type: Optional[str]
+    message: Optional[str]
+
+class LMMResponse(TypedDict):
+    state_estimation: StateEstimation
+    suggestion: Optional[Suggestion]
+    _meta: Optional[Dict[str, Any]] # For internal flags like is_fallback
 
 class LMMInterface:
     BASE_SYSTEM_INSTRUCTION = """
@@ -148,10 +167,63 @@ class LMMInterface:
 
         return True
 
+    def get_fallback_response(self) -> LMMResponse:
+        """Returns a safe, neutral response when the LMM is unavailable."""
+        return {
+            "state_estimation": {
+                "arousal": 50,
+                "overload": 0,
+                "focus": 50,
+                "energy": 50,
+                "mood": 50
+            },
+            "suggestion": None,
+            "_meta": {"is_fallback": True}
+        }
+
+    def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[LMMResponse]:
+    def _clean_json_string(self, text):
+        """Removes markdown code blocks and whitespace."""
+        # Remove ```json ... ``` or ``` ... ```
+        text = re.sub(r'^```json\s*', '', text, flags=re.MULTILINE)
+        text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
+        text = re.sub(r'```$', '', text, flags=re.MULTILINE)
+        return text.strip()
+
+    def _send_request_with_retry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Sends request to LMM with manual retry logic."""
+        retries = 3
+        backoff = 2
+        last_exception = None
+
+        for attempt in range(retries):
+            try:
+                response = requests.post(self.llm_url, json=payload, timeout=20)
+                response.raise_for_status()
+
+                response_json = response.json()
+                content = response_json['choices'][0]['message']['content']
+                clean_content = self._clean_json_string(content)
+
+                parsed_result = json.loads(clean_content)
+
+                if not self._validate_response_schema(parsed_result):
+                    raise ValueError(f"Schema validation failed: {parsed_result}")
+
+                return parsed_result
+
+            except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError, KeyError) as e:
+                last_exception = e
+                self._log_warning(f"Attempt {attempt + 1}/{retries} failed: {e}")
+                if attempt < retries - 1:
+                    time.sleep(backoff)
+                    backoff *= 2 # Exponential backoff
+
+        raise last_exception
+
     def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[Dict[str, Any]]:
         """
-        Processes incoming sensor data and user context by sending it to the local LMM
-        using an OpenAI-compatible chat completion endpoint.
+        Processes incoming sensor data and user context by sending it to the local LMM.
 
         Args:
             video_data: Base64 encoded image data from the video sensor.
@@ -283,8 +355,57 @@ class LMMInterface:
         if getattr(config, 'LMM_FALLBACK_ENABLED', False):
              self._log_info("LMM_FALLBACK_ENABLED is True. Returning neutral state.")
              return self._get_fallback_response()
+        if config.LMM_FALLBACK_ENABLED:
+             self._log_warning("Returning fallback response due to LMM failure.")
+             return self.get_fallback_response()
+        # Fallback to neutral state if enabled
+        if config.LMM_FALLBACK_ENABLED:
+            self._log_warning("Using offline fallback state due to LMM failure.")
+            return {
+                "state_estimation": {
+                    "arousal": 50,
+                    "overload": 0,
+                    "focus": 50,
+                    "energy": 50,
+                    "mood": 50
+                },
+                "suggestion": None,
+                "is_fallback": True
+            }
 
         return None
+        try:
+            result = self._send_request_with_retry(payload)
+            self._log_info(f"Received valid JSON from LMM.")
+            self._log_debug(f"LMM Response: {result}")
+            return result
+        except Exception as e:
+            self._log_error(f"LMM Request Failed after retries: {e}")
+            return self._fallback_response(user_context)
+
+    def _fallback_response(self, user_context: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """
+        Generates a safe fallback response when the LMM is unavailable.
+        """
+        self._log_warning("Using fallback response mechanism.")
+
+        # Simple rule-based fallback
+        # If loud audio, suggest quiet
+        # If high motion, suggest calm
+        # Otherwise, just return neutral state
+
+        metrics = user_context.get('sensor_metrics', {}) if user_context else {}
+        audio_level = metrics.get('audio_level', 0.0)
+        video_activity = metrics.get('video_activity', 0.0)
+
+        # Default neutral state
+        fallback_state = {
+            "arousal": 50,
+            "overload": 50,
+            "focus": 50,
+            "energy": 50,
+            "mood": 50
+        }
 
     def _get_fallback_response(self):
         """Returns a safe, neutral state when LMM is unavailable."""
@@ -306,8 +427,35 @@ class LMMInterface:
         text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
         text = re.sub(r'```$', '', text, flags=re.MULTILINE)
         return text.strip()
+        suggestion = None
 
-    def get_intervention_suggestion(self, processed_analysis):
+        if audio_level > 0.5:
+            # Loud environment
+            fallback_state["overload"] = 70
+            # Try to match with an existing ID if possible, otherwise generic
+            # Assuming 'gentle_reminder_text' exists in config
+            suggestion = {
+                "id": None, # Ad-hoc
+                "type": "text",
+                "message": "It's quite loud. Maybe take a moment of silence?"
+            }
+
+        elif video_activity > 20:
+            # High activity
+            fallback_state["arousal"] = 70
+            suggestion = {
+                "id": None,
+                "type": "text",
+                "message": "You seem active. Remember to breathe."
+            }
+
+        return {
+            "state_estimation": fallback_state,
+            "suggestion": suggestion,
+            "fallback": True # Flag to indicate this was a fallback
+        }
+
+    def get_intervention_suggestion(self, processed_analysis: LMMResponse) -> Optional[Dict[str, Any]]:
         """
         Extracts an intervention suggestion from the LMM's analysis.
         """
@@ -388,11 +536,19 @@ if __name__ == '__main__':
 
     requests.post = mock_post_invalid_key
     # Provide minimal context to pass the "No data provided" check
+    # Disable fallback for this test to check validation failure
+    orig_fallback = config.LMM_FALLBACK_ENABLED
+    config.LMM_FALLBACK_ENABLED = False
+
     res2 = lmm_interface.process_data(user_context={"sensor_metrics": {}})
     if res2 and res2["suggestion"] is None and res2["state_estimation"]["arousal"] == 50:
          print("PASSED: Invalid schema triggered fallback.")
     else:
          print(f"FAILED: Fallback not triggered. Result: {res2}")
+    if res2 is None:
+        print("PASSED: Invalid schema rejected (Fallback disabled).")
+    else:
+        print(f"FAILED: Invalid schema accepted or fallback used. Result: {res2}")
 
     print("\n--- Test 3: Invalid Schema (Out of Bounds) ---")
     def mock_post_invalid_bounds(url, json=None, timeout=None):
@@ -421,3 +577,16 @@ if __name__ == '__main__':
     else:
         print(f"FAILED: Fallback not triggered. Result: {res3}")
 
+    print("\n--- Test 4: Fallback Behavior ---")
+    config.LMM_FALLBACK_ENABLED = True
+    def mock_post_fail(url, json=None, timeout=None):
+        raise requests.exceptions.ConnectionError("Failed")
+
+    requests.post = mock_post_fail
+    res4 = lmm_interface.process_data(user_context={"sensor_metrics": {}})
+    if res4 and res4.get("_meta", {}).get("is_fallback"):
+        print("PASSED: Fallback response received.")
+    else:
+         print(f"FAILED: Fallback not received. Result: {res4}")
+
+    config.LMM_FALLBACK_ENABLED = orig_fallback

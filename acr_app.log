@@ -1,0 +1,25 @@
+2026-01-02T07:34:49.079478 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-02T07:34:49.079692 [INFO] This is an info message.
+2026-01-02T07:34:49.079864 [WARNING] This is a warning message.
+2026-01-02T07:34:49.079909 [ERROR] This is an error message. | Details: Some additional details here.
+2026-01-02T07:34:49.079953 [EVENT] Event: test_event | Payload: {'data': 'sample_value', 'id': 123}
+2026-01-02T07:37:30.782110 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-02T07:37:30.782240 [INFO] LogicEngine initialized. Mode: active
+2026-01-02T07:37:30.782920 [INFO] Triggering LMM analysis (Reason: periodic_check)...
+2026-01-02T07:37:30.783011 [EVENT] Event: lmm_trigger | Payload: {'reason': 'periodic_check'}
+2026-01-02T07:37:30.783558 [INFO] StateEngine: Updated state to {'arousal': 51, 'overload': 2, 'focus': 52, 'energy': 79, 'mood': 51}
+2026-01-02T07:37:30.783817 [INFO] LMM analysis complete and state updated.
+2026-01-02T07:37:30.783885 [EVENT] Event: state_update | Payload: {'arousal': 51, 'overload': 2, 'focus': 52, 'energy': 79, 'mood': 51}
+2026-01-02T07:37:30.783995 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
+2026-01-02T07:37:30.784419 [INFO] Triggering LMM analysis (Reason: high_audio_level)...
+2026-01-02T07:37:30.784499 [EVENT] Event: lmm_trigger | Payload: {'reason': 'high_audio_level'}
+2026-01-02T07:37:30.785145 [INFO] StateEngine: Updated state to {'arousal': 52, 'overload': 4, 'focus': 54, 'energy': 78, 'mood': 52}
+2026-01-02T07:37:30.785320 [INFO] LMM analysis complete and state updated.
+2026-01-02T07:37:30.785376 [EVENT] Event: state_update | Payload: {'arousal': 52, 'overload': 4, 'focus': 54, 'energy': 78, 'mood': 52}
+2026-01-02T07:37:30.785493 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
+2026-01-02T07:37:30.786340 [INFO] Triggering LMM analysis (Reason: high_video_activity)...
+2026-01-02T07:37:30.786461 [EVENT] Event: lmm_trigger | Payload: {'reason': 'high_video_activity'}
+2026-01-02T07:37:30.786847 [INFO] StateEngine: Updated state to {'arousal': 53, 'overload': 6, 'focus': 56, 'energy': 77, 'mood': 53}
+2026-01-02T07:37:30.787008 [INFO] LMM analysis complete and state updated.
+2026-01-02T07:37:30.787066 [EVENT] Event: state_update | Payload: {'arousal': 53, 'overload': 6, 'focus': 56, 'energy': 77, 'mood': 53}
+2026-01-02T07:37:30.787163 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
