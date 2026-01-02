@@ -52,7 +52,7 @@ class Application:
         self.logic_engine.state_update_callback = self.update_tray_tooltip
         self.logic_engine.notification_callback = self.send_notification
 
-        # self._setup_hotkeys()
+        self._setup_hotkeys()
 
         self.data_logger.log_info(f"ACR Initialized. Mode: {self.logic_engine.get_mode()}.")
         self.data_logger.log_info(f"Press Esc to quit.")
@@ -60,24 +60,27 @@ class Application:
         self.data_logger.log_info(f"Feedback Hotkeys: Helpful ({config.HOTKEY_FEEDBACK_HELPFUL}), Unhelpful ({config.HOTKEY_FEEDBACK_UNHELPFUL})")
 
 
-    # def _setup_hotkeys(self) -> None:
-    #     self.data_logger.log_info("Setting up hotkeys...")
-    #     try:
-    #         # Mode control hotkeys
-    #         keyboard.add_hotkey(config.HOTKEY_CYCLE_MODE, lambda: self.on_cycle_mode_pressed(), suppress=True)
-    #         keyboard.add_hotkey(config.HOTKEY_PAUSE_RESUME, lambda: self.on_pause_resume_pressed(), suppress=True)
-    #
-    #         # Feedback hotkeys (Task 4.4)
-    #         keyboard.add_hotkey(config.HOTKEY_FEEDBACK_HELPFUL, lambda: self.on_feedback_helpful_pressed(), suppress=True)
-    #         keyboard.add_hotkey(config.HOTKEY_FEEDBACK_UNHELPFUL, lambda: self.on_feedback_unhelpful_pressed(), suppress=True)
-    #
-    #         # Quit hotkey
-    #         keyboard.add_hotkey("esc", self.quit_application_hotkey_wrapper, suppress=True)
-    #
-    #         self.data_logger.log_info("Hotkeys registered successfully (Mode, Feedback, Quit).")
-    #     except Exception as e:
-    #         log_msg = f"Error setting up hotkeys: {e}. This might require admin/sudo rights."
-    #         self.data_logger.log_error(log_msg)
+    def _setup_hotkeys(self) -> None:
+        self.data_logger.log_info("Setting up hotkeys...")
+        try:
+            import keyboard
+            # Mode control hotkeys
+            keyboard.add_hotkey(config.HOTKEY_CYCLE_MODE, lambda: self.on_cycle_mode_pressed(), suppress=True)
+            keyboard.add_hotkey(config.HOTKEY_PAUSE_RESUME, lambda: self.on_pause_resume_pressed(), suppress=True)
+
+            # Feedback hotkeys (Task 4.4)
+            keyboard.add_hotkey(config.HOTKEY_FEEDBACK_HELPFUL, lambda: self.on_feedback_helpful_pressed(), suppress=True)
+            keyboard.add_hotkey(config.HOTKEY_FEEDBACK_UNHELPFUL, lambda: self.on_feedback_unhelpful_pressed(), suppress=True)
+
+            # Quit hotkey
+            keyboard.add_hotkey("esc", self.quit_application_hotkey_wrapper, suppress=True)
+
+            self.data_logger.log_info("Hotkeys registered successfully (Mode, Feedback, Quit).")
+        except ImportError:
+             self.data_logger.log_warning("Keyboard library not found. Hotkeys disabled.")
+        except Exception as e:
+            log_msg = f"Error setting up hotkeys: {e}. This might require admin/sudo rights."
+            self.data_logger.log_error(log_msg)
 
     # --- Feedback Hotkey Handlers (Task 4.4) ---
     def on_feedback_helpful_pressed(self) -> None:
@@ -336,8 +339,11 @@ class Application:
         if hasattr(self, 'tray_icon') and self.tray_icon: self.tray_icon.stop()
 
         try:
+            import keyboard
             keyboard.unhook_all()
             self.data_logger.log_info("Keyboard hotkeys unhooked.")
+        except ImportError:
+            pass
         except Exception as e: # pragma: no cover
             self.data_logger.log_warning(f"Could not unhook all keyboard hotkeys: {e}")
 
