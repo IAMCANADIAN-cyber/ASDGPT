@@ -135,6 +135,19 @@ class ACRTrayIcon:
         flash_thread = threading.Thread(target=_flash, daemon=True)
         flash_thread.start()
 
+    def notify_user(self, title, message):
+        """
+        Sends a system notification.
+        :param title: The title of the notification.
+        :param message: The body of the notification.
+        """
+        if self.tray_icon:
+            try:
+                self.tray_icon.notify(message, title)
+                print(f"Notification sent: {title} - {message}")
+            except Exception as e:
+                print(f"Failed to send notification: {e}")
+
 if __name__ == '__main__':
     # This is for testing the tray icon directly.
     # In the actual app, it will be instantiated and managed by main.py.

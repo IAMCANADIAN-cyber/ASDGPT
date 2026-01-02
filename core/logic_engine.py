@@ -17,6 +17,7 @@ class LogicEngine:
         self.snooze_end_time: float = 0
         self.previous_mode_before_pause: str = config.DEFAULT_MODE
         self.tray_callback: Optional[Callable[[str, Optional[str]], None]] = None
+        self.notification_callback: Optional[Callable[[str, str], None]] = None
         self.audio_sensor: Optional[Any] = audio_sensor
         self.video_sensor: Optional[Any] = video_sensor
         self.logger: DataLogger = logger if logger else DataLogger()
@@ -45,6 +46,15 @@ class LogicEngine:
         self.audio_threshold_high = 0.5 # Example normalized threshold
         self.video_activity_threshold_high = 20.0 # Example pixel diff threshold
 
+        # Error recovery
+        self.error_recovery_attempts: int = 0
+        self.max_error_recovery_attempts: int = 3
+        self.last_error_log_time: float = 0
+        self.error_recovery_interval: int = 5 # seconds
+        self.last_error_recovery_attempt_time: float = 0
+        self.recovery_probation_end_time: float = 0
+        self.recovery_probation_duration: int = 10 # seconds
+
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
     def get_mode(self) -> str:
@@ -69,6 +79,11 @@ class LogicEngine:
 
         if old_mode != "paused" and mode == "paused":
             self.previous_mode_before_pause = old_mode
+
+        if mode == "active" and old_mode == "error":
+             self.logger.log_info("Entered active mode from error. Starting probation period.")
+             self.recovery_probation_end_time = time.time() + self.recovery_probation_duration
+             # Do not reset attempts yet.
 
         self.current_mode = mode
 
@@ -252,6 +267,13 @@ class LogicEngine:
 
         if current_mode == "active":
             current_time = time.time()
+
+            # Check probation
+            if self.recovery_probation_end_time > 0 and current_time > self.recovery_probation_end_time:
+                self.logger.log_info("Error recovery probation passed. Resetting error counters.")
+                self.error_recovery_attempts = 0
+                self.recovery_probation_end_time = 0
+
             trigger_lmm = False
             trigger_reason = ""
 
@@ -291,6 +313,36 @@ class LogicEngine:
             # (Note: Main application handles sensor hardware errors.
             # LogicEngine could handle logical errors, e.g., if we consistently get black frames
             # but no hardware error is reported. For now, we leave that to future expansion.)
+
+        elif current_mode == "error":
+            current_time = time.time()
+            if current_time - self.last_error_log_time > 10:
+                self.logger.log_debug("LogicEngine: Mode is ERROR. Attempting to handle or log.")
+                self.last_error_log_time = current_time
+
+            # 1. Log detailed error information (handled by setting mode and callers, but we ensure state is known)
+            # 2. Attempt recovery if possible.
+            if self.error_recovery_attempts < self.max_error_recovery_attempts:
+                if current_time - self.last_error_recovery_attempt_time > self.error_recovery_interval:
+                    self.logger.log_info(f"Attempting error recovery ({self.error_recovery_attempts + 1}/{self.max_error_recovery_attempts})...")
+                    self.last_error_recovery_attempt_time = current_time
+                    self.error_recovery_attempts += 1
+
+                    # Attempt to revert to previous known good state or default active
+                    target_mode = self.previous_mode_before_pause if self.previous_mode_before_pause != "error" else "active"
+                    self.logger.log_info(f"Resetting mode to {target_mode} for recovery check.")
+
+                    # We use set_mode. If the underlying cause (e.g. sensor error) persists,
+                    # main.py or sensor checks will likely set it back to error shortly.
+                    self.set_mode(target_mode)
+
+            # 3. Notify user of persistent error state.
+            elif self.error_recovery_attempts == self.max_error_recovery_attempts:
+                self.logger.log_error("Max error recovery attempts reached. User intervention required.")
+                if self.notification_callback:
+                    self.notification_callback("System Error", "The system has encountered a persistent error and could not recover automatically. Please check logs.")
+                self.error_recovery_attempts += 1 # Increment once more to stop notifying repeatedly
+
         elif current_mode == "snoozed":
             self.logger.log_debug("LogicEngine: Mode is SNOOZED. Performing light monitoring without intervention.")
             current_time = time.time()
