@@ -25,10 +25,12 @@ This document provides guidelines and instructions for AI agents (like you!) con
 
 ## Testing
 
-*   **`if __name__ == '__main__':`**: Each module currently has a basic test execution block. When modifying a module, ensure these tests still pass or update them accordingly.
-*   **Future Test Framework**: A dedicated test framework (e.g., `pytest`) is planned. When this is implemented, all new features and significant changes must be accompanied by tests. (Instructions will be updated here).
+*   **Test Framework**: The project uses `pytest` for testing.
+*   **Running Tests**: Run `pytest` from the project root to execute the test suite.
+*   **New Features**: All new features and significant changes must be accompanied by tests in the `tests/` directory.
     *   Aim for good test coverage.
     *   Write unit tests for individual components and integration tests for interactions between them.
+*   **Legacy Tests**: Some modules may still contain `if __name__ == '__main__':` blocks for quick ad-hoc testing, but these should be migrated to `pytest` where appropriate.
 
 ## LMM Integration (`core/lmm_interface.py`)
 

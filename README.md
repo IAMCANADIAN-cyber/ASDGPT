@@ -96,7 +96,14 @@ Details for contributing will be added later. For now, focus on understanding th
 *   Advanced sensor data processing.
 *   User-configurable intervention rules and preferences.
 *   Expanded GUI for settings and data visualization.
-*   Comprehensive test suite.
+
+## Testing
+
+Run the test suite using `pytest`:
+
+```bash
+pytest
+```
 
 ## Design & Mental Model
 
