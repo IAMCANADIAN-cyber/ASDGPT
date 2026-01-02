@@ -12,6 +12,13 @@ class LMMInterface:
     SYSTEM_INSTRUCTION = """
     You are an autonomous co-regulator. Analyze the provided sensor metrics and context to estimate the user's state.
 
+    Sensor Interpretations:
+    - Audio Level (RMS): High (>0.5) = Loud environment/speech. Low (<0.1) = Silence.
+    - Video Activity: High (>20) = High movement/pacing. Low (<5) = Stillness.
+    - Face Size Ratio: High (>0.15) = Leaning in/High Focus. Low (<0.05) = Leaning back/Distanced.
+    - Vertical Position: High (>0.6) = Slouching/Low Energy. Low (<0.4) = Upright/High Energy.
+    - Horizontal Position: Approx 0.5 is centered.
+
     Output a valid JSON object with the following structure:
     {
       "state_estimation": {
@@ -165,6 +172,15 @@ class LMMInterface:
                 context_str += f"Audio ZCR: {audio_analysis.get('zcr', 0.0):.4f}\n"
 
             context_str += f"Video Activity (Motion): {metrics.get('video_activity', 0.0):.2f}\n"
+
+            # Add detailed video/face analysis (Posture)
+            video_analysis = metrics.get('video_analysis', {})
+            if video_analysis and video_analysis.get("face_detected"):
+                context_str += f"Face Detected: Yes\n"
+                context_str += f"Face Size Ratio: {video_analysis.get('face_size_ratio', 0.0):.3f} (Lean/Focus)\n"
+                context_str += f"Face Vertical Pos: {video_analysis.get('vertical_position', 0.0):.2f} (0=Top, 1=Bottom)\n"
+            else:
+                context_str += f"Face Detected: No\n"
 
             est = user_context.get('current_state_estimation')
             if est:

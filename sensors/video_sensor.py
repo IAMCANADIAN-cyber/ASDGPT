@@ -156,6 +156,31 @@ class VideoSensor:
                 # Returning list of lists to be consistent with JSON and tests.
                 metrics["face_locations"] = [[int(x), int(y), int(w), int(h)] for (x, y, w, h) in faces]
 
+                # --- Posture / Proximity Metrics ---
+                # We take the largest face (closest/main user) for analysis
+                # faces contains (x, y, w, h)
+                # Since len(faces) > 0, this is safe
+                largest_face = max(faces, key=lambda f: f[2] * f[3])
+                x, y, w, h = largest_face
+                frame_h, frame_w = frame.shape[:2]
+
+                # 1. Face Size Ratio (Proximity/Leaning)
+                # (w * h) / (frame_w * frame_h)
+                # Larger ratio = closer to camera (leaning in)
+                metrics["face_size_ratio"] = float((w * h) / (frame_w * frame_h))
+
+                # 2. Vertical Position (Slouching vs Upright)
+                # Center Y relative to frame height (0.0 = top, 1.0 = bottom)
+                # Lower value (higher on screen) = more upright
+                # Higher value (lower on screen) = slouching
+                center_y = y + (h / 2)
+                metrics["vertical_position"] = float(center_y / frame_h)
+
+                # 3. Horizontal Position (Centering)
+                # Center X relative to frame width (0.0 = left, 1.0 = right)
+                center_x = x + (w / 2)
+                metrics["horizontal_position"] = float(center_x / frame_w)
+
         except Exception as e:
             self._log_error(f"Error during face detection: {e}")
 
