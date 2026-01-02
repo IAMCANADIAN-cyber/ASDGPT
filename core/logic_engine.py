@@ -60,6 +60,10 @@ class LogicEngine:
         self.recovery_probation_end_time: float = 0
         self.recovery_probation_duration: int = 10 # seconds
 
+        # LMM Circuit Breaker
+        self.lmm_consecutive_failures: int = 0
+        self.lmm_circuit_breaker_open_until: float = 0
+
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
     def get_mode(self) -> str:
@@ -235,6 +239,23 @@ class LogicEngine:
             )
 
             if analysis:
+                # Reset circuit breaker on success (even if it's a fallback, though ideally fallback shouldn't count as 'network success'
+                # but LMMInterface handles that. LMMInterface returns fallback if network failed.
+                # If we get a response, the interface handled it.
+                # If analysis has _meta.is_fallback, it means LMM failed.
+
+                is_fallback = analysis.get("_meta", {}).get("is_fallback", False)
+                if is_fallback:
+                    self.lmm_consecutive_failures += 1
+                    self.logger.log_warning(f"LMM returned fallback response. Consecutive failures: {self.lmm_consecutive_failures}")
+
+                    if self.lmm_consecutive_failures >= config.LMM_CIRCUIT_BREAKER_MAX_FAILURES:
+                         self.lmm_circuit_breaker_open_until = time.time() + config.LMM_CIRCUIT_BREAKER_COOLDOWN
+                         self.logger.log_error(f"LMM Circuit Breaker OPENED. Pausing LMM calls for {config.LMM_CIRCUIT_BREAKER_COOLDOWN}s.")
+                else:
+                    if self.lmm_consecutive_failures > 0:
+                        self.logger.log_info("LMM recovered. Resetting failure count.")
+                    self.lmm_consecutive_failures = 0
                 # Check if it was a fallback response
                 if analysis.get("fallback"):
                      self.logger.log_warning("LMM analysis used fallback mechanism.")
@@ -250,6 +271,15 @@ class LogicEngine:
                 if hasattr(self, 'state_update_callback') and self.state_update_callback:
                     self.state_update_callback(self.state_engine.get_state())
 
+            else:
+                 # LogicEngine received None (hard failure in interface even after retries and no fallback?)
+                 # This usually means no fallback was enabled or interface crashed.
+                 self.lmm_consecutive_failures += 1
+                 if self.lmm_consecutive_failures >= config.LMM_CIRCUIT_BREAKER_MAX_FAILURES:
+                     self.lmm_circuit_breaker_open_until = time.time() + config.LMM_CIRCUIT_BREAKER_COOLDOWN
+                     self.logger.log_error(f"LMM Circuit Breaker OPENED (No Response). Pausing LMM calls for {config.LMM_CIRCUIT_BREAKER_COOLDOWN}s.")
+
+
             if analysis and self.intervention_engine:
                 suggestion = self.lmm_interface.get_intervention_suggestion(analysis)
                 if suggestion:
@@ -261,11 +291,17 @@ class LogicEngine:
                         self.logger.log_info(f"LMM suggested intervention (suppressed due to mode): {suggestion}")
         except Exception as e:
             self.logger.log_error(f"Error in async LMM analysis: {e}")
+            self.lmm_consecutive_failures += 1
 
     def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
         if not self.lmm_interface:
             self.logger.log_warning("LMM interface not available.")
             return
+
+        # Check Circuit Breaker
+        if time.time() < self.lmm_circuit_breaker_open_until:
+             self.logger.log_debug(f"Skipping LMM trigger ({reason}): Circuit breaker is OPEN.")
+             return
 
         # Check if previous analysis is still running
         if self.lmm_thread and self.lmm_thread.is_alive():

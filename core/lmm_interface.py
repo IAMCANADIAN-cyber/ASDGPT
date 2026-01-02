@@ -2,6 +2,10 @@ import requests
 import json
 import re
 import time
+from typing import Optional, Dict, Any, List, TypedDict, Union
+from .intervention_library import InterventionLibrary
+
+# Define schema types for better clarity and future validation
 from typing import Optional, Dict, Any, TypedDict, List
 import config
 from .intervention_library import InterventionLibrary
@@ -22,6 +26,7 @@ class Suggestion(TypedDict, total=False):
 class LMMResponse(TypedDict):
     state_estimation: StateEstimation
     suggestion: Optional[Suggestion]
+    _meta: Optional[Dict[str, Any]] # For internal flags like is_fallback
 
 class LMMInterface:
     BASE_SYSTEM_INSTRUCTION = """
@@ -156,6 +161,21 @@ class LMMInterface:
 
         return True
 
+    def get_fallback_response(self) -> LMMResponse:
+        """Returns a safe, neutral response when the LMM is unavailable."""
+        return {
+            "state_estimation": {
+                "arousal": 50,
+                "overload": 0,
+                "focus": 50,
+                "energy": 50,
+                "mood": 50
+            },
+            "suggestion": None,
+            "_meta": {"is_fallback": True}
+        }
+
+    def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[LMMResponse]:
     def _clean_json_string(self, text):
         """Removes markdown code blocks and whitespace."""
         # Remove ```json ... ``` or ``` ... ```
@@ -305,6 +325,9 @@ class LMMInterface:
 
         self._log_error(f"Failed to get valid response from LMM after {retries} attempts.")
 
+        if config.LMM_FALLBACK_ENABLED:
+             self._log_warning("Returning fallback response due to LMM failure.")
+             return self.get_fallback_response()
         # Fallback to neutral state if enabled
         if config.LMM_FALLBACK_ENABLED:
             self._log_warning("Using offline fallback state due to LMM failure.")
@@ -382,10 +405,134 @@ class LMMInterface:
             "fallback": True # Flag to indicate this was a fallback
         }
 
-    def get_intervention_suggestion(self, processed_analysis):
+    def get_intervention_suggestion(self, processed_analysis: LMMResponse) -> Optional[Dict[str, Any]]:
         """
         Extracts an intervention suggestion from the LMM's analysis.
         """
         if not processed_analysis:
             return None
         return processed_analysis.get("suggestion")
+
+if __name__ == '__main__':
+    # Test suite
+    class MockDataLogger:
+        def __init__(self) -> None:
+            self.log_level = "DEBUG"
+        def log_info(self, msg: str) -> None:
+            print(f"INFO: {msg}")
+        def log_warning(self, msg: str) -> None:
+            print(f"WARN: {msg}")
+        def log_error(self, msg: str, details: str = "") -> None:
+            print(f"ERROR: {msg} | Details: {details}")
+        def log_debug(self, msg: str) -> None:
+            print(f"DEBUG: {msg}")
+
+    mock_logger = MockDataLogger()
+    lmm_interface = LMMInterface(data_logger=mock_logger)
+
+    # Verify URL construction
+    expected_url = config.LOCAL_LLM_URL.rstrip('/') + "/v1/chat/completions"
+    if lmm_interface.llm_url != expected_url:
+        print(f"FAILED: URL construction. Got {lmm_interface.llm_url}, expected {expected_url}")
+    else:
+        print(f"PASSED: URL construction: {lmm_interface.llm_url}")
+
+    # Mock requests
+    def mock_post_valid(url, json=None, timeout=None):
+        import json as json_module
+        response_content = {
+            "state_estimation": {"arousal": 50, "overload": 20, "focus": 80, "energy": 60, "mood": 50},
+            "suggestion": None
+        }
+        class MockResponse:
+            def json(self):
+                return {
+                    "choices": [{
+                        "message": {
+                            "content": f"```json\n{json_module.dumps(response_content)}\n```"
+                        }
+                    }]
+                }
+            def raise_for_status(self): pass
+        return MockResponse()
+
+    requests.post = mock_post_valid
+
+    print("\n--- Test 1: Valid Response ---")
+    res1 = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.1}})
+    if res1 and res1["suggestion"] is None:
+        print("PASSED: Valid response parsed.")
+    else:
+        print(f"FAILED: Result: {res1}")
+
+    print("\n--- Test 2: Invalid Schema (Missing Key) ---")
+    def mock_post_invalid_key(url, json=None, timeout=None):
+        import json as json_module
+        response_content = {
+            "state_estimation": {"arousal": 50}, # Missing others
+            "suggestion": None
+        }
+        class MockResponse:
+            def json(self):
+                return {
+                    "choices": [{
+                        "message": {
+                            "content": f"{json_module.dumps(response_content)}"
+                        }
+                    }]
+                }
+            def raise_for_status(self): pass
+        return MockResponse()
+
+    requests.post = mock_post_invalid_key
+    # Provide minimal context to pass the "No data provided" check
+    # Disable fallback for this test to check validation failure
+    orig_fallback = config.LMM_FALLBACK_ENABLED
+    config.LMM_FALLBACK_ENABLED = False
+
+    res2 = lmm_interface.process_data(user_context={"sensor_metrics": {}})
+    if res2 is None:
+        print("PASSED: Invalid schema rejected (Fallback disabled).")
+    else:
+        print(f"FAILED: Invalid schema accepted or fallback used. Result: {res2}")
+
+    print("\n--- Test 3: Invalid Schema (Out of Bounds) ---")
+    def mock_post_invalid_bounds(url, json=None, timeout=None):
+        import json as json_module
+        response_content = {
+            "state_estimation": {"arousal": 150, "overload": 0, "focus": 0, "energy": 0, "mood": 0},
+            "suggestion": None
+        }
+        class MockResponse:
+            def json(self):
+                return {
+                    "choices": [{
+                        "message": {
+                            "content": f"{json_module.dumps(response_content)}"
+                        }
+                    }]
+                }
+            def raise_for_status(self): pass
+        return MockResponse()
+
+    requests.post = mock_post_invalid_bounds
+    # Provide minimal context to pass the "No data provided" check
+    res3 = lmm_interface.process_data(user_context={"sensor_metrics": {}})
+    if res3 is None:
+        print("PASSED: Out of bounds value rejected.")
+    else:
+        print(f"FAILED: Out of bounds value accepted. Result: {res3}")
+
+    print("\n--- Test 4: Fallback Behavior ---")
+    config.LMM_FALLBACK_ENABLED = True
+    def mock_post_fail(url, json=None, timeout=None):
+        raise requests.exceptions.ConnectionError("Failed")
+
+    requests.post = mock_post_fail
+    res4 = lmm_interface.process_data(user_context={"sensor_metrics": {}})
+    if res4 and res4.get("_meta", {}).get("is_fallback"):
+        print("PASSED: Fallback response received.")
+    else:
+         print(f"FAILED: Fallback not received. Result: {res4}")
+
+    config.LMM_FALLBACK_ENABLED = orig_fallback

@@ -89,4 +89,9 @@ LMM_FALLBACK_ENABLED = True # Return neutral state if LMM is offline
 
 USER_DATA_DIR = "user_data"
 SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
+
+# LMM Reliability Settings
+LMM_FALLBACK_ENABLED = True
+LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
+LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
 EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
