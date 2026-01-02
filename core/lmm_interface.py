@@ -176,7 +176,9 @@ class LMMInterface:
             audio_analysis = metrics.get('audio_analysis', {})
             if audio_analysis:
                 context_str += f"Audio Pitch (est): {audio_analysis.get('pitch_estimation', 0.0):.2f} Hz\n"
+                context_str += f"Audio Pitch Variance: {audio_analysis.get('pitch_variance', 0.0):.2f}\n"
                 context_str += f"Audio ZCR: {audio_analysis.get('zcr', 0.0):.4f}\n"
+                context_str += f"Speech Rate (Burst Density): {audio_analysis.get('activity_bursts', 0)}\n"
 
             context_str += f"Video Activity (Motion): {metrics.get('video_activity', 0.0):.2f}\n"
 

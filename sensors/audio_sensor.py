@@ -1,15 +1,21 @@
 import sounddevice as sd
 import numpy as np
 import time
+import collections
 import config # Potentially for audio device settings in the future
 
 class AudioSensor:
-    def __init__(self, data_logger=None, sample_rate=44100, chunk_duration=1.0, channels=1):
+    def __init__(self, data_logger=None, sample_rate=44100, chunk_duration=1.0, channels=1, history_seconds=5):
         self.logger = data_logger
         self.sample_rate = sample_rate
         self.chunk_duration = chunk_duration # seconds
         self.chunk_size = int(self.sample_rate * self.chunk_duration)
         self.channels = channels
+
+        # History buffers for advanced feature extraction
+        self.history_size = int(history_seconds / chunk_duration)
+        self.pitch_history = collections.deque(maxlen=self.history_size)
+        self.rms_history = collections.deque(maxlen=self.history_size)
 
         self.stream = None
         self.error_state = False
@@ -151,13 +157,16 @@ class AudioSensor:
     def analyze_chunk(self, chunk):
         """
         Analyzes an audio chunk to extract features.
-        Returns a dictionary of metrics: rms, spectral_centroid, pitch_estimation, zcr.
+        Returns a dictionary of metrics: rms, spectral_centroid, pitch_estimation, zcr, pitch_variance, rms_variance, activity_bursts.
         """
         metrics = {
             "rms": 0.0,
             "zcr": 0.0,
             "spectral_centroid": 0.0,
-            "pitch_estimation": 0.0
+            "pitch_estimation": 0.0,
+            "pitch_variance": 0.0,
+            "rms_variance": 0.0,
+            "activity_bursts": 0
         }
 
         if chunk is None or len(chunk) == 0:
@@ -175,6 +184,25 @@ class AudioSensor:
 
             # Normalize for other calculations (avoid div by zero, but handle silence)
             if metrics["rms"] < 1e-6:
+                # Update history even for silence to reflect current state
+                self.rms_history.append(metrics["rms"])
+
+                # Check metrics that depend on history even if current frame is silence
+                # Speech Rate / Activity Bursts Proxy (can be calculated even if current is silence, if history exists)
+                if len(self.rms_history) > 2:
+                    rms_arr = np.array(self.rms_history)
+                    metrics["rms_variance"] = float(np.std(rms_arr))
+
+                    # Activity Bursts
+                    threshold = np.mean(rms_arr) * 0.8
+                    if threshold > 1e-6: # Only calculate if there is some activity in history
+                        above = rms_arr > threshold
+                        if len(above) > 1:
+                            crossings = np.sum(np.diff(above.astype(int)) > 0)
+                            metrics["activity_bursts"] = int(crossings)
+
+                # Don't update pitch history with 0/silence to avoid skewing variance unless we want to track silence gaps
+                # But for pitch *variance* (intonation), we usually only care about voiced segments.
                 return metrics # Silence
 
             # 2. Zero Crossing Rate (ZCR) - Proxy for "noisiness" or high frequency content
@@ -199,6 +227,29 @@ class AudioSensor:
             if len(valid_idx) > 0:
                 peak_idx = valid_idx[np.argmax(magnitude[valid_idx])]
                 metrics["pitch_estimation"] = float(freqs[peak_idx])
+
+            # --- History / Time-Series Features ---
+            self.rms_history.append(metrics["rms"])
+            if metrics["pitch_estimation"] > 0:
+                self.pitch_history.append(metrics["pitch_estimation"])
+
+            # Pitch Variance (Intonation/Stress)
+            if len(self.pitch_history) > 2:
+                metrics["pitch_variance"] = float(np.std(list(self.pitch_history)))
+
+            # Speech Rate / Activity Bursts Proxy
+            if len(self.rms_history) > 2:
+                rms_arr = np.array(self.rms_history)
+                metrics["rms_variance"] = float(np.std(rms_arr))
+
+                # Activity Bursts (approximate syllable/word clusters)
+                # Dynamic threshold: 80% of mean RMS
+                threshold = np.mean(rms_arr) * 0.8
+                above = rms_arr > threshold
+                if len(above) > 1:
+                    # Count 0->1 transitions
+                    crossings = np.sum(np.diff(above.astype(int)) > 0)
+                    metrics["activity_bursts"] = int(crossings)
 
         except Exception as e:
             self._log_error(f"Error extracting audio features: {e}")
