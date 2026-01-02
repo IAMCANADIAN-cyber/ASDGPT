@@ -256,10 +256,16 @@ class LogicEngine:
                     if self.lmm_consecutive_failures > 0:
                         self.logger.log_info("LMM recovered. Resetting failure count.")
                     self.lmm_consecutive_failures = 0
+                # Check if it was a fallback response
+                if analysis.get("fallback"):
+                     self.logger.log_warning("LMM analysis used fallback mechanism.")
 
                 # Update state estimation (StateEngine should be thread-safe or we assume simple updates)
                 self.state_engine.update(analysis)
                 self.logger.log_info("LMM analysis complete and state updated.")
+
+                # Log state update event
+                self.logger.log_event("state_update", self.state_engine.get_state())
 
                 # Update tray tooltip with new state
                 if hasattr(self, 'state_update_callback') and self.state_update_callback:
@@ -308,6 +314,7 @@ class LogicEngine:
             return
 
         self.logger.log_info(f"Triggering LMM analysis (Reason: {reason})...")
+        self.logger.log_event("lmm_trigger", {"reason": reason})
 
         # Run in background thread to avoid blocking main loop
         self.lmm_thread = threading.Thread(

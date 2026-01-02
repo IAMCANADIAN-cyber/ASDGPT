@@ -344,6 +344,7 @@ class InterventionEngine:
 
         if logger:
             logger.log_info(msg_str)
+            logger.log_event("intervention_start", execution_details)
         else:
             print(msg_str)
         return True
