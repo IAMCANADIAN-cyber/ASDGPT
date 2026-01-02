@@ -15,3 +15,6 @@
 ## 2026-01-02 - [Timeline Correlation]
 **Learning:** Interpreting the "black box" of LMM decisions is difficult without a unified view of sensor inputs, triggers, state updates, and interventions over time.
 **Action:** Created `tools/generate_timeline.py` to parse logs and generate a markdown timeline report. This allows visualizing the cause-and-effect chain.
+## 2026-01-02 - [LMM Benchmark]
+**Learning:** High latency in the LMM loop is a critical risk for an "always-on" co-regulator. A dedicated benchmark script (`tools/lmm_benchmark.py`) is needed to continuously monitor round-trip times and catch regressions.
+**Action:** Created `tools/lmm_benchmark.py` and validated it with a mock mode. Future runs should run this against the actual local LLM to verify the <2s latency target.
