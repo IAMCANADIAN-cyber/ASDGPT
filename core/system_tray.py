@@ -115,6 +115,13 @@ class ACRTrayIcon:
                 self.tray_icon.icon = self.icons["default"]
             print(f"Tray icon updated to default (unknown status: {status})")
 
+    def update_tooltip(self, text: str):
+        """Updates the tooltip (hover text) of the tray icon."""
+        if self.tray_icon:
+            self.tray_icon.title = text
+            # Note: Depending on OS/implementation, title update might be instant or require icon refresh.
+            # pystray usually handles it.
+
     def flash_icon(self, flash_status="active", original_status=None, duration=0.5, flashes=2):
         """Briefly changes the icon to indicate an event (e.g., intervention)."""
         if not self.tray_icon: return

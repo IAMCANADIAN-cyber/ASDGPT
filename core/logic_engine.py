@@ -17,6 +17,7 @@ class LogicEngine:
         self.snooze_end_time: float = 0
         self.previous_mode_before_pause: str = config.DEFAULT_MODE
         self.tray_callback: Optional[Callable[[str, Optional[str]], None]] = None
+        self.tray_tooltip_callback: Optional[Callable[[str], None]] = None
         self.audio_sensor: Optional[Any] = audio_sensor
         self.video_sensor: Optional[Any] = video_sensor
         self.logger: DataLogger = logger if logger else DataLogger()
@@ -111,6 +112,14 @@ class LogicEngine:
         self.logger.log_info(f"LogicEngine Notification: Mode changed from {old_mode} to {new_mode}{' (due to snooze expiry)' if from_snooze_expiry else ''}")
         if self.tray_callback:
             self.tray_callback(new_mode=new_mode, old_mode=old_mode)
+
+    def _notify_state_update(self, state: dict) -> None:
+        """Notifies listeners (tray) of state updates."""
+        if self.tray_tooltip_callback:
+            # Format state for tooltip
+            # e.g. "A:50 O:10 F:60 E:80 M:50"
+            tooltip = f"A:{state.get('arousal')} O:{state.get('overload')} F:{state.get('focus')} E:{state.get('energy')} M:{state.get('mood')}"
+            self.tray_tooltip_callback(tooltip)
 
     def process_video_data(self, frame: np.ndarray) -> None:
         with self._lock:
@@ -225,6 +234,7 @@ class LogicEngine:
         if analysis:
             # Update state estimation
             self.state_engine.update(analysis)
+            self._notify_state_update(self.state_engine.get_state())
 
         if analysis and self.intervention_engine:
             suggestion = self.lmm_interface.get_intervention_suggestion(analysis)

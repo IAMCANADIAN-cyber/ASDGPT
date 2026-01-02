@@ -1,56 +1,49 @@
 # ASDGPT 30-Day Roadmap
 
-**Date:** 2024-05-22
-**Status:** DRAFT
+**Date:** 2026-01-02
+**Status:** ACTIVE
 
 ## 🗺️ Executive Summary
-ASDGPT aims to be a sophisticated autonomous co-regulator (ACR). The current codebase provides a functional skeleton (sensors, logic loop, basic LMM hook), but it lacks the "brain" defined in `docs/MENTAL_MODEL.md`. The next 30 days are focused on bridging this gap: moving from "detect loud noise" to "estimate 5D state (Arousal, Overload, Focus, Energy, Mood)".
+ASDGPT aims to be a sophisticated autonomous co-regulator (ACR). The current codebase provides a functional skeleton (sensors, logic loop, basic LMM hook) and now includes a structured Intervention Library and State Engine.
 
 ## 1. What Changed (Last Cycle)
 *   **Architecture**: Validated core loop in `LogicEngine` (triggers LMM on sensor thresholds).
 *   **Docs**: `MENTAL_MODEL.md` established as the engineering spec.
-*   **Code**:
-    *   `LogicEngine` now supports Active/Snoozed/Paused modes.
-    *   `InterventionEngine` skeleton created with tier-based logic (placeholder TTS).
-    *   `LMMInterface` created (wrapping local LLM).
+*   **Features Completed**:
+    *   **Intervention Library V1**: Implemented `InterventionLibrary` with physiology, sensory, cognitive cards. `InterventionEngine` executes sequences. `LMMInterface` now "grounds" suggestions to library IDs.
+    *   **System Tray State View**: Tray icon tooltip now displays the real-time 5D State (Arousal, Energy, etc.).
 
 ## 2. Top 3 Milestones (Next 30 Days)
 
-### 🏆 Milestone 1: The "5D State" Engine
-*   **Goal**: Move beyond simple thresholds. The LMM should receive sensor data and output scores for the 5 dimensions defined in `MENTAL_MODEL.md`.
-*   **Deliverable**: `StateEngine` class that tracks Arousal, Overload, Focus, Energy, Mood (0-100).
-*   **Success Metric**: LMM consistently outputs valid JSON with these 5 scores based on mock sensor data.
+### 🏆 Milestone 1: The "5D State" Engine (Refinement)
+*   **Goal**: Ensure LMM estimates are accurate and consistent.
+*   **Deliverable**: Benchmarked prompt performance.
+*   **Status**: Core engine exists. Tuning required.
 
-### 🏆 Milestone 2: Intervention Library V1
-*   **Goal**: Replace generic TTS with specific "Cards" (Physiology, Sensory, Cognitive).
-*   **Deliverable**: `InterventionLibrary` containing at least 3 distinct interventions per category.
-*   **Success Metric**: `InterventionEngine` can execute a "Physiology: Box Breathing" card which triggers a specific sequence (audio + visual).
+### 🏆 Milestone 2: Intervention Library V1 (Done)
+*   **Goal**: Replace generic TTS with specific "Cards".
+*   **Status**: **COMPLETED**. Library exists, Engine executes sequences, LMM selects IDs.
 
 ### 🏆 Milestone 3: "Snooze" & "Feedback" Loop
 *   **Goal**: Close the loop. User feedback (hotkeys) should influence future interventions.
 *   **Deliverable**: Feedback stored in a structured format that the `LogicEngine` can query before triggering the next intervention.
 *   **Success Metric**: If user presses "Unhelpful" (Ctrl+Alt+Down), that specific intervention type is suppressed for 4 hours.
+*   **Status**: Suppression logic implemented in `InterventionEngine`. Persistence (saving to disk) to be added.
 
 ## 3. De-risk List (Unknowns & Tests)
 
 | Unknown | Impact | Test / Mitigation |
 | :--- | :--- | :--- |
-| **LMM Latency** | High | Create a benchmark script to measure round-trip time for 5-second video analysis on the local LLM. Target < 2s. |
-| **Audio Privacy** | High | Verify if simple RMS/Spectrogram is sufficient for state estimation, or if we need local transcription (Whisper). |
-| **Video False Positives** | Med | Test `VideoSensor` triggers against "normal sitting" vs "pacing" to tune sensitivity. |
+| **LMM Latency** | High | Create a benchmark script to measure round-trip time. |
+| **Audio Privacy** | High | Verify if simple RMS is sufficient. |
 
 ## 4. Backlog (High Priority)
 
 | Title | Why | Acceptance Criteria | Estimate | Risk |
 | :--- | :--- | :--- | :--- | :--- |
-| **LMM Prompt Engineering** | The "Brain" needs instructions. | LMM prompt is structured to take sensor features and output 5D state JSON. | 3d | High |
-| **StateEngine Class** | Need a place to store the 5D state. | Class exists, stores history, handles smoothing (don't flip state on 1 frame). | 2d | Low |
-| **Intervention "Card" Structure** | Standardize actions. | JSON schema for interventions (Type, Duration, Content, Tier). | 1d | Low |
-| **Audio Feature Extraction** | RMS is too simple. | `AudioSensor` calculates pitch variance and speech rate. | 3d | Med |
-| **Video Feature Extraction** | Pixel diff is too simple. | `VideoSensor` detects face presence and basic posture (using opencv/mediapipe). | 4d | High |
-| **Configurable Thresholds** | Personalization. | `config.py` allows overriding default thresholds for each state dimension. | 1d | Low |
-| **PyTest Setup** | Stability. | `pytest` runs and passes for all core modules. | 2d | Low |
-| **System Tray "State" View** | Visibility. | Hovering over tray icon shows current "Arousal" and "Energy" scores. | 2d | Low |
+| **Feedback Persistence** | User preferences should survive restart. | Save suppression list to JSON. | 1d | Low |
+| **Audio Feature Extraction** | RMS is too simple. | `AudioSensor` calculates pitch variance. | 3d | Med |
+| **Video Feature Extraction** | Pixel diff is too simple. | `VideoSensor` detects face presence and basic posture. | 4d | High |
 
 ---
 *Generated by Roadmapper Agent*

@@ -49,6 +49,7 @@ class Application:
 
         self.tray_icon: ACRTrayIcon = ACRTrayIcon(self)
         self.logic_engine.tray_callback = self.update_tray_status_and_notify
+        self.logic_engine.tray_tooltip_callback = self.update_tray_tooltip
 
         # self._setup_hotkeys()
 
@@ -93,6 +94,10 @@ class Application:
              self.tray_icon.flash_icon(flash_status=self.logic_engine.get_mode(), duration=0.3, flashes=1)
 
     # --- Existing Methods (potentially updated) ---
+    def update_tray_tooltip(self, text: str) -> None:
+        if self.tray_icon:
+            self.tray_icon.update_tooltip(text)
+
     def update_tray_status_and_notify(self, new_mode: str, old_mode: Optional[str] = None) -> None:
         with self._sensor_lock:
             sensor_error = self.sensor_error_active
