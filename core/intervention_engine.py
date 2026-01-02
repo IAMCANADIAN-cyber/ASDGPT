@@ -2,6 +2,8 @@ import time
 import config
 import datetime
 import threading
+import json
+import os
 from typing import Optional, Any, Dict, List
 from .intervention_library import InterventionLibrary
 
@@ -24,12 +26,51 @@ class InterventionEngine:
 
         # Dictionary to track suppressed interventions: {intervention_type: expiry_timestamp}
         self.suppressed_interventions: Dict[str, float] = {}
+        self._load_suppressions()
 
         log_message = "InterventionEngine initialized."
         if self.app and hasattr(self.app, 'data_logger'):
             self.app.data_logger.log_info(log_message)
         else:
             print(log_message + " (DataLogger not available)")
+
+    def _load_suppressions(self) -> None:
+        """Loads suppressed interventions from disk."""
+        if hasattr(config, 'SUPPRESSIONS_FILE') and os.path.exists(config.SUPPRESSIONS_FILE):
+            try:
+                with open(config.SUPPRESSIONS_FILE, 'r') as f:
+                    self.suppressed_interventions = json.load(f)
+
+                # Clean up expired suppressions on load
+                current_time = time.time()
+                keys_to_remove = [k for k, v in self.suppressed_interventions.items() if v < current_time]
+                for k in keys_to_remove:
+                    del self.suppressed_interventions[k]
+
+                if keys_to_remove:
+                    self._save_suppressions()
+
+            except Exception as e:
+                msg = f"Failed to load suppressions: {e}"
+                if self.app and hasattr(self.app, 'data_logger'):
+                    self.app.data_logger.log_error(msg)
+                else:
+                    print(msg)
+
+    def _save_suppressions(self) -> None:
+        """Saves suppressed interventions to disk."""
+        if hasattr(config, 'SUPPRESSIONS_FILE'):
+            try:
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(config.SUPPRESSIONS_FILE), exist_ok=True)
+                with open(config.SUPPRESSIONS_FILE, 'w') as f:
+                    json.dump(self.suppressed_interventions, f)
+            except Exception as e:
+                msg = f"Failed to save suppressions: {e}"
+                if self.app and hasattr(self.app, 'data_logger'):
+                    self.app.data_logger.log_error(msg)
+                else:
+                    print(msg)
 
     def _store_last_intervention(self, message: str, intervention_type_for_logging: str) -> None:
         """Stores details of an intervention that qualifies for feedback."""
@@ -192,6 +233,7 @@ class InterventionEngine:
         """Suppress a specific intervention type for a duration."""
         expiry_time = time.time() + (duration_minutes * 60)
         self.suppressed_interventions[intervention_type] = expiry_time
+        self._save_suppressions()
 
         msg = f"Intervention type '{intervention_type}' suppressed for {duration_minutes} minutes."
         if self.app and hasattr(self.app, 'data_logger'):
