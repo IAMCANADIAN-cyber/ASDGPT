@@ -33,6 +33,7 @@ class LogicEngine:
         # Sensor metrics
         self.audio_level: float = 0.0
         self.video_activity: float = 0.0
+        self.video_analysis: dict = {}
 
         # LMM trigger logic
         self.last_lmm_call_time: float = 0
@@ -127,6 +128,12 @@ class LogicEngine:
             else:
                 self.video_activity = 0.0
 
+            # Advanced Analysis (Face Detection)
+            if self.video_sensor and hasattr(self.video_sensor, 'analyze_frame'):
+                 self.video_analysis = self.video_sensor.analyze_frame(frame)
+            else:
+                 self.video_analysis = {}
+
         self.logger.log_debug(f"Processed video frame. Activity: {self.video_activity:.2f}")
 
     def process_audio_data(self, audio_chunk: np.ndarray) -> None:
@@ -171,7 +178,8 @@ class LogicEngine:
                 "trigger_reason": trigger_reason,
                 "sensor_metrics": {
                     "audio_level": float(self.audio_level),
-                    "video_activity": float(self.video_activity)
+                    "video_activity": float(self.video_activity),
+                    "video_analysis": self.video_analysis
                 },
                 "current_state_estimation": self.state_engine.get_state()
             }
