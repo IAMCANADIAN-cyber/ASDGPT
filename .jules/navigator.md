@@ -11,3 +11,7 @@
 ## 2026-01-02 - [Async LMM Processing]
 **Learning:** `LogicEngine` was synchronously waiting for `LMMInterface` (local LLM calls), which froze the main loop for seconds, causing sensor data drops and UI lag.
 **Action:** Refactored `LogicEngine` to run LMM analysis in a background thread (`_run_lmm_analysis_async`). Added `tests/test_async_logic.py` to verify non-blocking behavior.
+
+## 2026-01-02 - [Timeline Correlation]
+**Learning:** Interpreting the "black box" of LMM decisions is difficult without a unified view of sensor inputs, triggers, state updates, and interventions over time.
+**Action:** Created `tools/generate_timeline.py` to parse logs and generate a markdown timeline report. This allows visualizing the cause-and-effect chain.
