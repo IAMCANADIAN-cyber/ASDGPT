@@ -34,6 +34,10 @@ LOG_FILE = "acr_app.log" # Changed from acr_log.txt for consistency with main.py
 CAMERA_INDEX = 0 # Default camera index
 # AUDIO_DEVICE_INDEX = None # Example: Or specific index
 
+# Thresholds (Overridable by environment variables for personalization)
+AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
+VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
+
 # Intervention Engine settings
 MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds, e.g., 5 minutes (for proactive, non-mode-change interventions)
 DEFAULT_INTERVENTION_DURATION = 30 # Default duration for an intervention if not specified (seconds)
