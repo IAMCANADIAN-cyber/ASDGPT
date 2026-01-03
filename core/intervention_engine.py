@@ -4,7 +4,31 @@ import datetime
 import threading
 import json
 import os
+import subprocess
+import platform
 from typing import Optional, Any, Dict, List
+
+# Conditional imports for optional dependencies
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
+try:
+    import scipy.io.wavfile as wavfile
+except ImportError:
+    wavfile = None
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+
+try:
+    import sounddevice as sd
+except (ImportError, OSError):
+    sd = None
+
 from .intervention_library import InterventionLibrary
 
 class InterventionEngine:
@@ -82,29 +106,115 @@ class InterventionEngine:
         if self.app and self.app.data_logger:
              self.app.data_logger.log_debug(f"Stored intervention for feedback: Type='{intervention_type_for_logging}', Msg='{message}'")
 
-    def _speak(self, text: str) -> None:
-        # Placeholder for actual text-to-speech (TTS) implementation
+    def _speak(self, text: str, blocking: bool = True) -> None:
+        """
+        Uses platform-specific TTS commands to speak the text.
+        Falls back to logging if the command fails.
+        If blocking is True, waits for speech to finish.
+        If blocking is False, runs in background.
+        """
         log_message = f"SPEAKING: '{text}'"
         if self.app and self.app.data_logger:
             self.app.data_logger.log_info(log_message)
         else:
             print(log_message)
 
+        def speak_task():
+            system = platform.system()
+            try:
+                if system == "Darwin":  # macOS
+                    subprocess.run(["say", text], check=False)
+                elif system == "Linux":
+                    # Try espeak or spd-say
+                    try:
+                        subprocess.run(["espeak", text], check=False)
+                    except FileNotFoundError:
+                        subprocess.run(["spd-say", text], check=False)
+                elif system == "Windows":
+                    # Use PowerShell for TTS
+                    command = f'Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak("{text}")'
+                    subprocess.run(["powershell", "-Command", command], check=False)
+            except Exception as e:
+                msg = f"TTS failed: {e}"
+                if self.app and self.app.data_logger:
+                    self.app.data_logger.log_warning(msg)
+                else:
+                    print(msg)
+
+        if blocking:
+            speak_task()
+        else:
+            threading.Thread(target=speak_task, daemon=True).start()
+
+
     def _play_sound(self, sound_file_path: str) -> None:
-        # Placeholder for playing a sound
+        """
+        Plays a WAV file using sounddevice.
+        This method is blocking (waits for sound to finish).
+        """
         log_message = f"PLAYING_SOUND: '{sound_file_path}'"
         if self.app and self.app.data_logger:
             self.app.data_logger.log_info(log_message)
         else:
             print(log_message)
 
+        if not os.path.exists(sound_file_path):
+            msg = f"Sound file not found: {sound_file_path}"
+            if self.app and self.app.data_logger:
+                self.app.data_logger.log_warning(msg)
+            else:
+                print(msg)
+            return
+
+        if sd is None or wavfile is None:
+             msg = "sounddevice or scipy.io.wavfile library not available (or Import failed). Cannot play sound."
+             if self.app and self.app.data_logger:
+                self.app.data_logger.log_warning(msg)
+             else:
+                print(msg)
+             return
+
+        try:
+            samplerate, data = wavfile.read(sound_file_path)
+            sd.play(data, samplerate)
+            sd.wait() # Block until sound finishes (since this runs in a thread)
+        except Exception as e:
+            msg = f"Error playing sound '{sound_file_path}': {e}"
+            if self.app and self.app.data_logger:
+                self.app.data_logger.log_error(msg)
+            else:
+                print(msg)
+
     def _show_visual_prompt(self, image_path_or_text: str) -> None:
-        # Placeholder for showing a visual prompt (e.g., a window with an image or text)
+        """
+        Shows a visual prompt.
+        If it's an image path, opens it with PIL.
+        If it's text, we log it (and in future could open a text window).
+        """
         log_message = f"SHOWING_VISUAL: '{image_path_or_text}'"
         if self.app and self.app.data_logger:
             self.app.data_logger.log_info(log_message)
         else:
             print(log_message)
+
+        if Image is None:
+             if self.app and self.app.data_logger:
+                self.app.data_logger.log_warning("PIL (Pillow) library not available. Cannot show image.")
+             return
+
+        if os.path.exists(image_path_or_text):
+            try:
+                img = Image.open(image_path_or_text)
+                img.show()
+            except Exception as e:
+                 msg = f"Failed to show image '{image_path_or_text}': {e}"
+                 if self.app and self.app.data_logger:
+                    self.app.data_logger.log_error(msg)
+                 else:
+                    print(msg)
+        else:
+             # Just text? For now, we only log text prompts as we don't have a GUI window manager here.
+             pass
 
     def _capture_image(self, details: str) -> None:
         # Placeholder for capturing an image
@@ -141,7 +251,8 @@ class InterventionEngine:
 
             if action == "speak":
                 content = step.get("content", "")
-                self._speak(content)
+                # Blocking speech in a sequence to maintain timing
+                self._speak(content, blocking=True)
 
             elif action == "sound":
                 file_path = step.get("file", "")
@@ -208,7 +319,10 @@ class InterventionEngine:
             self._run_sequence(sequence, logger)
         else:
             # Fallback: Just speak the message (Legacy/Simple mode)
-            self._speak(message)
+            # Default to blocking for backward compatibility in single-message mode,
+            # as this thread is dedicated to the intervention anyway.
+            self._speak(message, blocking=True)
+
             # Store simple interventions for feedback
             if intervention_type not in ["mode_change_notification", "error_notification_spoken"]:
                 self._store_last_intervention(message, intervention_type)
@@ -397,7 +511,8 @@ class InterventionEngine:
                 message = "Sensor error detected. Operations affected."
 
         if message:
-            self._speak(message)
+            # Mode changes happen on main thread (typically), so we speak non-blocking
+            self._speak(message, blocking=False)
 
     def register_feedback(self, feedback_value: str) -> None:
         logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
