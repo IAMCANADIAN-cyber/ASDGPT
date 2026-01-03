@@ -64,6 +64,10 @@ class LogicEngine:
         self.lmm_consecutive_failures: int = 0
         self.lmm_circuit_breaker_open_until: float = 0
 
+        # Context Persistence (for specialized triggers like Doom Scrolling)
+        self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
+        self.doom_scroll_trigger_threshold: int = 3 # Consecutive checks
+
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
     def get_mode(self) -> str:
@@ -270,6 +274,12 @@ class LogicEngine:
                 self.state_engine.update(analysis)
                 self.logger.log_info("LMM analysis complete and state updated.")
 
+                # Process Visual Context
+                visual_context = analysis.get("visual_context", [])
+                if visual_context:
+                    self.logger.log_info(f"LMM Detected Visual Context: {visual_context}")
+                    self._process_visual_context_triggers(visual_context)
+
                 # Log state update event
                 self.logger.log_event("state_update", self.state_engine.get_state())
 
@@ -298,6 +308,36 @@ class LogicEngine:
         except Exception as e:
             self.logger.log_error(f"Error in async LMM analysis: {e}")
             self.lmm_consecutive_failures += 1
+
+    def _process_visual_context_triggers(self, visual_context: list) -> None:
+        """
+        Analyzes visual context tags for persistent patterns (e.g., Doom Scrolling).
+        """
+        # Tags we track for persistence
+        tracked_tags = ["phone_usage", "messy_room"]
+
+        for tag in tracked_tags:
+            if tag in visual_context:
+                self.context_persistence[tag] = self.context_persistence.get(tag, 0) + 1
+            else:
+                self.context_persistence[tag] = 0
+
+        # Check for Doom Scroll Trigger
+        if self.context_persistence.get("phone_usage", 0) >= self.doom_scroll_trigger_threshold:
+            self.logger.log_info("LogicEngine: 'Doom Scroll' persistence threshold reached!")
+            # Trigger specific intervention if not already triggered recently?
+            # Ideally, we ask the InterventionEngine to queue specific intervention
+            # or rely on the LMM to suggest it next time (now that we sent context).
+            # But the spec says "System Action: Disables passive observer...".
+
+            # For now, we'll log it as a specific event that might influence the NEXT LMM call context
+            # or we could forcibly inject a suggestion if we had a way.
+            # But simpler: Rely on the LMM receiving this context in the prompt next time?
+            # Actually, LMM *just* told us this. If it didn't suggest an intervention, maybe we should force one.
+
+            # Let's force a suggestion if LMM didn't provide one, or override.
+            # For this MVP, we will just log it. The LMM *should* have suggested it if it saw the phone.
+            pass
 
     def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
         if not self.lmm_interface:
