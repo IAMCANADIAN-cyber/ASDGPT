@@ -8,6 +8,7 @@ from .intervention_library import InterventionLibrary
 import config
 from typing import Optional, Dict, Any, List, TypedDict, Union
 from .intervention_library import InterventionLibrary
+from .prompts.v1 import SYSTEM_INSTRUCTION_V1
 
 # Define schema types for better clarity and future validation
 
@@ -31,52 +32,7 @@ class LMMResponse(TypedDict):
     _meta: Optional[Dict[str, Any]] # For internal flags like is_fallback
 
 class LMMInterface:
-    BASE_SYSTEM_INSTRUCTION = """
-    You are an autonomous co-regulator. Analyze the provided sensor metrics and context to estimate the user's state.
-
-    Sensor Interpretations:
-    - Audio Level (RMS): High (>0.5) = Loud environment/speech. Low (<0.1) = Silence.
-    - Video Activity: High (>20) = High movement/pacing. Low (<5) = Stillness.
-    - Face Size Ratio: High (>0.15) = Leaning in/High Focus. Low (<0.05) = Leaning back/Distanced.
-    - Vertical Position: High (>0.6) = Slouching/Low Energy. Low (<0.4) = Upright/High Energy.
-    - Horizontal Position: Approx 0.5 is centered.
-
-    Output a valid JSON object with the following structure:
-    {
-      "state_estimation": {
-        "arousal": <int 0-100>,
-        "overload": <int 0-100>,
-        "focus": <int 0-100>,
-        "energy": <int 0-100>,
-        "mood": <int 0-100>
-      },
-      "visual_context": ["<tag1>", "<tag2>"],
-      "suggestion": {
-        "id": "<intervention_id_string_from_library>",
-        "type": "<intervention_type_string_fallback>",
-        "message": "<text_to_speak_to_user_fallback>"
-      }
-    }
-
-    "visual_context" tags to consider (if applicable):
-    - "phone_usage": User is holding a phone or looking at one.
-    - "messy_room": Background is cluttered.
-    - "dark_room": Lighting is dim.
-    - "person_standing": User is standing up.
-    - "person_sitting": User is sitting.
-    - "eating": User is eating.
-    - "drinking": User is drinking.
-
-    If no intervention is needed, set "suggestion" to null.
-
-    Available Interventions (by ID):
-    {interventions_list}
-
-    If you suggest one of these, use its exact ID in the "id" field. You may omit "message" if using an ID, as the system will handle the sequence.
-    If you need a custom ad-hoc intervention, leave "id" null and provide "type" and "message".
-
-    Ensure your response is ONLY valid JSON, no markdown formatting.
-    """
+    BASE_SYSTEM_INSTRUCTION = SYSTEM_INSTRUCTION_V1
 
     def __init__(self, data_logger=None, intervention_library: Optional[InterventionLibrary] = None):
         """
