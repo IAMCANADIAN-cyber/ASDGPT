@@ -2,6 +2,9 @@ import requests
 import json
 import re
 import time
+from typing import Optional, Dict, Any, TypedDict, List
+import config
+from .intervention_library import InterventionLibrary
 import config
 from typing import Optional, Dict, Any, List, TypedDict, Union
 from .intervention_library import InterventionLibrary
@@ -210,6 +213,87 @@ class LMMInterface:
         text = re.sub(r'```$', '', text, flags=re.MULTILINE)
         return text.strip()
 
+    def _send_request_with_retry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Sends request to LMM with manual retry logic."""
+        retries = 3
+        backoff = 2
+        last_exception = None
+
+        for attempt in range(retries):
+            try:
+                response = requests.post(self.llm_url, json=payload, timeout=20)
+                response.raise_for_status()
+
+                response_json = response.json()
+                content = response_json['choices'][0]['message']['content']
+                clean_content = self._clean_json_string(content)
+
+                try:
+                    parsed_result = json.loads(clean_content)
+                except json.JSONDecodeError as e:
+                     raise ValueError(f"JSON decode error: {e}")
+
+                if not self._validate_response_schema(parsed_result):
+                    # If schema is invalid, we might want to retry if it's a transient generation error
+                    # But for now, we'll treat it as a failure that might be retried
+                    raise ValueError(f"Schema validation failed: {parsed_result}")
+
+                return parsed_result
+
+            except (requests.exceptions.RequestException, ValueError, KeyError) as e:
+                last_exception = e
+                self._log_warning(f"Attempt {attempt + 1}/{retries} failed: {e}")
+                if attempt < retries - 1:
+                    time.sleep(backoff)
+                    backoff *= 2 # Exponential backoff
+
+        if last_exception:
+            raise last_exception
+        raise Exception("Unknown error in _send_request_with_retry")
+
+    def _get_fallback_response(self, user_context: Optional[Dict[str, Any]] = None) -> LMMResponse:
+        """Returns a safe, neutral response when the LMM is unavailable, using simple heuristics."""
+
+        fallback_state = {
+            "arousal": 50,
+            "overload": 0,
+            "focus": 50,
+            "energy": 50,
+            "mood": 50
+        }
+        suggestion = None
+
+        if user_context:
+            metrics = user_context.get('sensor_metrics', {})
+            audio_level = metrics.get('audio_level', 0.0)
+            video_activity = metrics.get('video_activity', 0.0)
+
+            if audio_level > 0.5:
+                # Loud environment
+                fallback_state["overload"] = 70
+                # Try to match with an existing ID if possible, otherwise generic
+                suggestion = {
+                    "id": None, # Ad-hoc
+                    "type": "text",
+                    "message": "It's quite loud. Maybe take a moment of silence?"
+                }
+
+            elif video_activity > 20:
+                # High activity
+                fallback_state["arousal"] = 70
+                suggestion = {
+                    "id": None,
+                    "type": "text",
+                    "message": "You seem active. Remember to breathe."
+                }
+
+        return {
+            "state_estimation": fallback_state,
+            "suggestion": suggestion,
+            "_meta": {"is_fallback": True}
+        }
+
+    def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[LMMResponse]:
     def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[Dict[str, Any]]:
         """
         Processes incoming sensor data and user context by sending it to the local LMM.
@@ -229,7 +313,7 @@ class LMMInterface:
             if time.time() - self.circuit_open_time < self.circuit_cooldown:
                 self._log_warning(f"Circuit breaker open. Skipping LMM call. (Cooldown: {self.circuit_cooldown}s)")
                 if getattr(config, 'LMM_FALLBACK_ENABLED', False):
-                    return self._get_fallback_response()
+                    return self._get_fallback_response(user_context)
                 return None
             else:
                 self._log_info("Circuit breaker cooldown expired. Retrying connection.")
@@ -301,6 +385,28 @@ class LMMInterface:
             "max_tokens": 500
         }
 
+        try:
+            result = self._send_request_with_retry(payload)
+            self._log_info(f"Received valid JSON from LMM.")
+            self._log_debug(f"LMM Response: {result}")
+            # Reset circuit breaker on success
+            self.circuit_failures = 0
+            return result
+
+        except Exception as e:
+            self._log_error(f"LMM Request Failed after retries: {e}")
+
+            # Increment Circuit Breaker
+            self.circuit_failures += 1
+            if self.circuit_failures >= self.circuit_max_failures:
+                 self.circuit_open_time = time.time()
+                 self._log_warning(f"LMM Circuit Breaker TRIPPED. Pausing calls for {self.circuit_cooldown}s.")
+
+            if getattr(config, 'LMM_FALLBACK_ENABLED', False):
+                 self._log_info("LMM_FALLBACK_ENABLED is True. Returning neutral state.")
+                 return self._get_fallback_response(user_context)
+
+            return None
         # Retry logic
         retries = 3
         for attempt in range(retries):

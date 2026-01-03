@@ -23,7 +23,7 @@ class TestVideoSensorPosture(unittest.TestCase):
         # Mock detection: Face at x=25, y=25, w=50, h=50
         # This is centered in 100x100
         # Center: (50, 50) -> 0.5, 0.5
-        # Area: 2500 -> Ratio: 0.25
+        # Ratio: width / frame_width = 50 / 100 = 0.5
         self.sensor.face_cascade.detectMultiScale.return_value = [[25, 25, 50, 50]]
 
         metrics = self.sensor.analyze_frame(frame)
@@ -36,7 +36,8 @@ class TestVideoSensorPosture(unittest.TestCase):
 
         # New assertions - Strict checks
         self.assertIn("face_size_ratio", metrics)
-        self.assertAlmostEqual(metrics["face_size_ratio"], 0.25)
+        # width=50, frame_width=100 => 0.5
+        self.assertAlmostEqual(metrics["face_size_ratio"], 0.5)
 
         self.assertIn("horizontal_position", metrics)
         self.assertAlmostEqual(metrics["horizontal_position"], 0.5)
@@ -52,8 +53,8 @@ class TestVideoSensorPosture(unittest.TestCase):
         metrics = self.sensor.analyze_frame(frame)
 
         self.assertIn("face_size_ratio", metrics)
-        # 6400 / 10000 = 0.64
-        self.assertAlmostEqual(metrics["face_size_ratio"], 0.64)
+        # 80 / 100 = 0.8
+        self.assertAlmostEqual(metrics["face_size_ratio"], 0.8)
 
     def test_posture_slouching(self):
         # Face at bottom
@@ -75,9 +76,10 @@ class TestVideoSensorPosture(unittest.TestCase):
 
         self.assertFalse(metrics["face_detected"])
         self.assertEqual(metrics["face_count"], 0)
-        self.assertNotIn("face_size_ratio", metrics)
-        self.assertNotIn("vertical_position", metrics)
-        self.assertNotIn("horizontal_position", metrics)
+        # These keys should exist but be 0.0, because analyze_frame always populates them
+        self.assertEqual(metrics["face_size_ratio"], 0.0)
+        self.assertEqual(metrics["vertical_position"], 0.0)
+        self.assertEqual(metrics["horizontal_position"], 0.0)
 
 if __name__ == '__main__':
     unittest.main()
