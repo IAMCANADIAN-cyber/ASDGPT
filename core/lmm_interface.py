@@ -249,7 +249,6 @@ class LMMInterface:
             "_meta": {"is_fallback": True}
         }
 
-    def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[LMMResponse]:
     def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[Dict[str, Any]]:
         """
         Processes incoming sensor data and user context by sending it to the local LMM.
@@ -318,6 +317,11 @@ class LMMInterface:
             suppressed = user_context.get('suppressed_interventions')
             if suppressed:
                 context_str += f"\nSuppressed Interventions (Do NOT suggest): {', '.join(suppressed)}\n"
+
+            # Add preferred interventions
+            preferred = user_context.get('preferred_interventions')
+            if preferred:
+                context_str += f"\nPreferred Interventions (User found these helpful recently): {', '.join(preferred)}\n"
 
         content_parts.append({"type": "text", "text": context_str})
 

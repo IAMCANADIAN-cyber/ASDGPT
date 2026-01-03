@@ -215,8 +215,12 @@ class LogicEngine:
 
             # Fetch suppressed interventions if available
             suppressed_list = []
-            if self.intervention_engine and hasattr(self.intervention_engine, 'get_suppressed_intervention_types'):
-                suppressed_list = self.intervention_engine.get_suppressed_intervention_types()
+            preferred_list = []
+            if self.intervention_engine:
+                if hasattr(self.intervention_engine, 'get_suppressed_intervention_types'):
+                    suppressed_list = self.intervention_engine.get_suppressed_intervention_types()
+                if hasattr(self.intervention_engine, 'get_preferred_intervention_types'):
+                    preferred_list = self.intervention_engine.get_preferred_intervention_types()
 
             context = {
                 "current_mode": self.current_mode,
@@ -230,7 +234,8 @@ class LogicEngine:
                     "audio_analysis": self.audio_analysis
                 },
                 "current_state_estimation": self.state_engine.get_state(),
-                "suppressed_interventions": suppressed_list
+                "suppressed_interventions": suppressed_list,
+                "preferred_interventions": preferred_list
             }
 
             return {
