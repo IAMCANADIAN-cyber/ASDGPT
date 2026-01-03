@@ -250,7 +250,6 @@ class LMMInterface:
         }
 
     def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[LMMResponse]:
-    def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[Dict[str, Any]]:
         """
         Processes incoming sensor data and user context by sending it to the local LMM.
 
@@ -363,58 +362,6 @@ class LMMInterface:
                  return self._get_fallback_response(user_context)
 
             return None
-        # Retry logic
-        retries = 3
-        for attempt in range(retries):
-            try:
-                response = requests.post(self.llm_url, json=payload, timeout=20)
-                response.raise_for_status()
-
-                response_json = response.json()
-                content = response_json['choices'][0]['message']['content']
-
-                # Clean content (remove markdown code blocks if present)
-                clean_content = self._clean_json_string(content)
-
-                parsed_result = json.loads(clean_content)
-
-                # Validation Step
-                if self._validate_response_schema(parsed_result):
-                    self._log_info(f"Received valid JSON from LMM.")
-                    self._log_debug(f"LMM Response: {parsed_result}")
-                    # Reset circuit breaker on success
-                    self.circuit_failures = 0
-                    return parsed_result
-                else:
-                    self._log_error(f"Response failed schema validation.", details=f"Parsed: {parsed_result}")
-                    # If schema is wrong, retrying might not help unless LLM hallucinated.
-                    # We continue loop to try again with a fresh generation.
-
-            except requests.exceptions.RequestException as e:
-                self._log_warning(f"Connection error (Attempt {attempt+1}/{retries}): {e}")
-                time.sleep(1)
-            except json.JSONDecodeError as e:
-                self._log_error(f"Failed to parse JSON response: {e}", details=f"Raw content: {content}")
-                # Retry allows chance for better formatting next time
-                time.sleep(0.5)
-            except KeyError as e:
-                self._log_error(f"Unexpected response structure: {e}", details=f"Response: {response_json}")
-                time.sleep(0.5)
-
-        self._log_error(f"Failed to get valid response from LMM after {retries} attempts.")
-
-        # Increment Circuit Breaker
-        self.circuit_failures += 1
-        if self.circuit_failures >= self.circuit_max_failures:
-             self.circuit_open_time = time.time()
-             self._log_warning(f"LMM Circuit Breaker TRIPPED. Pausing calls for {self.circuit_cooldown}s.")
-
-        # Check for fallback
-        if getattr(config, 'LMM_FALLBACK_ENABLED', False):
-             self._log_info("LMM_FALLBACK_ENABLED is True. Returning neutral state.")
-             return self._get_fallback_response()
-
-        return None
 
     def get_intervention_suggestion(self, processed_analysis: LMMResponse) -> Optional[Dict[str, Any]]:
         """
