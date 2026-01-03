@@ -470,6 +470,19 @@ class LogicEngine:
                 self.last_lmm_call_time = current_time
                 self._trigger_lmm_analysis(allow_intervention=False)
 
+    def shutdown(self) -> None:
+        """
+        Gracefully shuts down the LogicEngine, ensuring background threads complete.
+        """
+        self.logger.log_info("LogicEngine shutting down...")
+        if self.lmm_thread and self.lmm_thread.is_alive():
+            self.logger.log_info("Waiting for LMM analysis thread to finish...")
+            self.lmm_thread.join(timeout=5.0)
+            if self.lmm_thread.is_alive():
+                self.logger.log_warning("LMM analysis thread did not finish in time.")
+            else:
+                self.logger.log_info("LMM analysis thread finished.")
+
 
 if __name__ == '__main__':
     # Mock sensor classes for testing
