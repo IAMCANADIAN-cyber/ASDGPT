@@ -535,6 +535,23 @@ class InterventionEngine:
             else:
                 print("No active intervention to stop.")
 
+    def shutdown(self) -> None:
+        """Gracefully shuts down the InterventionEngine."""
+        logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
+        if logger:
+            logger.log_info("InterventionEngine shutting down...")
+        else:
+            print("InterventionEngine shutting down...")
+
+        self.stop_intervention()
+        if self.intervention_thread and self.intervention_thread.is_alive():
+            if logger:
+                logger.log_info("Waiting for intervention thread to finish...")
+            self.intervention_thread.join(timeout=3.0)
+            if self.intervention_thread.is_alive():
+                if logger:
+                    logger.log_warning("Intervention thread did not finish in time.")
+
     def notify_mode_change(self, new_mode: str, custom_message: Optional[str] = None) -> None:
         """Handles speaking notifications for mode changes. These are not subject to feedback."""
         message = custom_message
