@@ -241,7 +241,7 @@ class LogicEngine:
                 },
                 "current_state_estimation": self.state_engine.get_state(),
                 "suppressed_interventions": suppressed_list,
-                "system_alerts": system_alerts
+                "system_alerts": system_alerts,
                 "preferred_interventions": preferred_list
             }
 
@@ -372,7 +372,12 @@ class LogicEngine:
             return
 
         self.logger.log_info(f"Triggering LMM analysis (Reason: {reason})...")
-        self.logger.log_event("lmm_trigger", {"reason": reason})
+
+        trigger_payload = {
+            "reason": reason,
+            "metrics": lmm_payload["user_context"].get("sensor_metrics", {})
+        }
+        self.logger.log_event("lmm_trigger", trigger_payload)
 
         # Run in background thread to avoid blocking main loop
         self.lmm_thread = threading.Thread(
