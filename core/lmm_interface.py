@@ -169,6 +169,10 @@ class LMMInterface:
         backoff = 2
         last_exception = None
 
+        # Enforce JSON mode if not already set, to ensure consistent output
+        if "response_format" not in payload:
+            payload["response_format"] = {"type": "json_object"}
+
         for attempt in range(retries):
             try:
                 response = requests.post(self.llm_url, json=payload, timeout=20)
