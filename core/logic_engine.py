@@ -241,7 +241,7 @@ class LogicEngine:
                 },
                 "current_state_estimation": self.state_engine.get_state(),
                 "suppressed_interventions": suppressed_list,
-                "system_alerts": system_alerts
+                "system_alerts": system_alerts,
                 "preferred_interventions": preferred_list
             }
 
@@ -288,9 +288,10 @@ class LogicEngine:
 
                 # Process Visual Context
                 visual_context = analysis.get("visual_context", [])
+                triggered_intervention_id = None
                 if visual_context:
                     self.logger.log_info(f"LMM Detected Visual Context: {visual_context}")
-                    self._process_visual_context_triggers(visual_context)
+                    triggered_intervention_id = self._process_visual_context_triggers(visual_context)
 
                 # Log state update event
                 self.logger.log_event("state_update", self.state_engine.get_state())
@@ -306,24 +307,36 @@ class LogicEngine:
                  if self.lmm_consecutive_failures >= config.LMM_CIRCUIT_BREAKER_MAX_FAILURES:
                      self.lmm_circuit_breaker_open_until = time.time() + config.LMM_CIRCUIT_BREAKER_COOLDOWN
                      self.logger.log_error(f"LMM Circuit Breaker OPENED (No Response). Pausing LMM calls for {config.LMM_CIRCUIT_BREAKER_COOLDOWN}s.")
+                 triggered_intervention_id = None # Ensure defined in this scope
 
 
             if analysis and self.intervention_engine:
                 suggestion = self.lmm_interface.get_intervention_suggestion(analysis)
-                if suggestion:
+
+                # Priority: System Triggers > LMM Suggestion
+                final_intervention = None
+
+                if triggered_intervention_id:
+                    final_intervention = {"id": triggered_intervention_id}
+                    self.logger.log_info(f"System Trigger overrides LMM suggestion. Triggered: {triggered_intervention_id}")
+                elif suggestion:
+                    final_intervention = suggestion
+
+                if final_intervention:
                     if allow_intervention:
-                        self.logger.log_info(f"LMM suggested intervention: {suggestion}")
+                        self.logger.log_info(f"Starting intervention: {final_intervention}")
                         # start_intervention is generally thread-safe as it just sets an event/launches another thread
-                        self.intervention_engine.start_intervention(suggestion)
+                        self.intervention_engine.start_intervention(final_intervention)
                     else:
-                        self.logger.log_info(f"LMM suggested intervention (suppressed due to mode): {suggestion}")
+                        self.logger.log_info(f"Intervention suggested but suppressed due to mode: {final_intervention}")
         except Exception as e:
             self.logger.log_error(f"Error in async LMM analysis: {e}")
             self.lmm_consecutive_failures += 1
 
-    def _process_visual_context_triggers(self, visual_context: list) -> None:
+    def _process_visual_context_triggers(self, visual_context: list) -> Optional[str]:
         """
         Analyzes visual context tags for persistent patterns (e.g., Doom Scrolling).
+        Returns an intervention ID if a trigger condition is met, else None.
         """
         # Tags we track for persistence
         tracked_tags = ["phone_usage", "messy_room"]
@@ -337,19 +350,9 @@ class LogicEngine:
         # Check for Doom Scroll Trigger
         if self.context_persistence.get("phone_usage", 0) >= self.doom_scroll_trigger_threshold:
             self.logger.log_info("LogicEngine: 'Doom Scroll' persistence threshold reached!")
-            # Trigger specific intervention if not already triggered recently?
-            # Ideally, we ask the InterventionEngine to queue specific intervention
-            # or rely on the LMM to suggest it next time (now that we sent context).
-            # But the spec says "System Action: Disables passive observer...".
+            return "doom_scroll_breaker"
 
-            # For now, we'll log it as a specific event that might influence the NEXT LMM call context
-            # or we could forcibly inject a suggestion if we had a way.
-            # But simpler: Rely on the LMM receiving this context in the prompt next time?
-            # Actually, LMM *just* told us this. If it didn't suggest an intervention, maybe we should force one.
-
-            # Let's force a suggestion if LMM didn't provide one, or override.
-            # For this MVP, we will just log it. The LMM *should* have suggested it if it saw the phone.
-            pass
+        return None
 
     def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
         if not self.lmm_interface:
