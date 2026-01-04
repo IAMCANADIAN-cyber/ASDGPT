@@ -67,7 +67,7 @@ class LogicEngine:
 
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
-        self.doom_scroll_trigger_threshold: int = 3 # Consecutive checks
+        self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
@@ -223,6 +223,11 @@ class LogicEngine:
                 if hasattr(self.intervention_engine, 'get_preferred_intervention_types'):
                     preferred_list = self.intervention_engine.get_preferred_intervention_types()
 
+            # Generate System Alerts based on persistence
+            system_alerts = []
+            if self.context_persistence.get("phone_usage", 0) >= self.doom_scroll_trigger_threshold:
+                 system_alerts.append("Persistent Phone Usage Detected (Potential Doom Scrolling)")
+
             context = {
                 "current_mode": self.current_mode,
                 "trigger_reason": trigger_reason,
@@ -236,6 +241,7 @@ class LogicEngine:
                 },
                 "current_state_estimation": self.state_engine.get_state(),
                 "suppressed_interventions": suppressed_list,
+                "system_alerts": system_alerts
                 "preferred_interventions": preferred_list
             }
 
