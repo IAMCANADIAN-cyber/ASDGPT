@@ -53,11 +53,11 @@ class TestSensoryOutputs(unittest.TestCase):
             # but verifying thread start is sufficient for "non-blocking" check.
 
     @patch('core.intervention_engine.sd')
-    @patch('core.intervention_engine.wavfile.read')
+    @patch('core.intervention_engine.wavfile')
     @patch('os.path.exists')
-    def test_play_sound(self, mock_exists, mock_wav_read, mock_sd):
+    def test_play_sound(self, mock_exists, mock_wavfile, mock_sd):
         mock_exists.return_value = True
-        mock_wav_read.return_value = (44100, [0, 1, 0])
+        mock_wavfile.read.return_value = (44100, [0, 1, 0])
 
         self.engine._play_sound("dummy.wav")
 

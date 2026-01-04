@@ -48,6 +48,7 @@ class LogicEngine:
         self.min_lmm_interval: int = 2   # Minimum time between calls even for triggers (seconds)
 
         # Thresholds
+        # Thresholds (loaded from config)
         self.audio_threshold_high = config.AUDIO_THRESHOLD_HIGH
         self.video_activity_threshold_high = config.VIDEO_ACTIVITY_THRESHOLD_HIGH
 
