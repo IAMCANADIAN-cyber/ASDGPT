@@ -34,6 +34,9 @@ class LMMInterface:
 
     Sensor Interpretations:
     - Audio Level (RMS): High (>0.5) = Loud environment/speech. Low (<0.1) = Silence.
+    - Audio Pitch Variance: High (>50) = Expressive/Emotional. Low (<10) = Monotone/Drone/Bored.
+    - Audio ZCR: High (>0.1) = Noisy/Sibilance. Low (<0.05) = Tonal/Clear.
+    - Speech Rate (Burst Density): High (>5) = Fast speech/Anxiety. Low (<1) = Slow speech/Calm.
     - Video Activity: High (>20) = High movement/pacing. Low (<5) = Stillness.
     - Face Size Ratio: High (>0.15) = Leaning in/High Focus. Low (<0.05) = Leaning back/Distanced.
     - Vertical Position: High (>0.6) = Slouching/Low Energy. Low (<0.4) = Upright/High Energy.
@@ -181,12 +184,6 @@ class LMMInterface:
             "_meta": {"is_fallback": True}
         }
 
-    def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[LMMResponse]:
-    def _clean_json_string(self, text):
-        """Removes markdown code blocks and whitespace."""
-        # Remove ```json ... ``` or ``` ... ```
-        text = re.sub(r'^```json\s*', '', text, flags=re.MULTILINE)
-        text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
         text = re.sub(r'```$', '', text, flags=re.MULTILINE)
         return text.strip()
 
@@ -414,26 +411,6 @@ class LMMInterface:
             "mood": 50
         }
 
-    def _get_fallback_response(self):
-        """Returns a safe, neutral state when LMM is unavailable."""
-        return {
-            "state_estimation": {
-                "arousal": 50,
-                "overload": 0,
-                "focus": 50,
-                "energy": 50,
-                "mood": 50
-            },
-            "suggestion": None
-        }
-
-    def _clean_json_string(self, text):
-        """Removes markdown code blocks and whitespace."""
-        # Remove ```json ... ``` or ``` ... ```
-        text = re.sub(r'^```json\s*', '', text, flags=re.MULTILINE)
-        text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
-        text = re.sub(r'```$', '', text, flags=re.MULTILINE)
-        return text.strip()
         suggestion = None
 
         if audio_level > 0.5:
@@ -461,6 +438,27 @@ class LMMInterface:
             "suggestion": suggestion,
             "fallback": True # Flag to indicate this was a fallback
         }
+
+    def _get_fallback_response(self):
+        """Returns a safe, neutral state when LMM is unavailable."""
+        return {
+            "state_estimation": {
+                "arousal": 50,
+                "overload": 0,
+                "focus": 50,
+                "energy": 50,
+                "mood": 50
+            },
+            "suggestion": None
+        }
+
+    def _clean_json_string(self, text):
+        """Removes markdown code blocks and whitespace."""
+        # Remove ```json ... ``` or ``` ... ```
+        text = re.sub(r'^```json\s*', '', text, flags=re.MULTILINE)
+        text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
+        text = re.sub(r'```$', '', text, flags=re.MULTILINE)
+        return text.strip()
 
     def get_intervention_suggestion(self, processed_analysis: LMMResponse) -> Optional[Dict[str, Any]]:
         """

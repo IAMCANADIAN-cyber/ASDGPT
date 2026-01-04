@@ -366,9 +366,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if not os.path.exists(args.log):
-        print(f"Log file not found: {args.log}")
-        return
 
     # Ensure output directory exists
     output_dir = os.path.dirname(args.output)
@@ -387,84 +384,7 @@ if __name__ == "__main__":
 if __name__ == "__main__":
     main()
     # Ensure output dir exists
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
-
-    generate_timeline(args.log, args.output)
-            ts = parsed["timestamp"]
-
-            # Categorize interesting events
-            event_data = None
-
-            # 1. State Updates
-            if "StateEngine updated. Current Smoothed State:" in msg:
-                # Format: StateEngine updated. Current Smoothed State: {'arousal': 50, ...}
-                try:
-                    state_str = msg.split("Current Smoothed State: ")[1]
-                    # Use literal_eval instead of json.loads for robust python dict parsing
-                    state_data = ast.literal_eval(state_str)
-                    event_data = {
-                        "type": "State Update",
-                        "data": state_data,
-                        "timestamp": ts
-                    }
-                except:
-                    pass
-
-            # 2. LMM Triggers
-            elif "Triggering LMM analysis" in msg:
-                # Format: Triggering LMM analysis (Reason: high_audio_level)...
-                reason = "Unknown"
-                if "(Reason: " in msg:
-                    reason = msg.split("(Reason: ")[1].strip(")...")
-                event_data = {
-                    "type": "LMM Trigger",
-                    "reason": reason,
-                    "timestamp": ts
-                }
-
-            # 3. Interventions
-            elif "Intervention" in msg and "initiated." in msg:
-                # Format: Intervention 'box_breathing' (Tier 1) initiated.
-                details = msg.replace("Intervention ", "").replace(" initiated.", "")
-                event_data = {
-                    "type": "Intervention",
-                    "details": details,
-                    "timestamp": ts
-                }
-
-            # 4. User Feedback
-            elif "Event: user_feedback" in msg:
-                # Format: Event: user_feedback | Payload: {...}
-                try:
-                    payload_str = msg.split("Payload: ")[1]
-                    payload = ast.literal_eval(payload_str)
-                    event_data = {
-                        "type": "Feedback",
-                        "data": payload,
-                        "timestamp": ts
-                    }
-                except:
-                    pass
-
             # 5. Mode Changes
-            elif "LogicEngine: Changing mode from" in msg:
-                # Format: LogicEngine: Changing mode from active to snoozed
-                event_data = {
-                    "type": "Mode Change",
-                    "details": msg.replace("LogicEngine: ", ""),
-                    "timestamp": ts
-                }
-
-            if event_data:
-                events.append(event_data)
-
-from typing import List, Dict, Any
-
-# Ensure we can import modules from the project root if needed
-# (though for this standalone tool, we might not strictly need it if we pass args)
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
 
 class TimelineGenerator:
     def __init__(self, log_file_path: str):
@@ -637,7 +557,7 @@ if __name__ == "__main__":
 import json
 import os
 import argparse
-from datetime import datetime
+import datetime
 
 def parse_events(events_file):
     events = []
@@ -828,57 +748,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-        print("No events found.")
-        return
-
-    # Sort events by timestamp
-    events.sort(key=lambda x: x['timestamp'])
-
-    markdown_content = "# ACR Timeline Report\n\n"
-    markdown_content += f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-
-    current_date = ""
-
-    for event in events:
-        ts = datetime.fromisoformat(event['timestamp'])
-        date_str = ts.strftime('%Y-%m-%d')
-        time_str = ts.strftime('%H:%M:%S')
-
-        if date_str != current_date:
-            markdown_content += f"## {date_str}\n\n"
-            markdown_content += "| Time | Event Type | Details |\n"
-            markdown_content += "| --- | --- | --- |\n"
-            current_date = date_str
-
-        event_type = event['event_type']
-        payload = event['payload']
-
-        # Format payload for readability
-        details = ""
-        if event_type == "state_update":
-            details = ", ".join([f"{k}: {v}" for k, v in payload.items()])
-        elif event_type == "lmm_trigger":
-            details = f"Reason: {payload.get('reason', 'unknown')}"
-        elif event_type == "intervention_start":
-            details = f"Type: {payload.get('type')}, ID: {payload.get('id', 'N/A')}"
-        elif event_type == "user_feedback":
-            details = f"Rating: **{payload.get('feedback_value', '').upper()}** for {payload.get('intervention_type', 'unknown')}"
-        else:
-            details = str(payload)
-
-        markdown_content += f"| {time_str} | **{event_type}** | {details} |\n"
-
-    with open(output_file, 'w') as f:
-        f.write(markdown_content)
-
-    print(f"Report generated: {output_file}")
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate timeline report from ACR events.")
-    parser.add_argument("--events", default="user_data/events.jsonl", help="Path to events.jsonl")
-    parser.add_argument("--output", default="user_data/timeline_report.md", help="Path to output markdown file")
-
-    args = parser.parse_args()
-
     events = parse_events(args.events)
     generate_markdown(events, args.output)

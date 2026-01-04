@@ -3,8 +3,9 @@ import time
 import numpy as np
 
 class VideoSensor:
-    def __init__(self, camera_index=0):
+    def __init__(self, camera_index=0, data_logger=None):
         self.camera_index = camera_index
+        self.logger = data_logger
         self.cap = None
         self.last_frame = None
         self._initialize_camera()
@@ -77,17 +78,42 @@ class VideoSensor:
         Returns a dict.
         """
         if frame is None:
-            return {}
+            # Consistent with test expectations which might check for keys even on empty
+            # If tests expect keys, we should provide default dict
+            # But the test calls video_sensor.analyze_frame(None) and checks assertFalse(metrics['face_detected'])
+            # So returning empty dict {} would cause KeyError on 'face_detected'
+            return {
+                "face_detected": False,
+                "face_count": 0,
+                "face_locations": [],
+                "face_size_ratio": 0.0,
+                "vertical_position": 0.0,
+                "horizontal_position": 0.0
+            }
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        try:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # Detect faces
-        faces = self.face_cascade.detectMultiScale(
-            gray,
-            scaleFactor=1.1,
-            minNeighbors=5,
-            minSize=(30, 30)
-        )
+            # Detect faces
+            faces = self.face_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=5,
+                minSize=(30, 30)
+            )
+        except Exception as e:
+            if self.logger:
+                self.logger.log_error(f"Face detection error: {e}")
+            else:
+                print(f"Face detection error: {e}")
+            return {
+                "face_detected": False,
+                "face_count": 0,
+                "face_locations": [],
+                "face_size_ratio": 0.0,
+                "vertical_position": 0.0,
+                "horizontal_position": 0.0
+            }
 
         metrics = {
             "face_detected": len(faces) > 0,
