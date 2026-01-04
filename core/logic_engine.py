@@ -146,30 +146,32 @@ class LogicEngine:
             self.previous_video_frame = self.last_video_frame
             self.last_video_frame = frame
 
-            # Calculate video activity (motion)
-            if self.previous_video_frame is not None and self.last_video_frame is not None:
-                # Ensure shapes match before diffing
-                if self.previous_video_frame.shape == self.last_video_frame.shape:
-                    diff = cv2.absdiff(self.previous_video_frame, self.last_video_frame)
-                    gray_diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-                    self.video_activity = np.mean(gray_diff)
-                else:
-                    self.video_activity = 0.0 # Reset if shapes mismatch (e.g. cam change)
-            else:
-                self.video_activity = 0.0
+            # Use VideoSensor's unified processing if available
+            if self.video_sensor and hasattr(self.video_sensor, 'process_frame'):
+                metrics = self.video_sensor.process_frame(frame)
+                self.video_activity = metrics.get("video_activity", 0.0)
 
-            # Face Detection
-            if self.video_sensor and hasattr(self.video_sensor, 'analyze_frame'):
-                self.face_metrics = self.video_sensor.analyze_frame(frame)
+                # Filter out non-face metrics for face_metrics dict
+                self.face_metrics = {k: v for k, v in metrics.items() if k.startswith("face_")}
+                self.video_analysis = self.face_metrics # Reuse for analysis context
+
             else:
+                # Fallback to legacy calculation (if sensor doesn't have process_frame or is missing)
+                if self.previous_video_frame is not None and self.last_video_frame is not None:
+                    # Ensure shapes match before diffing
+                    if self.previous_video_frame.shape == self.last_video_frame.shape:
+                        diff = cv2.absdiff(self.previous_video_frame, self.last_video_frame)
+                        gray_diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+                        self.video_activity = np.mean(gray_diff)
+                    else:
+                        self.video_activity = 0.0
+                else:
+                    self.video_activity = 0.0
+
                 self.face_metrics = {"face_detected": False, "face_count": 0}
+                self.video_analysis = {}
 
         self.logger.log_debug(f"Processed video frame. Activity: {self.video_activity:.2f}, Face: {self.face_metrics.get('face_detected')}")
-
-        # Reuse face metrics for video analysis
-        self.video_analysis = self.face_metrics
-
-        self.logger.log_debug(f"Processed video frame. Activity: {self.video_activity:.2f}")
 
     def process_audio_data(self, audio_chunk: np.ndarray) -> None:
         with self._lock:
@@ -241,7 +243,7 @@ class LogicEngine:
                 },
                 "current_state_estimation": self.state_engine.get_state(),
                 "suppressed_interventions": suppressed_list,
-                "system_alerts": system_alerts
+                "system_alerts": system_alerts,
                 "preferred_interventions": preferred_list
             }
 
