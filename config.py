@@ -1,4 +1,8 @@
 # Configuration for the Autonomous Co-Regulator
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Default mode for the application
 # Options: "active", "snoozed", "paused"
@@ -17,11 +21,6 @@ HOTKEY_FEEDBACK_HELPFUL = "ctrl+alt+up"
 HOTKEY_FEEDBACK_UNHELPFUL = "ctrl+alt+down"
 FEEDBACK_WINDOW_SECONDS = 15 # Time in seconds to provide feedback after an intervention
 FEEDBACK_SUPPRESSION_MINUTES = 240 # Suppress "unhelpful" interventions for 4 hours
-
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # (Future task 4.5 - API Keys - will be loaded from .env)
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -88,13 +87,7 @@ LOCAL_LLM_MODEL_ID = "deepseek/deepseek-r1-0528-qwen3-8b"
 LMM_FALLBACK_ENABLED = True # Return neutral state if LMM is unreachable
 LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
 LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
-LMM_FALLBACK_ENABLED = True # Return neutral state if LMM is offline
 
 USER_DATA_DIR = "user_data"
 SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
-
-# LMM Reliability Settings
-LMM_FALLBACK_ENABLED = True
-LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
-LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
 EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
