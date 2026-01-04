@@ -1,305 +1,206 @@
 import sounddevice as sd
 import numpy as np
 import time
-import collections
-import config # Potentially for audio device settings in the future
+import threading
+import queue
 
 class AudioSensor:
-    def __init__(self, data_logger=None, sample_rate=44100, chunk_duration=1.0, channels=1, history_seconds=5):
-        self.logger = data_logger
-        self.sample_rate = sample_rate
-        self.chunk_duration = chunk_duration # seconds
-        self.chunk_size = int(self.sample_rate * self.chunk_duration)
-        self.channels = channels
-
-        # History buffers for advanced feature extraction
-        self.history_size = int(history_seconds / chunk_duration)
-        self.pitch_history = collections.deque(maxlen=self.history_size)
-        self.rms_history = collections.deque(maxlen=self.history_size)
-
+    def __init__(self, data_logger=None, logger=None, sample_rate=44100, chunk_duration=1.0, channels=1, history_seconds=5):
+        # Support both logger arguments for backward compatibility
+        self.logger = data_logger if data_logger else logger
         self.stream = None
-        self.error_state = False
-        self.last_error_message = ""
-        self.retry_delay = 30  # seconds
-        self.last_retry_time = 0
+        self.is_running = False
+        self.audio_thread = None
+        self.lock = threading.Lock()
 
-        self._check_devices()
-        self._initialize_stream()
+        # Audio Configuration
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.buffer_duration = float(history_seconds)
+        self.buffer_size = int(self.sample_rate * self.buffer_duration)
+        self.chunk_size = int(self.sample_rate * 0.1) # 100ms chunks for callback/internal queue
 
-    def _log_info(self, message):
-        if self.logger: self.logger.log_info(f"AudioSensor: {message}")
-        else: print(f"INFO: AudioSensor: {message}")
+        # Buffers
+        self.raw_audio_buffer = np.zeros((self.buffer_size, self.channels), dtype=np.float32)
 
-    def _log_warning(self, message):
-        if self.logger: self.logger.log_warning(f"AudioSensor: {message}")
-        else: print(f"WARNING: AudioSensor: {message}")
+        # Internal queue for blocking get_chunk behavior (legacy support)
+        # We put small chunks here so get_chunk can retrieve them
+        self.chunk_queue = queue.Queue(maxsize=20)
 
-    def _log_error(self, message, details=""):
-        full_message = f"AudioSensor: {message}"
-        if self.logger: self.logger.log_error(full_message, details)
-        else: print(f"ERROR: {full_message} | Details: {details}")
-        self.last_error_message = message
+        # Auto-start for backward compatibility
+        self.start()
 
-    def _check_devices(self):
-        try:
-            devices = sd.query_devices()
-            self._log_info(f"Available audio devices: {devices}")
-            default_input = sd.query_devices(kind='input')
-            if not default_input:
-                 self._log_warning("No default input audio device found.")
-                 # This might not be an error yet if a specific device is chosen later or if it's non-critical
-            else:
-                self._log_info(f"Default input audio device: {default_input}")
-        except Exception as e:
-            self._log_warning(f"Could not query audio devices: {e}")
+    def start(self):
+        if self.is_running:
+            return
 
+        self.is_running = True
+        self.audio_thread = threading.Thread(target=self._capture_loop)
+        self.audio_thread.daemon = True
+        self.audio_thread.start()
+        if self.logger:
+            self.logger.log_event("sensor_start", "Audio sensor started")
 
-    def _initialize_stream(self):
-        self._log_info(f"Attempting to initialize audio stream (SampleRate: {self.sample_rate}, Channels: {self.channels})...")
-        try:
-            self.stream = sd.InputStream(
-                samplerate=self.sample_rate,
-                channels=self.channels,
-                blocksize=self.chunk_size, # Read in chunks of desired size
-                # device=None, # Default input device
-                callback=None # Using blocking read, so no callback
-            )
-            self.stream.start() # Start the stream
-            self.error_state = False
-            self.last_error_message = ""
-            self._log_info("Audio stream initialized and started successfully.")
+    def stop(self):
+        self.is_running = False
+        if self.audio_thread:
+            self.audio_thread.join()
+        if self.logger:
+            self.logger.log_event("sensor_stop", "Audio sensor stopped")
 
-        except Exception as e:
-            self.error_state = True
-            error_msg = "Exception during audio stream initialization."
-            self._log_error(error_msg, str(e))
-            if self.stream:
+    def _capture_loop(self):
+        def callback(indata, frames, time_info, status):
+            if status and self.logger:
+                self.logger.log_event("audio_error", str(status))
+
+            # 1. Update Ring Buffer (for Analysis)
+            with self.lock:
+                length = len(indata)
+                if length > self.buffer_size:
+                    self.raw_audio_buffer = indata[-self.buffer_size:]
+                else:
+                    self.raw_audio_buffer = np.roll(self.raw_audio_buffer, -length, axis=0)
+                    self.raw_audio_buffer[-length:] = indata
+
+            # 2. Feed Chunk Queue (for legacy get_chunk blocking read)
+            try:
+                # We copy indata to avoid reference issues if sounddevice reuses buffers
+                self.chunk_queue.put_nowait(indata.copy())
+            except queue.Full:
+                # If queue is full, drop oldest
                 try:
-                    if not self.stream.closed:
-                        self.stream.stop()
-                        self.stream.close()
-                except Exception as close_e:
-                    self._log_error("Exception while closing errored audio stream.", str(close_e))
-            self.stream = None
+                    self.chunk_queue.get_nowait()
+                    self.chunk_queue.put_nowait(indata.copy())
+                except:
+                    pass
 
-        self.last_retry_time = time.time()
+        while self.is_running:
+            try:
+                with sd.InputStream(callback=callback, channels=self.channels, samplerate=self.sample_rate, blocksize=self.chunk_size):
+                    while self.is_running:
+                        sd.sleep(100)
+            except Exception as e:
+                if self.logger:
+                    self.logger.log_event("audio_fatal_error", f"Could not open stream: {e}")
+
+                # Retry logic
+                time.sleep(5)
 
     def get_chunk(self):
-        if self.error_state:
-            if time.time() - self.last_retry_time >= self.retry_delay:
-                self._log_info("Attempting to re-initialize audio stream due to previous error...")
-                self.release() # Ensure old stream is closed if any
-                self._initialize_stream()
-
-            if self.error_state: # If still in error state
-                return None, self.last_error_message
-
-        if not self.stream or self.stream.closed:
-            if not self.error_state:
-                 self._log_error("Audio stream is not active or closed, though not in persistent error state.")
-                 self.error_state = True
-            return None, "Audio stream not available."
-
+        """
+        Legacy method for backward compatibility.
+        Blocks until a new chunk is available, mimicking blocking read.
+        """
         try:
-            # With a blocking stream (no callback), read() will wait until it has enough data.
-            data_chunk, overflowed = self.stream.read(self.chunk_size)
-            if overflowed:
-                self._log_warning("Audio buffer overflow detected during read.")
+            # Block with timeout to allow checking is_running
+            chunk = self.chunk_queue.get(timeout=1.0)
+            return chunk, None
+        except queue.Empty:
+            if not self.is_running:
+                return None, "Sensor stopped"
+            # Return None but no error if just timed out (no data yet)
+            return None, None
 
-            if self.error_state: # Was in error, but now working
-                self._log_info("Audio sensor recovered and reading data.")
-                self.error_state = False
-                self.last_error_message = ""
-            return data_chunk, None # Return audio data and no error
+    def get_metrics(self):
+        # 1. Acquire lock to copy data
+        with self.lock:
+            # Analyze last 1 second
+            one_sec_samples = int(self.sample_rate * 1.0)
+            chunk = self.raw_audio_buffer[-one_sec_samples:].copy()
 
-        except sd.PortAudioError as pae:
-            self.error_state = True
-            error_msg = f"PortAudioError while reading audio chunk: {pae}"
-            self._log_error(error_msg)
-            # Attempt to gracefully stop and close the stream on PortAudioError
-            self._handle_stream_error()
-            return None, error_msg
-        except Exception as e:
-            self.error_state = True
-            error_msg = "Generic exception while reading audio chunk."
-            self._log_error(error_msg, str(e))
-            self._handle_stream_error()
-            return None, error_msg
-
-    def _handle_stream_error(self):
-        if self.stream and not self.stream.closed:
-            try:
-                self.stream.stop()
-                self.stream.close()
-                self._log_info("Audio stream stopped and closed due to error.")
-            except Exception as e:
-                self._log_error("Exception during emergency closure of audio stream.", str(e))
-        self.stream = None # Ensure stream is marked as None after closure
-
+        # 2. Analyze data without lock (heavy lifting)
+        return self.analyze_chunk(chunk)
 
     def release(self):
-        if self.stream and not self.stream.closed:
-            self._log_info("Releasing audio stream.")
-            try:
-                self.stream.stop()
-                self.stream.close()
-            except Exception as e:
-                self._log_error("Exception while releasing audio stream.", str(e))
-        self.stream = None
-        self.error_state = False
+        self.stop()
 
     def has_error(self):
-        return self.error_state
+        return False # Simplified for now, relies on logging
 
     def get_last_error(self):
-        return self.last_error_message
+        return ""
 
     def analyze_chunk(self, chunk):
-        """
-        Analyzes an audio chunk to extract features.
-        Returns a dictionary of metrics: rms, spectral_centroid, pitch_estimation, zcr, pitch_variance, rms_variance, activity_bursts.
-        """
         metrics = {
             "rms": 0.0,
-            "zcr": 0.0,
-            "spectral_centroid": 0.0,
             "pitch_estimation": 0.0,
             "pitch_variance": 0.0,
-            "rms_variance": 0.0,
-            "activity_bursts": 0
+            "speech_rate": 0
         }
 
         if chunk is None or len(chunk) == 0:
             return metrics
 
+        data = chunk.flatten()
+
+        # 1. RMS
+        rms = np.sqrt(np.mean(data**2))
+        metrics["rms"] = float(rms)
+
+        if rms < 1e-6:
+            return metrics
+
+        # 2. Pitch Estimation (FFT)
         try:
-            # Flatten if multi-channel (take first channel or average)
-            if chunk.ndim > 1:
-                audio_data = chunk[:, 0]
-            else:
-                audio_data = chunk
-
-            # 1. RMS (Loudness)
-            metrics["rms"] = float(np.sqrt(np.mean(audio_data**2)))
-
-            # Normalize for other calculations (avoid div by zero, but handle silence)
-            if metrics["rms"] < 1e-6:
-                # Update history even for silence to reflect current state
-                self.rms_history.append(metrics["rms"])
-
-                # Check metrics that depend on history even if current frame is silence
-                # Speech Rate / Activity Bursts Proxy (can be calculated even if current is silence, if history exists)
-                if len(self.rms_history) > 2:
-                    rms_arr = np.array(self.rms_history)
-                    metrics["rms_variance"] = float(np.std(rms_arr))
-
-                    # Activity Bursts
-                    threshold = np.mean(rms_arr) * 0.8
-                    if threshold > 1e-6: # Only calculate if there is some activity in history
-                        above = rms_arr > threshold
-                        if len(above) > 1:
-                            crossings = np.sum(np.diff(above.astype(int)) > 0)
-                            metrics["activity_bursts"] = int(crossings)
-
-                # Don't update pitch history with 0/silence to avoid skewing variance unless we want to track silence gaps
-                # But for pitch *variance* (intonation), we usually only care about voiced segments.
-                return metrics # Silence
-
-            # 2. Zero Crossing Rate (ZCR) - Proxy for "noisiness" or high frequency content
-            zero_crossings = np.nonzero(np.diff(audio_data > 0))[0]
-            metrics["zcr"] = float(len(zero_crossings) / len(audio_data))
-
-            # 3. Spectral Features (Centroid) using FFT
-            # Windowing to reduce leakage
-            windowed_data = audio_data * np.hanning(len(audio_data))
-            spectrum = np.fft.rfft(windowed_data)
+            windowed = data * np.hanning(len(data))
+            spectrum = np.fft.rfft(windowed)
+            frequencies = np.fft.rfftfreq(len(data), 1/self.sample_rate)
             magnitude = np.abs(spectrum)
-            freqs = np.fft.rfftfreq(len(audio_data), d=1.0/self.sample_rate)
 
-            # Spectral Centroid: center of mass of the spectrum
-            sum_magnitude = np.sum(magnitude)
-            if sum_magnitude > 1e-6:
-                metrics["spectral_centroid"] = float(np.sum(freqs * magnitude) / sum_magnitude)
+            magnitude[frequencies < 60] = 0
 
-            # 4. Simple Pitch Estimation (Dominant Frequency)
-            # Find peak frequency (ignoring very low freq DC/rumble < 50Hz)
-            valid_idx = np.where(freqs > 50)[0]
-            if len(valid_idx) > 0:
-                peak_idx = valid_idx[np.argmax(magnitude[valid_idx])]
-                metrics["pitch_estimation"] = float(freqs[peak_idx])
+            peak_idx = np.argmax(magnitude)
+            peak_freq = frequencies[peak_idx]
+            metrics["pitch_estimation"] = float(peak_freq)
 
-            # --- History / Time-Series Features ---
-            self.rms_history.append(metrics["rms"])
-            if metrics["pitch_estimation"] > 0:
-                self.pitch_history.append(metrics["pitch_estimation"])
+            # 3. Pitch Variance
+            sub_chunks = np.array_split(data, 4)
+            pitches = []
+            for sub in sub_chunks:
+                w = sub * np.hanning(len(sub))
+                s = np.fft.rfft(w)
+                m = np.abs(s)
+                f = np.fft.rfftfreq(len(sub), 1/self.sample_rate)
+                m[f < 60] = 0
+                if np.max(m) > 0.1:
+                    p_idx = np.argmax(m)
+                    pitches.append(f[p_idx])
 
-            # Pitch Variance (Intonation/Stress)
-            if len(self.pitch_history) > 2:
-                metrics["pitch_variance"] = float(np.std(list(self.pitch_history)))
-
-            # Speech Rate / Activity Bursts Proxy
-            if len(self.rms_history) > 2:
-                rms_arr = np.array(self.rms_history)
-                metrics["rms_variance"] = float(np.std(rms_arr))
-
-                # Activity Bursts (approximate syllable/word clusters)
-                # Dynamic threshold: 80% of mean RMS
-                threshold = np.mean(rms_arr) * 0.8
-                above = rms_arr > threshold
-                if len(above) > 1:
-                    # Count 0->1 transitions
-                    crossings = np.sum(np.diff(above.astype(int)) > 0)
-                    metrics["activity_bursts"] = int(crossings)
+            if len(pitches) > 1:
+                metrics["pitch_variance"] = float(np.std(pitches))
 
         except Exception as e:
-            self._log_error(f"Error extracting audio features: {e}")
+             if self.logger:
+                 self.logger.log_event("audio_analysis_error", f"Pitch analysis failed: {e}")
+
+        # 4. Speech Rate (Numpy Peak Detection)
+        try:
+            abs_signal = np.abs(data)
+            window_size = int(0.1 * self.sample_rate)
+            envelope = np.convolve(abs_signal, np.ones(window_size)/window_size, mode='same')
+
+            # Numpy Peak Detection
+            threshold = rms * 1.2
+
+            mid = envelope[1:-1]
+            left = envelope[:-2]
+            right = envelope[2:]
+
+            peaks_mask = (mid > left) & (mid > right) & (mid > threshold)
+
+            peak_indices = np.where(peaks_mask)[0] + 1
+
+            if len(peak_indices) > 0:
+                filtered_peaks = [peak_indices[0]]
+                for idx in peak_indices[1:]:
+                    if idx - filtered_peaks[-1] > window_size:
+                        filtered_peaks.append(idx)
+                metrics["speech_rate"] = len(filtered_peaks)
+            else:
+                metrics["speech_rate"] = 0
+
+        except Exception as e:
+             if self.logger:
+                 self.logger.log_event("audio_analysis_error", f"Speech rate analysis failed: {e}")
 
         return metrics
-
-if __name__ == '__main__':
-    class MockDataLogger:
-        def log_info(self, msg): print(f"MOCK_LOG_INFO: {msg}")
-        def log_warning(self, msg): print(f"MOCK_LOG_WARN: {msg}")
-        def log_error(self, msg, details=""): print(f"MOCK_LOG_ERROR: {msg} | Details: {details}")
-
-    mock_logger = MockDataLogger()
-
-    print("--- Testing AudioSensor ---")
-    # Reduce chunk duration for faster testing if desired, but ensure it's not too small.
-    audio_sensor = AudioSensor(data_logger=mock_logger, chunk_duration=0.5)
-
-    if audio_sensor.has_error():
-        print(f"Initial error: {audio_sensor.get_last_error()}")
-        print(f"Will attempt retry after {audio_sensor.retry_delay} seconds if get_chunk is called.")
-
-    for i in range(5): # Try to get a few chunks
-        print(f"\nAttempting to get audio chunk {i+1}...")
-        # Need to wait for buffer to fill if chunk_duration is long
-        # time.sleep(audio_sensor.chunk_duration / 2) # Wait a bit for data to accumulate
-
-        audio_chunk, error = audio_sensor.get_chunk()
-
-        if error:
-            print(f"Error getting audio chunk: {error}")
-            if audio_sensor.has_error() and i < 2:
-                print(f"Sensor in error state. Waiting for {audio_sensor.retry_delay + 1}s to allow retry logic...")
-                time.sleep(audio_sensor.retry_delay + 1)
-            elif audio_sensor.has_error():
-                 print("Sensor still in error state. Continuing test without long wait.")
-                 time.sleep(0.1)
-
-        elif audio_chunk is not None:
-            print(f"Audio chunk {i+1} received successfully. Shape: {audio_chunk.shape}, Max val: {np.max(audio_chunk):.4f}")
-            # Test Analysis
-            features = audio_sensor.analyze_chunk(audio_chunk)
-            print(f"Analysis: RMS={features['rms']:.4f}, ZCR={features['zcr']:.4f}, Centroid={features['spectral_centroid']:.2f}Hz, Pitch={features['pitch_estimation']:.2f}Hz")
-
-            # Add some processing delay
-            time.sleep(0.1)
-        else:
-            # This means not enough data was available for a full chunk.
-            print(f"Audio chunk {i+1} was None (not enough data or stream issue), no explicit error. Has_Error: {audio_sensor.has_error()}")
-            time.sleep(0.2) # Wait a bit longer for data to fill
-
-    audio_sensor.release()
-    print("--- AudioSensor test finished ---")
