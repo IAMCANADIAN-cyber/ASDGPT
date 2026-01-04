@@ -1,71 +1,78 @@
 import pytest
 from core.state_engine import StateEngine
+from collections import deque
 
-class TestStateEngineLogic:
-    def test_state_engine_update_logic(self):
-        print("Testing StateEngine...")
-        engine = StateEngine(history_size=5) # Ensure history size is set
-        print(f"Initial State: {engine.get_state()}")
+class MockLogger:
+    def __init__(self):
+        self.logs = []
 
-        # Test Update
-        # Initial state is 50/0/50/80/50
-        # Input: Arousal 60. History becomes [50, 50, 50, 50, 60]. Avg = 52.
-        mock_lmm_output = {
-            "state_estimation": {
-                "arousal": 60,
-                "overload": 10,
-                "focus": 90,
-                "energy": 70,
-                "mood": 60
-            },
-            "suggestion": "Keep going!"
-        }
-        engine.update(mock_lmm_output)
-        print(f"Updated State (smoothed): {engine.get_state()}")
+    def log_info(self, msg):
+        self.logs.append(("INFO", msg))
 
-        # Check Arousal: (50*4 + 60)/5 = 260/5 = 52
-        assert engine.get_state()["arousal"] == 52, f"Expected 52, got {engine.get_state()['arousal']}"
+    def log_warning(self, msg):
+        self.logs.append(("WARN", msg))
 
-        # Test Convergence
-        # If we keep sending 60, it should eventually reach 60
-        for _ in range(5):
-            engine.update(mock_lmm_output)
+    def log_debug(self, msg):
+        self.logs.append(("DEBUG", msg))
 
-        print(f"Converged State: {engine.get_state()}")
-        assert engine.get_state()["arousal"] == 60
-        assert engine.get_state()["focus"] == 90 # Initial was 50. (50*4+90)/5=58... eventually 90
+def test_state_engine_initialization():
+    engine = StateEngine()
+    state = engine.get_state()
+    assert state["arousal"] == 50
+    assert state["overload"] == 0
+    assert state["focus"] == 50
+    assert state["energy"] == 80
+    assert state["mood"] == 50
+    assert len(engine.history["arousal"]) == 5
 
-        # Test Partial Update
-        mock_partial = {
-            "state_estimation": {
-                "energy": 50
-            }
-        }
-        # Current energy converged to 70 (initial 80 -> 70 from previous mock)
-        # Actually wait, mock_lmm_output had energy 70.
-        # So history for energy is [70, 70, 70, 70, 70].
-        # Update with 50 -> [70, 70, 70, 70, 50] -> avg 66
-        engine.update(mock_partial)
-        print(f"Partial Update State: {engine.get_state()}")
-        assert engine.get_state()["energy"] == 66
-        # Arousal should remain 60 (history [60,60,60,60,60])
-        assert engine.get_state()["arousal"] == 60
+def test_state_update_smoothing():
+    engine = StateEngine(history_size=3)
+    # Initial state is 50. History: [50, 50, 50]
 
-        # Test Invalid Data
-        mock_invalid = {
-            "state_estimation": {
-                "mood": "happy", # Not an int
-                "overload": 150  # Out of bounds
-            }
-        }
-        engine.update(mock_invalid)
-        print(f"Invalid Update State: {engine.get_state()}")
-        assert engine.get_state()["mood"] == 60 # Should not change
-        # Overload was 0 -> [0,0,0,0,0]. Update 10 from mock_lmm_output x 6 times?
-        # Wait, in the loop above we updated 5 times with mock_lmm_output (overload 10).
-        # So overload history is [10, 10, 10, 10, 10].
-        # Invalid update attempts 150 -> caps at 100.
-        # History becomes [10, 10, 10, 10, 100]. Avg = 140/5 = 28.
-        assert engine.get_state()["overload"] == 28
+    # Update with 80
+    engine.update({"state_estimation": {"arousal": 80}})
+    # History: [50, 50, 80] -> Avg: 60
+    assert engine.get_state()["arousal"] == 60
 
-        print("StateEngine tests passed.")
+    # Update with 80 again
+    engine.update({"state_estimation": {"arousal": 80}})
+    # History: [50, 80, 80] -> Avg: 70
+    assert engine.get_state()["arousal"] == 70
+
+    # Update with 80 again
+    engine.update({"state_estimation": {"arousal": 80}})
+    # History: [80, 80, 80] -> Avg: 80
+    assert engine.get_state()["arousal"] == 80
+
+def test_state_update_invalid_input():
+    logger = MockLogger()
+    engine = StateEngine(logger=logger)
+
+    # Update with string that can't be parsed
+    engine.update({"state_estimation": {"arousal": "high"}})
+
+    # State should not change
+    assert engine.get_state()["arousal"] == 50
+
+    # Should log warning
+    warnings = [log for lvl, log in logger.logs if lvl == "WARN"]
+    assert any("Invalid value" in msg for msg in warnings)
+
+def test_state_update_bounds_clamping():
+    engine = StateEngine(history_size=1) # History 1 for immediate effect
+
+    engine.update({"state_estimation": {"overload": 150}})
+    assert engine.get_state()["overload"] == 100
+
+    engine.update({"state_estimation": {"overload": -50}})
+    assert engine.get_state()["overload"] == 0
+
+def test_missing_keys_ignored():
+    engine = StateEngine(history_size=1)
+
+    # Update only one dimension
+    engine.update({"state_estimation": {"focus": 90}})
+
+    state = engine.get_state()
+    assert state["focus"] == 90
+    assert state["arousal"] == 50 # Unchanged

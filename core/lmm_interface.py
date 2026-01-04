@@ -244,6 +244,7 @@ class LMMInterface:
         }
 
     def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[Dict[str, Any]]:
+    def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[LMMResponse]:
         """
         Processes incoming sensor data and user context by sending it to the local LMM.
 
