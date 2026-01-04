@@ -2,12 +2,11 @@ import requests
 import json
 import re
 import time
+from typing import Optional, Dict, Any, List, TypedDict, Union
 from typing import Optional, Dict, Any, TypedDict, List
 import config
 from .intervention_library import InterventionLibrary
 from .prompts.v1 import SYSTEM_INSTRUCTION_V1
-
-# Define schema types for better clarity and future validation
 
 # Define response structures for type hinting
 class StateEstimation(TypedDict):
@@ -185,11 +184,11 @@ class LMMInterface:
                 try:
                     parsed_result = json.loads(clean_content)
                 except json.JSONDecodeError as e:
+                     # This is a content error, might be fixed by regeneration, so we treat it as retryable
                      raise ValueError(f"JSON decode error: {e}")
 
                 if not self._validate_response_schema(parsed_result):
                     # If schema is invalid, we might want to retry if it's a transient generation error
-                    # But for now, we'll treat it as a failure that might be retried
                     raise ValueError(f"Schema validation failed: {parsed_result}")
 
                 return parsed_result
@@ -243,6 +242,7 @@ class LMMInterface:
 
         return {
             "state_estimation": fallback_state,
+            "visual_context": [],
             "suggestion": suggestion,
             "_meta": {"is_fallback": True}
         }
@@ -320,6 +320,10 @@ class LMMInterface:
             alerts = user_context.get('system_alerts', [])
             if alerts:
                 context_str += f"\nSYSTEM ALERTS (High Priority): {', '.join(alerts)}\n"
+            # Add preferred interventions
+            preferred = user_context.get('preferred_interventions')
+            if preferred:
+                context_str += f"\nPreferred Interventions (User found these helpful recently): {', '.join(preferred)}\n"
 
         content_parts.append({"type": "text", "text": context_str})
 

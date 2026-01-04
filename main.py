@@ -334,6 +334,9 @@ class Application:
             if self.audio_thread.is_alive():
                  self.data_logger.log_warning("Audio worker thread did not join in time.")
 
+        if hasattr(self, 'logic_engine') and self.logic_engine: self.logic_engine.shutdown()
+        if hasattr(self, 'intervention_engine') and self.intervention_engine: self.intervention_engine.shutdown()
+
         if hasattr(self, 'video_sensor') and self.video_sensor: self.video_sensor.release()
         if hasattr(self, 'audio_sensor') and self.audio_sensor: self.audio_sensor.release()
         if hasattr(self, 'tray_icon') and self.tray_icon: self.tray_icon.stop()
