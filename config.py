@@ -1,4 +1,8 @@
 # Configuration for the Autonomous Co-Regulator
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Default mode for the application
 # Options: "active", "snoozed", "paused"
@@ -18,13 +22,13 @@ HOTKEY_FEEDBACK_UNHELPFUL = "ctrl+alt+down"
 FEEDBACK_WINDOW_SECONDS = 15 # Time in seconds to provide feedback after an intervention
 FEEDBACK_SUPPRESSION_MINUTES = 240 # Suppress "unhelpful" interventions for 4 hours
 
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
 # (Future task 4.5 - API Keys - will be loaded from .env)
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# Sensor Thresholds (Calibrated via tools/calibrate_sensors.py)
+# Defaults are conservative if not set in .env
+AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
+VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
 
 # Logging configuration (can be expanded)
 LOG_LEVEL = "INFO" # Options: DEBUG, INFO, WARNING, ERROR
@@ -33,6 +37,10 @@ LOG_FILE = "acr_app.log" # Changed from acr_log.txt for consistency with main.py
 # Sensor configurations (can be expanded)
 CAMERA_INDEX = 0 # Default camera index
 # AUDIO_DEVICE_INDEX = None # Example: Or specific index
+
+# Thresholds (Overridable by environment variables for personalization)
+AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
+VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
 
 # Intervention Engine settings
 MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds, e.g., 5 minutes (for proactive, non-mode-change interventions)
@@ -88,10 +96,10 @@ LOCAL_LLM_MODEL_ID = "deepseek/deepseek-r1-0528-qwen3-8b"
 LMM_FALLBACK_ENABLED = True # Return neutral state if LMM is unreachable
 LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
 LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
-LMM_FALLBACK_ENABLED = True # Return neutral state if LMM is offline
 
 USER_DATA_DIR = "user_data"
 SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
+PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
 
 # LMM Reliability Settings
 LMM_FALLBACK_ENABLED = True

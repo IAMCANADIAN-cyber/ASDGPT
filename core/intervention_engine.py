@@ -52,6 +52,10 @@ class InterventionEngine:
         self.suppressed_interventions: Dict[str, float] = {}
         self._load_suppressions()
 
+        # Dictionary to track preferred interventions (feedback="helpful"): {intervention_type: {"count": int, "last_helpful": timestamp}}
+        self.preferred_interventions: Dict[str, Dict[str, Any]] = {}
+        self._load_preferences()
+
         log_message = "InterventionEngine initialized."
         if self.app and hasattr(self.app, 'data_logger'):
             self.app.data_logger.log_info(log_message)
@@ -91,6 +95,33 @@ class InterventionEngine:
                     json.dump(self.suppressed_interventions, f)
             except Exception as e:
                 msg = f"Failed to save suppressions: {e}"
+                if self.app and hasattr(self.app, 'data_logger'):
+                    self.app.data_logger.log_error(msg)
+                else:
+                    print(msg)
+
+    def _load_preferences(self) -> None:
+        """Loads preferred interventions from disk."""
+        if hasattr(config, 'PREFERENCES_FILE') and os.path.exists(config.PREFERENCES_FILE):
+            try:
+                with open(config.PREFERENCES_FILE, 'r') as f:
+                    self.preferred_interventions = json.load(f)
+            except Exception as e:
+                msg = f"Failed to load preferences: {e}"
+                if self.app and hasattr(self.app, 'data_logger'):
+                    self.app.data_logger.log_error(msg)
+                else:
+                    print(msg)
+
+    def _save_preferences(self) -> None:
+        """Saves preferred interventions to disk."""
+        if hasattr(config, 'PREFERENCES_FILE'):
+            try:
+                os.makedirs(os.path.dirname(config.PREFERENCES_FILE), exist_ok=True)
+                with open(config.PREFERENCES_FILE, 'w') as f:
+                    json.dump(self.preferred_interventions, f)
+            except Exception as e:
+                msg = f"Failed to save preferences: {e}"
                 if self.app and hasattr(self.app, 'data_logger'):
                     self.app.data_logger.log_error(msg)
                 else:
@@ -375,6 +406,13 @@ class InterventionEngine:
 
         return active_suppressions
 
+    def get_preferred_intervention_types(self) -> List[str]:
+        """Returns a list of preferred intervention types/IDs (sorted by most helpful first)."""
+        # Sort by count descending
+        sorted_prefs = sorted(self.preferred_interventions.items(), key=lambda item: item[1].get("count", 0), reverse=True)
+        # Return just the keys
+        return [k for k, v in sorted_prefs]
+
     def start_intervention(self, intervention_details: Dict[str, Any]) -> bool:
         """
         Starts an intervention.
@@ -572,6 +610,16 @@ class InterventionEngine:
         if feedback_value.lower() == "unhelpful":
             suppression_time = config.FEEDBACK_SUPPRESSION_MINUTES if hasattr(config, 'FEEDBACK_SUPPRESSION_MINUTES') else 240
             self.suppress_intervention(self.last_feedback_eligible_intervention["type"], suppression_time)
+        elif feedback_value.lower() == "helpful":
+            # Track preference
+            itype = self.last_feedback_eligible_intervention["type"]
+            if itype:
+                if itype not in self.preferred_interventions:
+                    self.preferred_interventions[itype] = {"count": 0, "last_helpful": 0}
+
+                self.preferred_interventions[itype]["count"] += 1
+                self.preferred_interventions[itype]["last_helpful"] = time.time()
+                self._save_preferences()
 
         self.last_feedback_eligible_intervention = {"message": None, "type": None, "timestamp": None}
 
