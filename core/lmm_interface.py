@@ -2,12 +2,11 @@ import requests
 import json
 import re
 import time
+from typing import Optional, Dict, Any, List, TypedDict, Union
 from typing import Optional, Dict, Any, TypedDict, List
 import config
 from .intervention_library import InterventionLibrary
 from .prompts.v1 import SYSTEM_INSTRUCTION_V1
-
-# Define schema types for better clarity and future validation
 
 # Define response structures for type hinting
 class StateEstimation(TypedDict):
@@ -243,6 +242,7 @@ class LMMInterface:
 
         return {
             "state_estimation": fallback_state,
+            "visual_context": [],
             "suggestion": suggestion,
             "_meta": {"is_fallback": True}
         }
