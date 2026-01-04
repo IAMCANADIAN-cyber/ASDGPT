@@ -317,6 +317,11 @@ class LMMInterface:
             if suppressed:
                 context_str += f"\nSuppressed Interventions (Do NOT suggest): {', '.join(suppressed)}\n"
 
+            # Add preferred interventions
+            preferred = user_context.get('preferred_interventions')
+            if preferred:
+                context_str += f"\nPreferred Interventions (User found these helpful recently): {', '.join(preferred)}\n"
+
         content_parts.append({"type": "text", "text": context_str})
 
         # 2. Image (Video Frame)
