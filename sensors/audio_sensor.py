@@ -17,6 +17,11 @@ class AudioSensor:
         self.pitch_history = collections.deque(maxlen=self.history_size)
         self.rms_history = collections.deque(maxlen=self.history_size)
 
+        # Audio buffer for speech rate analysis (needs more context than 1 chunk)
+        # Store ~1 second of audio
+        self.buffer_size = self.sample_rate * 1
+        self.raw_audio_buffer = collections.deque(maxlen=self.buffer_size)
+
         self.stream = None
         self.error_state = False
         self.last_error_message = ""
@@ -154,10 +159,85 @@ class AudioSensor:
     def get_last_error(self):
         return self.last_error_message
 
+    def _calculate_speech_rate(self, audio_data):
+        """
+        Estimates speech rate (syllables/sec) based on amplitude envelope peaks.
+        Uses pure numpy to avoid scipy dependency.
+        """
+        try:
+            # 1. Calculate Amplitude Envelope
+            # Simple rectification + smoothing (low-pass filter)
+            # Smoothing window: ~50ms to smooth out individual vibrations but keep syllable envelope
+            window_size = int(0.05 * self.sample_rate)
+            if len(audio_data) < window_size:
+                return 0.0
+
+            # Efficient moving average using numpy
+            # We pad the signal to handle edges roughly or valid mode
+            # Valid mode shortens the array, same mode pads with 0.
+            # Simple convolution
+            kernel = np.ones(window_size) / window_size
+            envelope = np.convolve(np.abs(audio_data), kernel, mode='same')
+
+            # 2. Find Peaks (Syllables) - Simple Numpy Implementation
+            # Height: must be significant (e.g. > 1.5x mean RMS or a fixed silence threshold)
+            # Distance: syllables are typically > 100-150ms apart.
+
+            min_distance = int(0.15 * self.sample_rate)
+
+            # Threshold: dynamic based on chunk RMS to handle varying volumes
+            rms = np.sqrt(np.mean(audio_data**2))
+            height_threshold = max(rms * 0.5, 0.02)
+
+            # Find local maxima above threshold
+            # 1. Identify candidates above threshold
+            candidates = np.where(envelope > height_threshold)[0]
+
+            if len(candidates) == 0:
+                return 0.0
+
+            # 2. Filter for local maxima
+            # Basic peak finding: value > prev and value > next
+            # Shifted arrays
+            if len(envelope) < 3:
+                return 0.0
+
+            # Create a boolean mask for peaks
+            # Note: this is a simple peak finder, adequate for envelope analysis
+            is_peak = (envelope[1:-1] > envelope[:-2]) & (envelope[1:-1] > envelope[2:])
+            peak_indices = np.where(is_peak)[0] + 1 # +1 because we sliced 1:-1
+
+            # Filter by height again (redundant but safe)
+            peak_indices = peak_indices[envelope[peak_indices] > height_threshold]
+
+            # 3. Filter by distance (Greedy approach: pick peak, skip neighbors within distance)
+            if len(peak_indices) == 0:
+                return 0.0
+
+            filtered_peaks = []
+            last_peak_idx = -min_distance # Initialize so first peak is always valid
+
+            # Sort by amplitude (descending) to prioritize prominent peaks?
+            # Or just temporal order? Temporal is faster and usually fine for syllables.
+            # Scipy finds all then removes neighbors. Let's do simple temporal.
+
+            for idx in peak_indices:
+                if idx - last_peak_idx >= min_distance:
+                    filtered_peaks.append(idx)
+                    last_peak_idx = idx
+
+            # 4. Calculate Rate
+            duration_sec = len(audio_data) / self.sample_rate
+            return float(len(filtered_peaks) / duration_sec)
+
+        except Exception as e:
+            self._log_error(f"Error calculating speech rate: {e}")
+            return 0.0
+
     def analyze_chunk(self, chunk):
         """
         Analyzes an audio chunk to extract features.
-        Returns a dictionary of metrics: rms, spectral_centroid, pitch_estimation, zcr, pitch_variance, rms_variance, activity_bursts.
+        Returns a dictionary of metrics: rms, spectral_centroid, pitch_estimation, zcr, pitch_variance, rms_variance, speech_rate.
         """
         metrics = {
             "rms": 0.0,
@@ -166,7 +246,8 @@ class AudioSensor:
             "pitch_estimation": 0.0,
             "pitch_variance": 0.0,
             "rms_variance": 0.0,
-            "activity_bursts": 0
+            "activity_bursts": 0, # Legacy metric kept for backward compatibility
+            "speech_rate": 0.0
         }
 
         if chunk is None or len(chunk) == 0:
@@ -179,6 +260,9 @@ class AudioSensor:
             else:
                 audio_data = chunk
 
+            # Update raw audio buffer for speech rate analysis
+            self.raw_audio_buffer.extend(audio_data)
+
             # 1. RMS (Loudness)
             metrics["rms"] = float(np.sqrt(np.mean(audio_data**2)))
 
@@ -188,12 +272,12 @@ class AudioSensor:
                 self.rms_history.append(metrics["rms"])
 
                 # Check metrics that depend on history even if current frame is silence
-                # Speech Rate / Activity Bursts Proxy (can be calculated even if current is silence, if history exists)
                 if len(self.rms_history) > 2:
                     rms_arr = np.array(self.rms_history)
                     metrics["rms_variance"] = float(np.std(rms_arr))
 
-                    # Activity Bursts
+                    # Activity Bursts (approximate syllable/word clusters)
+                    # Dynamic threshold: 80% of mean RMS
                     threshold = np.mean(rms_arr) * 0.8
                     if threshold > 1e-6: # Only calculate if there is some activity in history
                         above = rms_arr > threshold
@@ -201,9 +285,8 @@ class AudioSensor:
                             crossings = np.sum(np.diff(above.astype(int)) > 0)
                             metrics["activity_bursts"] = int(crossings)
 
-                # Don't update pitch history with 0/silence to avoid skewing variance unless we want to track silence gaps
-                # But for pitch *variance* (intonation), we usually only care about voiced segments.
-                return metrics # Silence
+                # Return early for silence, but update rms_history first
+                return metrics
 
             # 2. Zero Crossing Rate (ZCR) - Proxy for "noisiness" or high frequency content
             zero_crossings = np.nonzero(np.diff(audio_data > 0))[0]
@@ -228,6 +311,11 @@ class AudioSensor:
                 peak_idx = valid_idx[np.argmax(magnitude[valid_idx])]
                 metrics["pitch_estimation"] = float(freqs[peak_idx])
 
+            # 5. Speech Rate (Syllable estimation using buffered audio)
+            if len(self.raw_audio_buffer) >= int(0.5 * self.sample_rate): # Need at least 0.5s for meaningful rate
+                buffered_audio = np.array(self.raw_audio_buffer)
+                metrics["speech_rate"] = self._calculate_speech_rate(buffered_audio)
+
             # --- History / Time-Series Features ---
             self.rms_history.append(metrics["rms"])
             if metrics["pitch_estimation"] > 0:
@@ -237,19 +325,18 @@ class AudioSensor:
             if len(self.pitch_history) > 2:
                 metrics["pitch_variance"] = float(np.std(list(self.pitch_history)))
 
-            # Speech Rate / Activity Bursts Proxy
+            # RMS Variance
             if len(self.rms_history) > 2:
                 rms_arr = np.array(self.rms_history)
                 metrics["rms_variance"] = float(np.std(rms_arr))
 
-                # Activity Bursts (approximate syllable/word clusters)
-                # Dynamic threshold: 80% of mean RMS
+                # Restore Activity Bursts
                 threshold = np.mean(rms_arr) * 0.8
-                above = rms_arr > threshold
-                if len(above) > 1:
-                    # Count 0->1 transitions
-                    crossings = np.sum(np.diff(above.astype(int)) > 0)
-                    metrics["activity_bursts"] = int(crossings)
+                if len(rms_arr) > 1 and threshold > 1e-6:
+                    above = rms_arr > threshold
+                    if len(above) > 1:
+                        crossings = np.sum(np.diff(above.astype(int)) > 0)
+                        metrics["activity_bursts"] = int(crossings)
 
         except Exception as e:
             self._log_error(f"Error extracting audio features: {e}")
@@ -292,7 +379,7 @@ if __name__ == '__main__':
             print(f"Audio chunk {i+1} received successfully. Shape: {audio_chunk.shape}, Max val: {np.max(audio_chunk):.4f}")
             # Test Analysis
             features = audio_sensor.analyze_chunk(audio_chunk)
-            print(f"Analysis: RMS={features['rms']:.4f}, ZCR={features['zcr']:.4f}, Centroid={features['spectral_centroid']:.2f}Hz, Pitch={features['pitch_estimation']:.2f}Hz")
+            print(f"Analysis: RMS={features['rms']:.4f}, ZCR={features['zcr']:.4f}, Rate={features['speech_rate']:.2f}, Pitch={features['pitch_estimation']:.2f}Hz")
 
             # Add some processing delay
             time.sleep(0.1)
