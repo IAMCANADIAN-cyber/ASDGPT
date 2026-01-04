@@ -47,9 +47,9 @@ class LogicEngine:
         self.lmm_call_interval: int = 5  # Periodic check interval (seconds)
         self.min_lmm_interval: int = 2   # Minimum time between calls even for triggers (seconds)
 
-        # Thresholds (could be moved to config later)
-        self.audio_threshold_high = 0.5 # Example normalized threshold
-        self.video_activity_threshold_high = 20.0 # Example pixel diff threshold
+        # Thresholds (loaded from config)
+        self.audio_threshold_high = config.AUDIO_THRESHOLD_HIGH
+        self.video_activity_threshold_high = config.VIDEO_ACTIVITY_THRESHOLD_HIGH
 
         # Error recovery
         self.error_recovery_attempts: int = 0

@@ -3,6 +3,7 @@ import json
 import re
 import time
 from typing import Optional, Dict, Any, List, TypedDict, Union
+from typing import Optional, Dict, Any, TypedDict, List
 import config
 from .intervention_library import InterventionLibrary
 from .prompts.v1 import SYSTEM_INSTRUCTION_V1
@@ -135,9 +136,21 @@ class LMMInterface:
 
         # Check suggestion (optional but must be dict or None)
         suggestion = data.get("suggestion")
-        if suggestion is not None and not isinstance(suggestion, dict):
-             self._log_warning(f"Validation Error: 'suggestion' is not a dict or None. Got: {type(suggestion)}")
-             return False
+        if suggestion is not None:
+            if not isinstance(suggestion, dict):
+                 self._log_warning(f"Validation Error: 'suggestion' is not a dict or None. Got: {type(suggestion)}")
+                 return False
+
+            # Validate suggestion type if library is available
+            s_type = suggestion.get("type")
+            if s_type and self.intervention_library:
+                # We can't strictly validate ID because LMM might suggest ad-hoc or fallback types
+                # But we can check if it looks sane.
+                # For now, just ensure 'type' is a string if present
+                if not isinstance(s_type, str):
+                    self._log_warning(f"Validation Error: 'suggestion.type' is not a string.")
+                    return False
+
 
         return True
 
@@ -154,6 +167,10 @@ class LMMInterface:
         retries = 3
         backoff = 2
         last_exception = None
+
+        # Enforce JSON mode if not already set, to ensure consistent output
+        if "response_format" not in payload:
+            payload["response_format"] = {"type": "json_object"}
 
         for attempt in range(retries):
             try:
@@ -230,6 +247,7 @@ class LMMInterface:
             "_meta": {"is_fallback": True}
         }
 
+    def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[Dict[str, Any]]:
     def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[LMMResponse]:
         """
         Processes incoming sensor data and user context by sending it to the local LMM.
