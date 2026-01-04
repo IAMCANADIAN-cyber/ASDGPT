@@ -25,6 +25,11 @@ FEEDBACK_SUPPRESSION_MINUTES = 240 # Suppress "unhelpful" interventions for 4 ho
 # (Future task 4.5 - API Keys - will be loaded from .env)
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
+# Sensor Thresholds (Calibrated via tools/calibrate_sensors.py)
+# Defaults are conservative if not set in .env
+AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
+VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
+
 # Logging configuration (can be expanded)
 LOG_LEVEL = "INFO" # Options: DEBUG, INFO, WARNING, ERROR
 LOG_FILE = "acr_app.log" # Changed from acr_log.txt for consistency with main.py
