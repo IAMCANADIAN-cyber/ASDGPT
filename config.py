@@ -1,8 +1,7 @@
 # Configuration for the Autonomous Co-Regulator
 import os
+import json
 from dotenv import load_dotenv
-
-load_dotenv()
 
 load_dotenv()
 
@@ -33,47 +32,35 @@ USER_DATA_DIR = "user_data"
 SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
 PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
 EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
+CALIBRATION_FILE = os.path.join(USER_DATA_DIR, "calibration.json")
 
 # --- API Keys ---
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 # --- Sensors ---
 CAMERA_INDEX = 0
-# Thresholds
-AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", 0.3)) # RMS level to trigger "loud" event (0.0 - 1.0)
-VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", 20.0)) # Frame diff score to trigger "active" event
 
-# --- Intervention Engine ---
-MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds (5 minutes)
-DEFAULT_INTERVENTION_DURATION = 30 # seconds
-# (Future task 4.5 - API Keys - will be loaded from .env)
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-
-# Sensor Thresholds (Calibrated via tools/calibrate_sensors.py)
+# Sensor Thresholds (Initial Defaults)
 # Defaults are conservative if not set in .env
 AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
 VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
 DOOM_SCROLL_THRESHOLD = int(os.getenv("DOOM_SCROLL_THRESHOLD", "3"))
 
-# Logging configuration (can be expanded)
-LOG_LEVEL = "INFO" # Options: DEBUG, INFO, WARNING, ERROR
-LOG_FILE = "acr_app.log" # Changed from acr_log.txt for consistency with main.py
+# --- Load Calibration Overrides ---
+if os.path.exists(CALIBRATION_FILE):
+    try:
+        with open(CALIBRATION_FILE, 'r') as f:
+            calibration_data = json.load(f)
+            if "AUDIO_THRESHOLD_HIGH" in calibration_data:
+                AUDIO_THRESHOLD_HIGH = float(calibration_data["AUDIO_THRESHOLD_HIGH"])
+            if "VIDEO_ACTIVITY_THRESHOLD_HIGH" in calibration_data:
+                VIDEO_ACTIVITY_THRESHOLD_HIGH = float(calibration_data["VIDEO_ACTIVITY_THRESHOLD_HIGH"])
+    except Exception as e:
+        print(f"Warning: Failed to load calibration file: {e}")
 
-# --- LMM Configuration ---
-LOCAL_LLM_URL = "http://127.0.0.1:1234"
-LOCAL_LLM_MODEL_ID = "deepseek/deepseek-r1-0528-qwen3-8b"
-
-# Reliability Settings
-LMM_FALLBACK_ENABLED = True
-LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
-LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
-# Thresholds (Overridable by environment variables for personalization)
-AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
-VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
-
-# Intervention Engine settings
-MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds, e.g., 5 minutes (for proactive, non-mode-change interventions)
-DEFAULT_INTERVENTION_DURATION = 30 # Default duration for an intervention if not specified (seconds)
+# --- Intervention Engine ---
+MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds (5 minutes)
+DEFAULT_INTERVENTION_DURATION = 30 # seconds
 
 # --- Tiered Intervention Configurations ---
 INTERVENTION_CONFIGS = {
@@ -108,23 +95,11 @@ INTERVENTION_CONFIGS = {
     }
 }
 
-
-# System Tray settings
-APP_NAME = "ACR"
-
-# LMM Configuration
+# --- LMM Configuration ---
 LOCAL_LLM_URL = "http://127.0.0.1:1234"
 LOCAL_LLM_MODEL_ID = "deepseek/deepseek-r1-0528-qwen3-8b"
-LMM_FALLBACK_ENABLED = True # Return neutral state if LMM is unreachable
-LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
-LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
 
-USER_DATA_DIR = "user_data"
-SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
-PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
-
-# LMM Reliability Settings
+# Reliability Settings
 LMM_FALLBACK_ENABLED = True
 LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
 LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
-EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
