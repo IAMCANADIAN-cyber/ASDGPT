@@ -1,29 +1,9 @@
 # Configuration for the Autonomous Co-Regulator
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
-
-load_dotenv()
-
-# --- Application Mode ---
-# Default mode for the application
-# Options: "active", "snoozed", "paused"
-DEFAULT_MODE = "active"
-
-# Snooze duration in seconds (e.g., 1 hour = 3600 seconds)
-SNOOZE_DURATION = 3600
-
-# --- Hotkeys ---
-# Note: Ensure these are not commonly used system-wide hotkeys
-HOTKEY_CYCLE_MODE = "ctrl+alt+m"  # Cycle through active, snoozed, paused
-HOTKEY_PAUSE_RESUME = "ctrl+alt+p" # Toggle between paused and previously active/snoozed state
-HOTKEY_FEEDBACK_HELPFUL = "ctrl+alt+up"
-HOTKEY_FEEDBACK_UNHELPFUL = "ctrl+alt+down"
-
-# --- User Feedback ---
-FEEDBACK_WINDOW_SECONDS = 15 # Time in seconds to provide feedback after an intervention
-FEEDBACK_SUPPRESSION_MINUTES = 240 # Suppress "unhelpful" interventions for 4 hours
 
 # --- System & Logging ---
 APP_NAME = "ACR"
@@ -33,49 +13,65 @@ USER_DATA_DIR = "user_data"
 SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
 PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
 EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
+CALIBRATION_FILE = os.path.join(USER_DATA_DIR, "calibration.json")
 
-# --- API Keys ---
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+# --- Application Mode ---
+DEFAULT_MODE = "active"
+SNOOZE_DURATION = 3600
 
-# --- Sensors ---
+# --- Hotkeys ---
+HOTKEY_CYCLE_MODE = "ctrl+alt+m"
+HOTKEY_PAUSE_RESUME = "ctrl+alt+p"
+HOTKEY_FEEDBACK_HELPFUL = "ctrl+alt+up"
+HOTKEY_FEEDBACK_UNHELPFUL = "ctrl+alt+down"
+
+# --- User Feedback ---
+FEEDBACK_WINDOW_SECONDS = 15
+FEEDBACK_SUPPRESSION_MINUTES = 240
+
+# --- Sensors & Thresholds ---
 CAMERA_INDEX = 0
-# Thresholds
-AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", 0.3)) # RMS level to trigger "loud" event (0.0 - 1.0)
-VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", 20.0)) # Frame diff score to trigger "active" event
 
-# --- Intervention Engine ---
-MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds (5 minutes)
-DEFAULT_INTERVENTION_DURATION = 30 # seconds
-# (Future task 4.5 - API Keys - will be loaded from .env)
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+# 1. Load Defaults (Conservative)
+AUDIO_THRESHOLD_HIGH = 0.5
+VIDEO_ACTIVITY_THRESHOLD_HIGH = 20.0
 
-# Sensor Thresholds (Calibrated via tools/calibrate_sensors.py)
-# Defaults are conservative if not set in .env
-AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
-VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
+# 2. Override from Environment Variables
+if os.getenv("AUDIO_THRESHOLD_HIGH"):
+    AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH"))
+if os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH"):
+    VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH"))
+
+# 3. Override from Calibration File (Highest Priority for specific thresholds)
+if os.path.exists(CALIBRATION_FILE):
+    try:
+        with open(CALIBRATION_FILE, 'r') as f:
+            calib_data = json.load(f)
+            if "AUDIO_THRESHOLD_HIGH" in calib_data:
+                AUDIO_THRESHOLD_HIGH = float(calib_data["AUDIO_THRESHOLD_HIGH"])
+            if "VIDEO_ACTIVITY_THRESHOLD_HIGH" in calib_data:
+                VIDEO_ACTIVITY_THRESHOLD_HIGH = float(calib_data["VIDEO_ACTIVITY_THRESHOLD_HIGH"])
+            # print(f"Loaded calibrated thresholds: Audio={AUDIO_THRESHOLD_HIGH}, Video={VIDEO_ACTIVITY_THRESHOLD_HIGH}")
+    except Exception as e:
+        print(f"Warning: Failed to load calibration file: {e}")
+
 DOOM_SCROLL_THRESHOLD = int(os.getenv("DOOM_SCROLL_THRESHOLD", "3"))
-
-# Logging configuration (can be expanded)
-LOG_LEVEL = "INFO" # Options: DEBUG, INFO, WARNING, ERROR
-LOG_FILE = "acr_app.log" # Changed from acr_log.txt for consistency with main.py
 
 # --- LMM Configuration ---
 LOCAL_LLM_URL = "http://127.0.0.1:1234"
 LOCAL_LLM_MODEL_ID = "deepseek/deepseek-r1-0528-qwen3-8b"
-
-# Reliability Settings
 LMM_FALLBACK_ENABLED = True
 LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
-LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
-# Thresholds (Overridable by environment variables for personalization)
-AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
-VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
+LMM_CIRCUIT_BREAKER_COOLDOWN = 60
 
-# Intervention Engine settings
-MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds, e.g., 5 minutes (for proactive, non-mode-change interventions)
-DEFAULT_INTERVENTION_DURATION = 30 # Default duration for an intervention if not specified (seconds)
+# --- Intervention Engine ---
+MIN_TIME_BETWEEN_INTERVENTIONS = 300
+DEFAULT_INTERVENTION_DURATION = 30
 
-# --- Tiered Intervention Configurations ---
+# --- API Keys ---
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# --- Tiered Intervention Configurations (Legacy/Fallback) ---
 INTERVENTION_CONFIGS = {
     "gentle_reminder_text": {
         "tier": 1,
@@ -107,24 +103,3 @@ INTERVENTION_CONFIGS = {
         "force_action": True,
     }
 }
-
-
-# System Tray settings
-APP_NAME = "ACR"
-
-# LMM Configuration
-LOCAL_LLM_URL = "http://127.0.0.1:1234"
-LOCAL_LLM_MODEL_ID = "deepseek/deepseek-r1-0528-qwen3-8b"
-LMM_FALLBACK_ENABLED = True # Return neutral state if LMM is unreachable
-LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
-LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
-
-USER_DATA_DIR = "user_data"
-SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
-PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
-
-# LMM Reliability Settings
-LMM_FALLBACK_ENABLED = True
-LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
-LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
-EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")

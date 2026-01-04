@@ -21,3 +21,10 @@ build/
 
 # User Data
 user_data/
+acr_app.log
+*.pyc
+.pytest_cache/
+test_logic_engine_log.txt
+test_output.txt
+replay_log.txt
+acr_app_emergency.log
