@@ -241,7 +241,7 @@ class LogicEngine:
                 },
                 "current_state_estimation": self.state_engine.get_state(),
                 "suppressed_interventions": suppressed_list,
-                "system_alerts": system_alerts
+                "system_alerts": system_alerts,
                 "preferred_interventions": preferred_list
             }
 
