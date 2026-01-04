@@ -1,4 +1,8 @@
-import sounddevice as sd
+try:
+    import sounddevice as sd
+except (ImportError, OSError):
+    sd = None
+
 import numpy as np
 import time
 import collections
@@ -55,6 +59,12 @@ class AudioSensor:
 
 
     def _initialize_stream(self):
+        if sd is None:
+            self.error_state = True
+            self.last_error_message = "sounddevice library not available (PortAudio missing?)"
+            self._log_error(self.last_error_message)
+            return
+
         self._log_info(f"Attempting to initialize audio stream (SampleRate: {self.sample_rate}, Channels: {self.channels})...")
         try:
             self.stream = sd.InputStream(
