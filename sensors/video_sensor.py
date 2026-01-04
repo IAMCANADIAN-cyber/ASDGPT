@@ -1,13 +1,23 @@
 import cv2
 import time
 import numpy as np
+import collections
 
 class VideoSensor:
-    def __init__(self, camera_index=0, data_logger=None):
+    def __init__(self, camera_index=0, data_logger=None, history_size=5):
         self.camera_index = camera_index
         self.logger = data_logger
         self.cap = None
         self.last_frame = None
+
+        # History buffers for smoothing
+        self.history_size = history_size
+        self.history = {
+            "face_size_ratio": collections.deque(maxlen=history_size),
+            "vertical_position": collections.deque(maxlen=history_size),
+            "horizontal_position": collections.deque(maxlen=history_size)
+        }
+
         self._initialize_camera()
 
         # Load Haarcascade for face detection
@@ -135,9 +145,27 @@ class VideoSensor:
 
                 img_h, img_w = frame.shape[:2]
 
-                metrics["face_size_ratio"] = float(w) / img_w
-                metrics["vertical_position"] = float(y + h/2) / img_h
-                metrics["horizontal_position"] = float(x + w/2) / img_w
+                # Calculate raw metrics
+                raw_size_ratio = float(w) / img_w
+                raw_vert_pos = float(y + h/2) / img_h
+                raw_horiz_pos = float(x + w/2) / img_w
+
+                # Add to history
+                self.history["face_size_ratio"].append(raw_size_ratio)
+                self.history["vertical_position"].append(raw_vert_pos)
+                self.history["horizontal_position"].append(raw_horiz_pos)
+
+                # Return smoothed values
+                metrics["face_size_ratio"] = float(np.mean(self.history["face_size_ratio"]))
+                metrics["vertical_position"] = float(np.mean(self.history["vertical_position"]))
+                metrics["horizontal_position"] = float(np.mean(self.history["horizontal_position"]))
+            else:
+                # If no face, we don't clear history immediately to avoid "glitches" if detection misses one frame.
+                # But we return 0.0 for current metrics as per contract.
+                # Optionally, we could return the last known smoothed value?
+                # For now, adhering to contract: no face = 0.0, but maybe we should decay history?
+                # Let's keep history for now, but return 0.0.
+                pass
 
             return metrics
         except Exception as e:
