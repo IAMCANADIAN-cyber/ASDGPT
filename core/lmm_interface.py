@@ -184,11 +184,11 @@ class LMMInterface:
                 try:
                     parsed_result = json.loads(clean_content)
                 except json.JSONDecodeError as e:
+                     # This is a content error, might be fixed by regeneration, so we treat it as retryable
                      raise ValueError(f"JSON decode error: {e}")
 
                 if not self._validate_response_schema(parsed_result):
                     # If schema is invalid, we might want to retry if it's a transient generation error
-                    # But for now, we'll treat it as a failure that might be retried
                     raise ValueError(f"Schema validation failed: {parsed_result}")
 
                 return parsed_result
