@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+load_dotenv()
+
 # --- Application Mode ---
 # Default mode for the application
 # Options: "active", "snoozed", "paused"
@@ -44,6 +46,17 @@ VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH",
 # --- Intervention Engine ---
 MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds (5 minutes)
 DEFAULT_INTERVENTION_DURATION = 30 # seconds
+# (Future task 4.5 - API Keys - will be loaded from .env)
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# Sensor Thresholds (Calibrated via tools/calibrate_sensors.py)
+# Defaults are conservative if not set in .env
+AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
+VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
+
+# Logging configuration (can be expanded)
+LOG_LEVEL = "INFO" # Options: DEBUG, INFO, WARNING, ERROR
+LOG_FILE = "acr_app.log" # Changed from acr_log.txt for consistency with main.py
 
 # --- LMM Configuration ---
 LOCAL_LLM_URL = "http://127.0.0.1:1234"
@@ -53,6 +66,13 @@ LOCAL_LLM_MODEL_ID = "deepseek/deepseek-r1-0528-qwen3-8b"
 LMM_FALLBACK_ENABLED = True
 LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
 LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
+# Thresholds (Overridable by environment variables for personalization)
+AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
+VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
+
+# Intervention Engine settings
+MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds, e.g., 5 minutes (for proactive, non-mode-change interventions)
+DEFAULT_INTERVENTION_DURATION = 30 # Default duration for an intervention if not specified (seconds)
 
 # --- Tiered Intervention Configurations ---
 INTERVENTION_CONFIGS = {
@@ -86,3 +106,24 @@ INTERVENTION_CONFIGS = {
         "force_action": True,
     }
 }
+
+
+# System Tray settings
+APP_NAME = "ACR"
+
+# LMM Configuration
+LOCAL_LLM_URL = "http://127.0.0.1:1234"
+LOCAL_LLM_MODEL_ID = "deepseek/deepseek-r1-0528-qwen3-8b"
+LMM_FALLBACK_ENABLED = True # Return neutral state if LMM is unreachable
+LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
+LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
+
+USER_DATA_DIR = "user_data"
+SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
+PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
+
+# LMM Reliability Settings
+LMM_FALLBACK_ENABLED = True
+LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
+LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
+EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")

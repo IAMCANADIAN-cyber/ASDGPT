@@ -47,9 +47,10 @@ class LogicEngine:
         self.lmm_call_interval: int = 5  # Periodic check interval (seconds)
         self.min_lmm_interval: int = 2   # Minimum time between calls even for triggers (seconds)
 
-        # Thresholds (could be moved to config later)
-        self.audio_threshold_high = 0.5 # Example normalized threshold
-        self.video_activity_threshold_high = 20.0 # Example pixel diff threshold
+        # Thresholds
+        # Thresholds (loaded from config)
+        self.audio_threshold_high = config.AUDIO_THRESHOLD_HIGH
+        self.video_activity_threshold_high = config.VIDEO_ACTIVITY_THRESHOLD_HIGH
 
         # Error recovery
         self.error_recovery_attempts: int = 0
@@ -215,8 +216,12 @@ class LogicEngine:
 
             # Fetch suppressed interventions if available
             suppressed_list = []
-            if self.intervention_engine and hasattr(self.intervention_engine, 'get_suppressed_intervention_types'):
-                suppressed_list = self.intervention_engine.get_suppressed_intervention_types()
+            preferred_list = []
+            if self.intervention_engine:
+                if hasattr(self.intervention_engine, 'get_suppressed_intervention_types'):
+                    suppressed_list = self.intervention_engine.get_suppressed_intervention_types()
+                if hasattr(self.intervention_engine, 'get_preferred_intervention_types'):
+                    preferred_list = self.intervention_engine.get_preferred_intervention_types()
 
             context = {
                 "current_mode": self.current_mode,
@@ -230,7 +235,8 @@ class LogicEngine:
                     "audio_analysis": self.audio_analysis
                 },
                 "current_state_estimation": self.state_engine.get_state(),
-                "suppressed_interventions": suppressed_list
+                "suppressed_interventions": suppressed_list,
+                "preferred_interventions": preferred_list
             }
 
             return {
@@ -469,6 +475,19 @@ class LogicEngine:
             if current_time - self.last_lmm_call_time >= self.lmm_call_interval:
                 self.last_lmm_call_time = current_time
                 self._trigger_lmm_analysis(allow_intervention=False)
+
+    def shutdown(self) -> None:
+        """
+        Gracefully shuts down the LogicEngine, ensuring background threads complete.
+        """
+        self.logger.log_info("LogicEngine shutting down...")
+        if self.lmm_thread and self.lmm_thread.is_alive():
+            self.logger.log_info("Waiting for LMM analysis thread to finish...")
+            self.lmm_thread.join(timeout=5.0)
+            if self.lmm_thread.is_alive():
+                self.logger.log_warning("LMM analysis thread did not finish in time.")
+            else:
+                self.logger.log_info("LMM analysis thread finished.")
 
 
 if __name__ == '__main__':
