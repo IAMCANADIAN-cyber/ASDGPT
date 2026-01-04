@@ -29,6 +29,7 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 # Defaults are conservative if not set in .env
 AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
 VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
+DOOM_SCROLL_THRESHOLD = int(os.getenv("DOOM_SCROLL_THRESHOLD", "3"))
 
 # Logging configuration (can be expanded)
 LOG_LEVEL = "INFO" # Options: DEBUG, INFO, WARNING, ERROR

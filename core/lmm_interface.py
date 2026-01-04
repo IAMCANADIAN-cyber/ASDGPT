@@ -247,7 +247,6 @@ class LMMInterface:
             "_meta": {"is_fallback": True}
         }
 
-    def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[Dict[str, Any]]:
     def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[LMMResponse]:
         """
         Processes incoming sensor data and user context by sending it to the local LMM.
@@ -316,6 +315,11 @@ class LMMInterface:
             suppressed = user_context.get('suppressed_interventions')
             if suppressed:
                 context_str += f"\nSuppressed Interventions (Do NOT suggest): {', '.join(suppressed)}\n"
+
+            # Add System Alerts (High Priority)
+            alerts = user_context.get('system_alerts', [])
+            if alerts:
+                context_str += f"\nSYSTEM ALERTS (High Priority): {', '.join(alerts)}\n"
 
         content_parts.append({"type": "text", "text": context_str})
 
