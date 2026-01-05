@@ -8,14 +8,19 @@ class VideoSensor:
         self.logger = data_logger
         self.cap = None
         self.last_frame = None
+        self.error_state = False
+        self.last_error_message = ""
         self._initialize_camera()
 
         # Load Haarcascade for face detection
-        # Ensure the path is correct or use a system path
-        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        self.face_cascade = cv2.CascadeClassifier(cascade_path)
-        if self.face_cascade.empty():
-            self._log_error("Could not load face cascade classifier.")
+        try:
+            cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            self.face_cascade = cv2.CascadeClassifier(cascade_path)
+            if self.face_cascade.empty():
+                self._log_error("Could not load face cascade classifier.")
+                # We don't set error_state here as activity detection might still work
+        except Exception as e:
+            self._log_error(f"Error loading cascade: {e}")
 
     def _log_info(self, message):
         if self.logger: self.logger.log_info(f"VideoSensor: {message}")
@@ -28,35 +33,62 @@ class VideoSensor:
     def _log_error(self, message):
         if self.logger: self.logger.log_error(f"VideoSensor: {message}")
         else: print(f"VideoSensor [ERROR]: {message}")
+        self.last_error_message = message
 
     def _initialize_camera(self):
         try:
             if self.camera_index is None:
-                # Mock or testing mode, do not open actual camera
                 return
 
             self.cap = cv2.VideoCapture(self.camera_index)
             if not self.cap.isOpened():
+                self.error_state = True
                 self._log_warning(f"Could not open video camera {self.camera_index}.")
                 self.cap = None
+            else:
+                self.error_state = False
         except Exception as e:
+            self.error_state = True
             self._log_error(f"Error initializing camera: {e}")
             self.cap = None
 
+    def has_error(self):
+        return self.error_state
+
+    def get_last_error(self):
+        return self.last_error_message
+
     def get_frame(self):
+        """
+        Captures a frame from the camera.
+        Returns: (frame, error_message)
+        """
         if self.cap is None or not self.cap.isOpened():
-             # Try to reconnect occasionally?
-             return None
+             if not self.error_state:
+                 self.error_state = True
+                 self.last_error_message = "Camera not initialized or closed."
+             return None, self.last_error_message
 
         try:
             ret, frame = self.cap.read()
             if not ret:
-                self._log_warning("Failed to capture video frame.")
-                return None
-            return frame
+                self.error_state = True
+                self.last_error_message = "Failed to capture video frame (read returned False)."
+                self._log_warning(self.last_error_message)
+                return None, self.last_error_message
+
+            if self.error_state:
+                self._log_info("Video sensor recovered.")
+                self.error_state = False
+                self.last_error_message = ""
+
+            return frame, None
+
         except Exception as e:
-             self._log_error(f"Error capturing frame: {e}")
-             return None
+             self.error_state = True
+             self.last_error_message = f"Error capturing frame: {e}"
+             self._log_error(self.last_error_message)
+             return None, self.last_error_message
 
     def calculate_raw_activity(self, gray_frame):
         """
@@ -84,26 +116,14 @@ class VideoSensor:
         """
         Calculates a simple 'activity level' based on pixel differences between frames.
         Returns a float 0.0 - 1.0 (normalized roughly).
-        Wrapper around calculate_raw_activity for backward compatibility / normalized use.
         """
         if frame is None:
             return 0.0
 
         try:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            # Resize for performance consistency if needed, but analyze_frame uses full size?
-            # Let's keep it consistent. If we resize here, we should resize for everything.
-            # LogicEngine used full size or didn't specify.
-            # analyze_frame uses full size for face detection.
-            # We'll use full size for now to be accurate, or small resize for speed.
-            # Previous implementation resized to 100x100. Let's stick to that for 'activity' to match expected values.
-
             gray_small = cv2.resize(gray, (100, 100))
-
             raw_score = self.calculate_raw_activity(gray_small)
-
-            # Normalize (arbitrary scaling factor based on testing)
-            # Previous logic: min(1.0, score / 50.0)
             return min(1.0, raw_score / 50.0)
 
         except Exception as e:
@@ -114,15 +134,14 @@ class VideoSensor:
         """
         Convenience method to get frame and calculate activity.
         """
-        frame = self.get_frame()
+        frame, error = self.get_frame()
+        if error:
+            return 0.0
         return self.calculate_activity(frame)
 
     def process_frame(self, frame):
         """
-        Comprehensive frame processing:
-        - Activity calculation (Raw and Normalized)
-        - Face detection and metrics
-
+        Comprehensive frame processing.
         Returns a dictionary with all metrics.
         """
         metrics = {
@@ -144,35 +163,31 @@ class VideoSensor:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
             # 1. Activity Calculation
-            # We use a downscaled version for activity to match historical behavior/performance
             gray_small = cv2.resize(gray, (100, 100))
-
             raw_activity = self.calculate_raw_activity(gray_small)
             metrics["video_activity"] = float(raw_activity)
             metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
 
-            # 2. Face Detection (using full size gray frame)
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
+            # 2. Face Detection
+            if hasattr(self, 'face_cascade') and not self.face_cascade.empty():
+                faces = self.face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=5,
+                    minSize=(30, 30)
+                )
 
-            metrics["face_detected"] = len(faces) > 0
-            metrics["face_count"] = len(faces)
-            metrics["face_locations"] = [list(f) for f in faces]
+                metrics["face_detected"] = len(faces) > 0
+                metrics["face_count"] = len(faces)
+                metrics["face_locations"] = [list(f) for f in faces]
 
-            if len(faces) > 0:
-                # Find largest face
-                largest_face = max(faces, key=lambda f: f[2] * f[3])
-                x, y, w, h = largest_face
-
-                img_h, img_w = frame.shape[:2]
-
-                metrics["face_size_ratio"] = float(w) / img_w
-                metrics["vertical_position"] = float(y + h/2) / img_h
-                metrics["horizontal_position"] = float(x + w/2) / img_w
+                if len(faces) > 0:
+                    largest_face = max(faces, key=lambda f: f[2] * f[3])
+                    x, y, w, h = largest_face
+                    img_h, img_w = frame.shape[:2]
+                    metrics["face_size_ratio"] = float(w) / img_w
+                    metrics["vertical_position"] = float(y + h/2) / img_h
+                    metrics["horizontal_position"] = float(x + w/2) / img_w
 
         except Exception as e:
             self._log_error(f"Error processing frame: {e}")
@@ -181,52 +196,51 @@ class VideoSensor:
 
     def analyze_frame(self, frame):
         """
-        Legacy wrapper for backward compatibility if needed,
-        or just for face detection specifically.
+        Legacy wrapper for backward compatibility.
         """
-        # We can implement this by calling process_frame and filtering keys,
-        # but process_frame updates state (last_frame).
-        # If analyze_frame is called separately, it might mess up activity diff if not careful.
-        # But generally, LogicEngine should assume 'process_frame' is the main entry.
-        # For now, we keep the original logic for analyze_frame to be safe,
-        # BUT note that it doesn't touch 'last_frame'.
+        metrics = {
+            "face_detected": False,
+            "face_count": 0,
+            "face_locations": [],
+            "face_size_ratio": 0.0,
+            "vertical_position": 0.0,
+            "horizontal_position": 0.0
+        }
 
         if frame is None:
-            return {}
+            return metrics
 
         try:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
+            if hasattr(self, 'face_cascade') and not self.face_cascade.empty():
+                faces = self.face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=5,
+                    minSize=(30, 30)
+                )
 
-            metrics = {
-                "face_detected": len(faces) > 0,
-                "face_count": len(faces),
-                "face_locations": [list(f) for f in faces],
-                "face_size_ratio": 0.0,
-                "vertical_position": 0.0,
-                "horizontal_position": 0.0
-            }
+                metrics["face_detected"] = len(faces) > 0
+                metrics["face_count"] = len(faces)
+                metrics["face_locations"] = [list(f) for f in faces]
 
-            if len(faces) > 0:
-                largest_face = max(faces, key=lambda f: f[2] * f[3])
-                x, y, w, h = largest_face
-                img_h, img_w = frame.shape[:2]
-                metrics["face_size_ratio"] = float(w) / img_w
-                metrics["vertical_position"] = float(y + h/2) / img_h
-                metrics["horizontal_position"] = float(x + w/2) / img_w
+                if len(faces) > 0:
+                    largest_face = max(faces, key=lambda f: f[2] * f[3])
+                    x, y, w, h = largest_face
+                    img_h, img_w = frame.shape[:2]
+                    metrics["face_size_ratio"] = float(w) / img_w
+                    metrics["vertical_position"] = float(y + h/2) / img_h
+                    metrics["horizontal_position"] = float(x + w/2) / img_w
 
+                return metrics
             return metrics
         except Exception as e:
             self._log_error(f"Error analyzing frame: {e}")
-            return {}
+            return metrics
 
     def release(self):
         if self.cap:
             self.cap.release()
             self.cap = None
+        self.error_state = False

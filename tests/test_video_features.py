@@ -2,21 +2,17 @@ import unittest
 import numpy as np
 import cv2
 from sensors.video_sensor import VideoSensor
+from unittest.mock import MagicMock
 
 class TestVideoFeatures(unittest.TestCase):
     def setUp(self):
         # Initialize without camera
         self.sensor = VideoSensor(camera_index=None)
 
-        # Override cascade with a mock if needed, but we can try to use a real one if available.
-        # However, testing face detection without real images is hard.
-        # We will test the metrics calculation logic given a mocked detection or a synthetic image.
-        # Since I can't easily make a synthetic "face" that a Haar cascade recognizes reliably without assets,
-        # I will mock the cascade classifier's detectMultiScale method to return known rectangles.
-
         # Mocking detectMultiScale
-        from unittest.mock import MagicMock
         self.sensor.face_cascade = MagicMock()
+        # Ensure empty() returns False so detection logic runs
+        self.sensor.face_cascade.empty.return_value = False
 
     def test_metrics_no_face(self):
         self.sensor.face_cascade.detectMultiScale.return_value = []

@@ -12,6 +12,9 @@ class TestFaceDetection(unittest.TestCase):
         # We need to mock cv2.CascadeClassifier before initializing VideoSensor because it loads it in __init__
         with patch('cv2.CascadeClassifier') as MockCascade:
             self.mock_cascade_instance = MockCascade.return_value
+            # Ensure empty() returns False so detection runs
+            self.mock_cascade_instance.empty.return_value = False
+
             self.video_sensor = VideoSensor(camera_index=0, data_logger=self.mock_logger)
             # Ensure the sensor uses our mock instance
             self.video_sensor.face_cascade = self.mock_cascade_instance
@@ -33,9 +36,6 @@ class TestFaceDetection(unittest.TestCase):
         self.assertEqual(metrics['face_count'], 0)
         self.assertEqual(metrics['face_locations'], [])
 
-        # Verify conversion to grayscale happened
-        # We can't easily check cv2.cvtColor call without patching cv2, but we can assume it worked if no error.
-
     def test_face_detected(self):
         # Setup mock to return one face: (x=10, y=10, w=20, h=20)
         # It usually returns a numpy array or tuple of arrays
@@ -54,8 +54,9 @@ class TestFaceDetection(unittest.TestCase):
 
     def test_analyze_frame_with_none(self):
         metrics = self.video_sensor.analyze_frame(None)
-        # Expect empty dict
-        self.assertEqual(metrics, {})
+        # Expect default metrics structure
+        self.assertFalse(metrics['face_detected'])
+        self.assertEqual(metrics['face_count'], 0)
 
     def test_analyze_frame_exception(self):
         # Make detectMultiScale raise an exception
@@ -65,7 +66,7 @@ class TestFaceDetection(unittest.TestCase):
         metrics = self.video_sensor.analyze_frame(frame)
 
         # Should handle exception gracefully and return default empty metrics or similar
-        self.assertEqual(metrics, {})
+        self.assertFalse(metrics['face_detected'])
         # Should have logged error
         self.mock_logger.log_error.assert_called()
 
