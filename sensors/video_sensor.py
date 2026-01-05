@@ -46,17 +46,17 @@ class VideoSensor:
     def get_frame(self):
         if self.cap is None or not self.cap.isOpened():
              # Try to reconnect occasionally?
-             return None
+             return None, "Camera not open"
 
         try:
             ret, frame = self.cap.read()
             if not ret:
                 self._log_warning("Failed to capture video frame.")
-                return None
-            return frame
+                return None, "Failed to capture video frame"
+            return frame, None
         except Exception as e:
              self._log_error(f"Error capturing frame: {e}")
-             return None
+             return None, str(e)
 
     def calculate_raw_activity(self, gray_frame):
         """
@@ -230,3 +230,14 @@ class VideoSensor:
         if self.cap:
             self.cap.release()
             self.cap = None
+
+    def has_error(self):
+        # Current implementation doesn't strictly track persistent error state
+        # like AudioSensor does, but we can check if cap is None while index is set
+        return self.camera_index is not None and (self.cap is None or not self.cap.isOpened())
+
+    def get_last_error(self):
+        # We don't store error history, so return generic if has_error
+        if self.has_error():
+            return "Video camera unavailable or failed to initialize."
+        return ""
