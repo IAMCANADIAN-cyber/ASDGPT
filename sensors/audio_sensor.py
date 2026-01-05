@@ -1,8 +1,15 @@
-import sounddevice as sd
 import numpy as np
 import time
 import collections
 import config # Potentially for audio device settings in the future
+
+try:
+    import sounddevice as sd
+    SOUNDDEVICE_AVAILABLE = True
+except (ImportError, OSError) as e:
+    sd = None
+    SOUNDDEVICE_AVAILABLE = False
+    print(f"Warning: sounddevice not available: {e}")
 
 class AudioSensor:
     def __init__(self, data_logger=None, sample_rate=44100, chunk_duration=1.0, channels=1, history_seconds=5):
@@ -28,8 +35,13 @@ class AudioSensor:
         self.retry_delay = 30  # seconds
         self.last_retry_time = 0
 
-        self._check_devices()
-        self._initialize_stream()
+        if SOUNDDEVICE_AVAILABLE:
+            self._check_devices()
+            self._initialize_stream()
+        else:
+            self.error_state = True
+            self.last_error_message = "SoundDevice/PortAudio not available."
+            self._log_warning("AudioSensor initialized in disabled state (missing dependencies).")
 
     def _log_info(self, message):
         if self.logger: self.logger.log_info(f"AudioSensor: {message}")
