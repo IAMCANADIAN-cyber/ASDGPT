@@ -324,7 +324,6 @@ class LogicEngine:
                      self.logger.log_info(f"Reflexive Trigger activated: {reflexive_intervention_id}")
                      suggestion = {"id": reflexive_intervention_id}
 
-                if suggestion:
                 # Priority: System Triggers > LMM Suggestion
                 final_intervention = None
 
