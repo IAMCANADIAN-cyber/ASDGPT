@@ -458,18 +458,24 @@ class InterventionEngine:
             return False
 
         # Check for suppression
-        if intervention_type in self.suppressed_interventions:
-            expiry = self.suppressed_interventions[intervention_type]
-            if time.time() < expiry:
-                remaining_mins = int((expiry - time.time()) / 60)
-                if logger:
-                    logger.log_info(f"Intervention '{intervention_type}' skipped (suppressed for {remaining_mins} more mins).")
+        # Check both the type AND the ID if available
+        suppression_keys = []
+        if intervention_type: suppression_keys.append(intervention_type)
+        if intervention_id and intervention_id != intervention_type: suppression_keys.append(intervention_id)
+
+        for key in suppression_keys:
+            if key in self.suppressed_interventions:
+                expiry = self.suppressed_interventions[key]
+                if time.time() < expiry:
+                    remaining_mins = int((expiry - time.time()) / 60)
+                    if logger:
+                        logger.log_info(f"Intervention '{key}' skipped (suppressed for {remaining_mins} more mins).")
+                    else:
+                        print(f"Intervention '{key}' skipped (suppressed for {remaining_mins} more mins).")
+                    return False
                 else:
-                    print(f"Intervention '{intervention_type}' skipped (suppressed for {remaining_mins} more mins).")
-                return False
-            else:
-                # Expired, remove from list
-                del self.suppressed_interventions[intervention_type]
+                    # Expired, remove from list
+                    del self.suppressed_interventions[key]
 
         # Critical: If called from within an existing sequence or thread, this check might fail.
         # But generally start_intervention is called from LogicEngine main thread.

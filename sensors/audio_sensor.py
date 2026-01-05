@@ -99,11 +99,23 @@ class AudioSensor:
             if self.error_state: # If still in error state
                 return None, self.last_error_message
 
-        if not self.stream or self.stream.closed:
-            if not self.error_state:
-                 self._log_error("Audio stream is not active or closed, though not in persistent error state.")
+        # Check for stream existence and closure status safely
+        if not self.stream:
+             if not self.error_state:
+                 self._log_error("Audio stream is not active (None).")
                  self.error_state = True
-            return None, "Audio stream not available."
+             return None, "Audio stream not available."
+
+        # Check closed attribute if it exists (some mock objects might fail this if not careful, but real sd.InputStream has it)
+        try:
+            if self.stream.closed:
+                if not self.error_state:
+                     self._log_error("Audio stream is closed.")
+                     self.error_state = True
+                return None, "Audio stream closed."
+        except AttributeError:
+             # Should not happen with real object, but safety net
+             pass
 
         try:
             # With a blocking stream (no callback), read() will wait until it has enough data.

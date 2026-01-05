@@ -102,3 +102,147 @@
 2026-01-04T07:40:26.762946 [INFO] LMM Detected Visual Context: ['phone_usage']
 2026-01-04T07:40:26.762987 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
 2026-01-04T07:40:26.763030 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 40, 'focus': 50, 'energy': 56, 'mood': 50}
+2026-01-05T13:34:00.851442 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:34:00.851558 [INFO] ACR Application Initializing...
+2026-01-05T13:34:00.854895 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:34:00.855604 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140354219206720'>
+2026-01-05T13:34:00.856019 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140354219206720'>
+2026-01-05T13:34:00.856081 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:34:00.856548 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:34:00.856678 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:34:00.856772 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:34:00.856895 [INFO] InterventionEngine initialized.
+2026-01-05T13:34:00.859061 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:34:00.859138 [INFO] Press Esc to quit.
+2026-01-05T13:34:00.859181 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:34:00.859217 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:34:00.860087 [INFO] Application shutting down...
+2026-01-05T13:34:00.860422 [INFO] Releasing video sensor...
+2026-01-05T13:34:00.860990 [INFO] Releasing audio sensor...
+2026-01-05T13:34:00.861355 [INFO] LogicEngine shutting down...
+2026-01-05T13:34:00.861445 [INFO] InterventionEngine shutting down...
+2026-01-05T13:34:00.861496 [INFO] No active intervention to stop.
+2026-01-05T13:34:00.861770 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:34:00.862234 [WARNING] Video worker thread did not join in time.
+2026-01-05T13:34:00.862558 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:34:00.863061 [WARNING] Audio worker thread did not join in time.
+2026-01-05T13:34:00.863964 [INFO] Application shutdown complete.
+2026-01-05T13:34:24.256608 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:34:24.256734 [INFO] ACR Application Initializing...
+2026-01-05T13:34:24.260065 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:34:24.260732 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140339141815296'>
+2026-01-05T13:34:24.261085 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140339141815296'>
+2026-01-05T13:34:24.261150 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:34:24.261639 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:34:24.261758 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:34:24.261847 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:34:24.262005 [INFO] InterventionEngine initialized.
+2026-01-05T13:34:24.264207 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:34:24.264300 [INFO] Press Esc to quit.
+2026-01-05T13:34:24.264341 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:34:24.264376 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:34:24.265385 [INFO] Application shutting down...
+2026-01-05T13:34:24.265647 [INFO] Releasing video sensor...
+2026-01-05T13:34:24.266340 [INFO] Releasing audio sensor...
+2026-01-05T13:34:24.266830 [INFO] LogicEngine shutting down...
+2026-01-05T13:34:24.266904 [INFO] InterventionEngine shutting down...
+2026-01-05T13:34:24.266944 [INFO] No active intervention to stop.
+2026-01-05T13:34:24.267267 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:34:24.267675 [WARNING] Video worker thread did not join in time.
+2026-01-05T13:34:24.268055 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:34:24.268482 [WARNING] Audio worker thread did not join in time.
+2026-01-05T13:34:24.269287 [INFO] Application shutdown complete.
+2026-01-05T13:34:51.546244 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:34:51.546376 [INFO] ACR Application Initializing...
+2026-01-05T13:34:51.550393 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:34:51.551382 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='139798301586784'>
+2026-01-05T13:34:51.551793 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='139798301586784'>
+2026-01-05T13:34:51.551875 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:34:51.552540 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:34:51.552753 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:34:51.552877 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:34:51.553016 [INFO] InterventionEngine initialized.
+2026-01-05T13:34:51.555555 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:34:51.555667 [INFO] Press Esc to quit.
+2026-01-05T13:34:51.555764 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:34:51.555839 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:34:51.556926 [INFO] Application shutting down...
+2026-01-05T13:34:51.557240 [INFO] Releasing video sensor...
+2026-01-05T13:34:51.557948 [INFO] Releasing audio sensor...
+2026-01-05T13:34:51.558464 [INFO] LogicEngine shutting down...
+2026-01-05T13:34:51.558560 [INFO] InterventionEngine shutting down...
+2026-01-05T13:34:51.558605 [INFO] No active intervention to stop.
+2026-01-05T13:34:51.559090 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:34:51.559653 [WARNING] Video worker thread did not join in time.
+2026-01-05T13:34:51.560103 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:34:51.560783 [WARNING] Audio worker thread did not join in time.
+2026-01-05T13:34:51.561621 [INFO] Application shutdown complete.
+2026-01-05T13:36:25.125929 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:36:25.126100 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:36:25.126842 [INFO] Triggering LMM analysis (Reason: test)...
+2026-01-05T13:36:25.126949 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
+2026-01-05T13:36:25.127637 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T13:36:25.127881 [INFO] LMM analysis complete and state updated.
+2026-01-05T13:36:25.127946 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T13:36:25.128006 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T13:37:05.774076 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:37:05.774366 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:37:05.775502 [INFO] Triggering LMM analysis (Reason: test)...
+2026-01-05T13:37:05.775706 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
+2026-01-05T13:37:05.776854 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T13:37:05.777147 [INFO] LMM analysis complete and state updated.
+2026-01-05T13:37:05.777211 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T13:37:05.777285 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T13:37:26.993201 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:37:26.993359 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:37:26.993995 [INFO] Triggering LMM analysis (Reason: test)...
+2026-01-05T13:37:26.994128 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
+2026-01-05T13:37:26.994825 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T13:37:26.995062 [INFO] LMM analysis complete and state updated.
+2026-01-05T13:37:26.995173 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T13:37:26.995235 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T13:37:26.995679 [INFO] Triggering LMM analysis (Reason: test)...
+2026-01-05T13:37:26.995764 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
+2026-01-05T13:37:26.996253 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 20, 'focus': 50, 'energy': 68, 'mood': 50}
+2026-01-05T13:37:26.996408 [INFO] LMM analysis complete and state updated.
+2026-01-05T13:37:26.996474 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T13:37:26.996530 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 20, 'focus': 50, 'energy': 68, 'mood': 50}
+2026-01-05T13:37:26.996899 [INFO] Triggering LMM analysis (Reason: test)...
+2026-01-05T13:37:26.996980 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
+2026-01-05T13:37:26.997467 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 30, 'focus': 50, 'energy': 62, 'mood': 50}
+2026-01-05T13:37:26.997654 [INFO] LMM analysis complete and state updated.
+2026-01-05T13:37:26.997714 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T13:37:26.997762 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
+2026-01-05T13:37:26.997808 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 30, 'focus': 50, 'energy': 62, 'mood': 50}
+2026-01-05T13:37:26.998234 [INFO] Triggering LMM analysis (Reason: test)...
+2026-01-05T13:37:26.998331 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
+2026-01-05T13:37:26.998782 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 40, 'focus': 50, 'energy': 56, 'mood': 50}
+2026-01-05T13:37:26.998946 [INFO] LMM analysis complete and state updated.
+2026-01-05T13:37:26.998998 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T13:37:26.999043 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
+2026-01-05T13:37:26.999137 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 40, 'focus': 50, 'energy': 56, 'mood': 50}
+2026-01-05T13:38:49.080310 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:38:49.080496 [INFO] ACR Application Initializing...
+2026-01-05T13:38:49.084319 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:38:49.085296 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140697714913984'>
+2026-01-05T13:38:49.085686 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140697714913984'>
+2026-01-05T13:38:49.085751 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:38:49.086314 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:38:49.086467 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:38:49.086566 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:38:49.086705 [INFO] InterventionEngine initialized.
+2026-01-05T13:38:49.088967 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:38:49.089057 [INFO] Press Esc to quit.
+2026-01-05T13:38:49.089157 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:38:49.089202 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:38:49.090225 [INFO] Application shutting down...
+2026-01-05T13:38:49.090490 [INFO] Releasing video sensor...
+2026-01-05T13:38:49.091259 [INFO] Releasing audio sensor...
+2026-01-05T13:38:49.091711 [INFO] LogicEngine shutting down...
+2026-01-05T13:38:49.091803 [INFO] InterventionEngine shutting down...
+2026-01-05T13:38:49.091858 [INFO] No active intervention to stop.
+2026-01-05T13:38:49.092184 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:38:49.092651 [WARNING] Video worker thread did not join in time.
+2026-01-05T13:38:49.092988 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:38:49.093584 [WARNING] Audio worker thread did not join in time.
+2026-01-05T13:38:49.094431 [INFO] Application shutdown complete.
