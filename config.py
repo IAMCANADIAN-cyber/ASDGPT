@@ -1,10 +1,124 @@
-# Configuration for the Autonomous Co-Regulator
+import json
 import os
+from typing import Dict, Any
 import json
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# --- Helper: Load User Config Override ---
+def _load_user_config() -> Dict[str, Any]:
+    """Loads user configuration from user_data/config.json if it exists."""
+    config_path = os.path.join("user_data", "config.json")
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Warning: Failed to load user config from {config_path}: {e}")
+    return {}
+
+_user_config = _load_user_config()
+
+def _get_conf(key: str, default: Any, cast_type: type = None) -> Any:
+    """
+    Priority:
+    1. Environment Variable (highest for temporary overrides)
+    2. user_data/config.json (for persistent user settings)
+    3. Default value (codebase default)
+    """
+    # 1. Environment Variable
+    env_val = os.getenv(key)
+    if env_val is not None:
+        if cast_type:
+            try:
+                if cast_type == bool:
+                    return env_val.lower() in ('true', '1', 'yes')
+                return cast_type(env_val)
+            except ValueError:
+                pass # Fallback
+        return env_val
+
+    # 2. User Config
+    if key in _user_config:
+        val = _user_config[key]
+        if cast_type and not isinstance(val, cast_type):
+            try:
+                return cast_type(val)
+            except ValueError:
+                pass
+        return val
+
+    # 3. Default
+    return default
+
+# --- Application Mode ---
+DEFAULT_MODE = _get_conf("DEFAULT_MODE", "active")
+SNOOZE_DURATION = _get_conf("SNOOZE_DURATION", 3600, int)
+
+# --- Hotkeys ---
+HOTKEY_CYCLE_MODE = _get_conf("HOTKEY_CYCLE_MODE", "ctrl+alt+m")
+HOTKEY_PAUSE_RESUME = _get_conf("HOTKEY_PAUSE_RESUME", "ctrl+alt+p")
+HOTKEY_FEEDBACK_HELPFUL = _get_conf("HOTKEY_FEEDBACK_HELPFUL", "ctrl+alt+up")
+HOTKEY_FEEDBACK_UNHELPFUL = _get_conf("HOTKEY_FEEDBACK_UNHELPFUL", "ctrl+alt+down")
+
+# --- User Feedback ---
+FEEDBACK_WINDOW_SECONDS = _get_conf("FEEDBACK_WINDOW_SECONDS", 15, int)
+FEEDBACK_SUPPRESSION_MINUTES = _get_conf("FEEDBACK_SUPPRESSION_MINUTES", 240, int)
+
+# --- System & Logging ---
+APP_NAME = _get_conf("APP_NAME", "ACR")
+LOG_LEVEL = _get_conf("LOG_LEVEL", "INFO")
+LOG_FILE = _get_conf("LOG_FILE", "acr_app.log")
+USER_DATA_DIR = _get_conf("USER_DATA_DIR", "user_data")
+SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
+PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
+EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
+CALIBRATION_FILE = os.path.join(USER_DATA_DIR, "calibration.json")
+
+# --- Sensors ---
+CAMERA_INDEX = _get_conf("CAMERA_INDEX", 0, int)
+
+# Load Calibration if available
+_calibration_data = {}
+if os.path.exists(CALIBRATION_FILE):
+    try:
+        with open(CALIBRATION_FILE, 'r') as f:
+            _calibration_data = json.load(f)
+    except:
+        pass
+
+# Thresholds (Priority: Env -> User Config -> Calibration File -> Default)
+AUDIO_THRESHOLD_HIGH = _get_conf("AUDIO_THRESHOLD_HIGH", _calibration_data.get("audio_rms_threshold", 0.5), float)
+VIDEO_ACTIVITY_THRESHOLD_HIGH = _get_conf("VIDEO_ACTIVITY_THRESHOLD_HIGH", _calibration_data.get("video_activity_threshold", 20.0), float)
+DOOM_SCROLL_THRESHOLD = _get_conf("DOOM_SCROLL_THRESHOLD", 3, int)
+
+# --- State Engine Baseline ---
+# Allows personalization of the "neutral" state.
+BASELINE_STATE = _get_conf("BASELINE_STATE", {
+    "arousal": 50,
+    "overload": 0,
+    "focus": 50,
+    "energy": 80,
+    "mood": 50
+}, dict)
+
+# --- Intervention Engine ---
+MIN_TIME_BETWEEN_INTERVENTIONS = _get_conf("MIN_TIME_BETWEEN_INTERVENTIONS", 300, int)
+DEFAULT_INTERVENTION_DURATION = _get_conf("DEFAULT_INTERVENTION_DURATION", 30, int)
+
+# --- LMM Configuration ---
+# Note: API Keys should ideally be strictly ENV for security, but we allow config for local URLs.
+LOCAL_LLM_URL = _get_conf("LOCAL_LLM_URL", "http://127.0.0.1:1234")
+LOCAL_LLM_MODEL_ID = _get_conf("LOCAL_LLM_MODEL_ID", "deepseek/deepseek-r1-0528-qwen3-8b")
+
+LMM_FALLBACK_ENABLED = _get_conf("LMM_FALLBACK_ENABLED", True, bool)
+LMM_CIRCUIT_BREAKER_MAX_FAILURES = _get_conf("LMM_CIRCUIT_BREAKER_MAX_FAILURES", 5, int)
+LMM_CIRCUIT_BREAKER_COOLDOWN = _get_conf("LMM_CIRCUIT_BREAKER_COOLDOWN", 60, int)
+
+# --- Tiered Intervention Configurations (Optional Overrides) ---
+# Usually these are code logic, but could be overridden.
+# Keeping defaults here for now.
 # --- System & Logging ---
 APP_NAME = "ACR"
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO") # Options: DEBUG, INFO, WARNING, ERROR
