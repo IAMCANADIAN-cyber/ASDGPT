@@ -1,0 +1,360 @@
+2026-01-05T14:34:18.811118 [INFO] DataLogger initialized. Log level: DEBUG. Log file: verify_crash.log
+2026-01-05T14:34:18.811283 [INFO] ACR Application Initializing...
+2026-01-05T14:34:18.816475 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T14:34:18.817727 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='139721220034864'>
+2026-01-05T14:34:18.818203 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='139721220034864'>
+2026-01-05T14:34:18.818280 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T14:34:18.819135 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T14:34:18.819300 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:34:18.819486 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:34:18.819730 [INFO] InterventionEngine initialized.
+2026-01-05T14:34:18.822513 [INFO] Setting up hotkeys...
+2026-01-05T14:34:18.823291 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:34:18.823412 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:34:18.823457 [INFO] Press Esc to quit.
+2026-01-05T14:34:18.823498 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:34:18.823531 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:34:18.824949 [INFO] Video worker thread started.
+2026-01-05T14:34:18.826015 [INFO] Audio worker thread started.
+2026-01-05T14:34:19.327237 [INFO] Application shutting down...
+2026-01-05T14:34:19.327449 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:34:20.890884 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T14:34:21.327774 [WARNING] Video worker thread did not join in time.
+2026-01-05T14:34:21.327952 [INFO] Waiting for audio worker thread to join...
+2026-01-05T14:34:23.328412 [WARNING] Audio worker thread did not join in time.
+2026-01-05T14:34:23.328656 [INFO] LogicEngine shutting down...
+2026-01-05T14:34:23.328732 [INFO] InterventionEngine shutting down...
+2026-01-05T14:34:23.328799 [INFO] No active intervention to stop.
+2026-01-05T14:34:23.329689 [INFO] AudioSensor: Releasing audio stream.
+2026-01-05T14:34:23.332227 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:34:23.332353 [INFO] Application shutdown complete.
+2026-01-05T14:34:58.918113 [INFO] DataLogger initialized. Log level: DEBUG. Log file: verify_crash.log
+2026-01-05T14:34:58.918251 [INFO] ACR Application Initializing...
+2026-01-05T14:34:58.921904 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T14:34:58.922606 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140650238152720'>
+2026-01-05T14:34:58.923053 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140650238152720'>
+2026-01-05T14:34:58.923132 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T14:34:58.923653 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T14:34:58.923842 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:34:58.923961 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:34:58.924081 [INFO] InterventionEngine initialized.
+2026-01-05T14:34:58.926016 [INFO] Setting up hotkeys...
+2026-01-05T14:34:58.926620 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:34:58.926688 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:34:58.926728 [INFO] Press Esc to quit.
+2026-01-05T14:34:58.926812 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:34:58.926867 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:34:58.927385 [INFO] Video worker thread started.
+2026-01-05T14:34:58.928004 [INFO] Audio worker thread started.
+2026-01-05T14:34:59.428334 [INFO] Application shutting down...
+2026-01-05T14:34:59.429060 [INFO] AudioSensor: Releasing audio stream.
+2026-01-05T14:34:59.429272 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:34:59.430110 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T14:34:59.480956 [ERROR] AudioSensor: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:34:59.481137 [WARNING] Audio sensor error in worker: Audio stream not available.
+2026-01-05T14:34:59.531485 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:34:59.581933 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:34:59.632331 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:34:59.682817 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:34:59.733331 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:34:59.783821 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:34:59.834280 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:34:59.884743 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:34:59.935208 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:34:59.985652 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.036144 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.086547 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.136952 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.187380 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.237838 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.288261 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.338708 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.389267 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.430531 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T14:35:00.439679 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.490140 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.540580 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.591043 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.641494 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.691929 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.742409 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.792901 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.843364 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.893757 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.944231 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:00.994882 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.045616 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.096083 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.146555 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.197000 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.247468 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.297945 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.348402 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.398856 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.429622 [WARNING] Video worker thread did not join in time.
+2026-01-05T14:35:01.429873 [INFO] Waiting for audio worker thread to join...
+2026-01-05T14:35:01.431008 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T14:35:01.449346 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.499859 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.550375 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.600913 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.651377 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.701818 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.752252 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.802711 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.853263 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.903704 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:01.954148 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.004599 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.055075 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.105539 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.155989 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.206439 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.256963 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.307437 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.357925 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.408375 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.431382 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T14:35:02.458872 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.509412 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.559893 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.610374 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.660886 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.711327 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.761848 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.812317 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.862742 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.913292 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:02.963705 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:03.014194 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:03.064661 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:03.115144 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:03.165605 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:03.216121 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:03.266547 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:03.316990 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:03.367463 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:03.417910 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:03.430241 [WARNING] Audio worker thread did not join in time.
+2026-01-05T14:35:03.430426 [INFO] LogicEngine shutting down...
+2026-01-05T14:35:03.430478 [INFO] InterventionEngine shutting down...
+2026-01-05T14:35:03.430530 [INFO] No active intervention to stop.
+2026-01-05T14:35:03.431981 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:35:03.432121 [INFO] Application shutdown complete.
+2026-01-05T14:35:03.432604 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T14:35:46.568048 [INFO] DataLogger initialized. Log level: DEBUG. Log file: verify_crash.log
+2026-01-05T14:35:46.568173 [INFO] ACR Application Initializing...
+2026-01-05T14:35:46.572937 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T14:35:46.573941 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='139621140567040'>
+2026-01-05T14:35:46.574553 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='139621140567040'>
+2026-01-05T14:35:46.574639 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T14:35:46.575348 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T14:35:46.575545 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:35:46.575695 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:35:46.575995 [INFO] InterventionEngine initialized.
+2026-01-05T14:35:46.579110 [INFO] Setting up hotkeys...
+2026-01-05T14:35:46.579925 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:35:46.580014 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:35:46.580056 [INFO] Press Esc to quit.
+2026-01-05T14:35:46.580092 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:35:46.580127 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:35:46.580813 [INFO] Video worker thread started.
+2026-01-05T14:35:46.581481 [INFO] Audio worker thread started.
+2026-01-05T14:35:47.081875 [INFO] Application shutting down...
+2026-01-05T14:35:47.082746 [INFO] AudioSensor: Releasing audio stream.
+2026-01-05T14:35:47.083165 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:35:47.134602 [ERROR] AudioSensor: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.134793 [WARNING] Audio sensor error in worker: Audio stream not available.
+2026-01-05T14:35:47.139138 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.185127 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.189550 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.235555 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.239935 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.286006 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.290299 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.336472 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.340715 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.386855 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.391191 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.437443 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.441701 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.487918 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.492080 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.538414 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.542487 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.588866 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.592802 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.639221 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.643266 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.689612 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.693680 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.739951 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.743978 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.790392 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.794310 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.840785 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.844721 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.891158 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.895113 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.941551 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.945521 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:47.992029 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:47.995920 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.042522 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.046300 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.092916 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.096740 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.143338 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.147425 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.193720 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.197794 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.244085 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.248146 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.294486 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.298449 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.344892 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.348755 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.395285 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.399105 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.445687 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.449448 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.496082 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.500032 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.546685 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.550533 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.597035 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.600981 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.647461 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.651321 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.697875 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.701771 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.748231 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.752107 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.798698 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.802454 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.849061 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.852788 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.899442 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.903146 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:48.949897 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:48.953639 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.000390 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.003997 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.050894 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.054388 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.083537 [WARNING] Video worker thread did not join in time.
+2026-01-05T14:35:49.083725 [INFO] Waiting for audio worker thread to join...
+2026-01-05T14:35:49.101435 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.104774 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.151883 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.155202 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.202295 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.205669 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.252782 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.256052 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.303214 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.306490 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.353666 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.356923 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.404096 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.407292 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.454506 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.457747 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.504924 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.508138 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.555443 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.558545 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.605931 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.608935 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.656458 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.659351 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.706879 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.709690 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.757415 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.760047 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.807822 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.810423 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.858273 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.860791 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.908784 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.911147 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:49.959203 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:49.961508 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.009711 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.011851 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.060126 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.062210 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.110620 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.112606 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.161060 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.163019 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.211479 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.213407 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.261895 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.263758 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.312374 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.314124 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.362821 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.364435 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.413350 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.414756 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.463781 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.465078 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.514212 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.515444 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.564703 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.565800 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.615145 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.616146 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.665609 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.666500 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.716032 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.716867 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.766465 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.767214 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.816889 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.817587 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.867370 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.867926 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.917796 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.918252 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:50.968244 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:50.968631 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:51.018764 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:51.019038 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:51.069446 [WARNING] Video sensor error in worker: Camera not open
+2026-01-05T14:35:51.069671 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T14:35:51.084026 [WARNING] Audio worker thread did not join in time.
+2026-01-05T14:35:51.084217 [INFO] LogicEngine shutting down...
+2026-01-05T14:35:51.084269 [INFO] InterventionEngine shutting down...
+2026-01-05T14:35:51.084366 [INFO] No active intervention to stop.
+2026-01-05T14:35:51.085760 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:35:51.085853 [INFO] Application shutdown complete.
+2026-01-05T14:36:26.186573 [INFO] DataLogger initialized. Log level: DEBUG. Log file: verify_crash.log
+2026-01-05T14:36:26.186719 [INFO] ACR Application Initializing...
+2026-01-05T14:36:26.191305 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T14:36:26.192349 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140653885467840'>
+2026-01-05T14:36:26.192866 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140653885467840'>
+2026-01-05T14:36:26.192943 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T14:36:26.193696 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T14:36:26.193916 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:36:26.194064 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:36:26.194376 [INFO] InterventionEngine initialized.
+2026-01-05T14:36:26.197599 [INFO] Setting up hotkeys...
+2026-01-05T14:36:26.198504 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:36:26.198611 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:36:26.198655 [INFO] Press Esc to quit.
+2026-01-05T14:36:26.198691 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:36:26.198725 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:36:26.199296 [INFO] Video worker thread started.
+2026-01-05T14:36:26.199725 [INFO] Audio worker thread started.
+2026-01-05T14:36:26.700132 [INFO] Application shutting down...
+2026-01-05T14:36:26.701172 [INFO] AudioSensor: Releasing audio stream.
+2026-01-05T14:36:26.701472 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:36:26.753258 [INFO] Audio worker thread stopped.
+2026-01-05T14:36:26.760374 [INFO] Video worker thread stopped.
+2026-01-05T14:36:26.760804 [INFO] LogicEngine shutting down...
+2026-01-05T14:36:26.761013 [INFO] InterventionEngine shutting down...
+2026-01-05T14:36:26.761074 [INFO] No active intervention to stop.
+2026-01-05T14:36:26.763455 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:36:26.763624 [INFO] Application shutdown complete.
