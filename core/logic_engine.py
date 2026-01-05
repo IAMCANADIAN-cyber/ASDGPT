@@ -27,6 +27,10 @@ class LogicEngine:
         self.state_engine: StateEngine = StateEngine(logger=self.logger)
         self._lock: threading.Lock = threading.Lock()
 
+        # Lifecycle management
+        self.running: bool = False
+        self.monitor_thread: Optional[threading.Thread] = None
+
         # Async LMM handling
         self.lmm_thread: Optional[threading.Thread] = None
 
@@ -70,6 +74,37 @@ class LogicEngine:
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
+
+    def start(self) -> None:
+        """Starts the main monitoring loop."""
+        if self.running:
+            self.logger.log_warning("LogicEngine already running.")
+            return
+
+        self.logger.log_info("Starting LogicEngine...")
+        self.running = True
+
+        # Start sensors if they have a start method
+        if self.audio_sensor and hasattr(self.audio_sensor, 'start'):
+            self.audio_sensor.start()
+        if self.video_sensor and hasattr(self.video_sensor, 'start'):
+            self.video_sensor.start()
+        if self.intervention_engine and hasattr(self.intervention_engine, 'start'):
+             self.intervention_engine.start()
+
+        self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
+        self.monitor_thread.start()
+        self.logger.log_info("LogicEngine monitoring loop started.")
+
+    def _monitor_loop(self) -> None:
+        """Internal loop that triggers updates."""
+        while self.running:
+            try:
+                self.update()
+                time.sleep(1.0)
+            except Exception as e:
+                self.logger.log_error(f"Error in monitor loop: {e}")
+                time.sleep(5.0)
 
     def get_mode(self) -> str:
         with self._lock:
@@ -325,22 +360,22 @@ class LogicEngine:
                      suggestion = {"id": reflexive_intervention_id}
 
                 if suggestion:
-                # Priority: System Triggers > LMM Suggestion
-                final_intervention = None
+                    # Priority: System Triggers > LMM Suggestion
+                    final_intervention = None
 
-                if triggered_intervention_id:
-                    final_intervention = {"id": triggered_intervention_id}
-                    self.logger.log_info(f"System Trigger overrides LMM suggestion. Triggered: {triggered_intervention_id}")
-                elif suggestion:
-                    final_intervention = suggestion
+                    if triggered_intervention_id:
+                        final_intervention = {"id": triggered_intervention_id}
+                        self.logger.log_info(f"System Trigger overrides LMM suggestion. Triggered: {triggered_intervention_id}")
+                    elif suggestion:
+                        final_intervention = suggestion
 
-                if final_intervention:
-                    if allow_intervention:
-                        self.logger.log_info(f"Starting intervention: {final_intervention}")
-                        # start_intervention is generally thread-safe as it just sets an event/launches another thread
-                        self.intervention_engine.start_intervention(final_intervention)
-                    else:
-                        self.logger.log_info(f"Intervention suggested but suppressed due to mode: {final_intervention}")
+                    if final_intervention:
+                        if allow_intervention:
+                            self.logger.log_info(f"Starting intervention: {final_intervention}")
+                            # start_intervention is generally thread-safe as it just sets an event/launches another thread
+                            self.intervention_engine.start_intervention(final_intervention)
+                        else:
+                            self.logger.log_info(f"Intervention suggested but suppressed due to mode: {final_intervention}")
         except Exception as e:
             self.logger.log_error(f"Error in async LMM analysis: {e}")
             self.lmm_consecutive_failures += 1
@@ -503,6 +538,14 @@ class LogicEngine:
         Gracefully shuts down the LogicEngine, ensuring background threads complete.
         """
         self.logger.log_info("LogicEngine shutting down...")
+        self.running = False
+
+        if self.monitor_thread and self.monitor_thread.is_alive():
+            self.logger.log_info("Waiting for monitor thread to finish...")
+            self.monitor_thread.join(timeout=2.0)
+            if self.monitor_thread.is_alive():
+                self.logger.log_warning("Monitor thread did not finish in time.")
+
         if self.lmm_thread and self.lmm_thread.is_alive():
             self.logger.log_info("Waiting for LMM analysis thread to finish...")
             self.lmm_thread.join(timeout=5.0)
@@ -510,6 +553,25 @@ class LogicEngine:
                 self.logger.log_warning("LMM analysis thread did not finish in time.")
             else:
                 self.logger.log_info("LMM analysis thread finished.")
+
+        # Release Sensors
+        if self.audio_sensor:
+            if hasattr(self.audio_sensor, 'stop'):
+                self.audio_sensor.stop()
+            elif hasattr(self.audio_sensor, 'release'):
+                self.audio_sensor.release()
+
+        if self.video_sensor and hasattr(self.video_sensor, 'release'):
+            self.video_sensor.release()
+
+        # Stop Intervention Engine
+        if self.intervention_engine:
+            if hasattr(self.intervention_engine, 'shutdown'):
+                self.intervention_engine.shutdown()
+            elif hasattr(self.intervention_engine, 'stop'):
+                 self.intervention_engine.stop()
+
+        self.logger.log_info("LogicEngine shutdown complete.")
 
 
 if __name__ == '__main__':
