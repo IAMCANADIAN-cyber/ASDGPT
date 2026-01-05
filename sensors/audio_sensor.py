@@ -247,7 +247,9 @@ class AudioSensor:
             "pitch_variance": 0.0,
             "rms_variance": 0.0,
             "activity_bursts": 0, # Legacy metric kept for backward compatibility
-            "speech_rate": 0.0
+            "speech_rate": 0.0,
+            "speech_confidence": 0.0,
+            "is_speech": False
         }
 
         if chunk is None or len(chunk) == 0:
@@ -315,6 +317,29 @@ class AudioSensor:
             if len(self.raw_audio_buffer) >= int(0.5 * self.sample_rate): # Need at least 0.5s for meaningful rate
                 buffered_audio = np.array(self.raw_audio_buffer)
                 metrics["speech_rate"] = self._calculate_speech_rate(buffered_audio)
+
+            # 6. Simple Voice Activity Detection (VAD)
+            # Heuristic: Combination of RMS threshold and Frequency range (human voice ~85-255Hz fundamental, 300-3400Hz telephony band)
+            # Using spectral centroid and pitch to differentiate low rumble or high hiss
+            is_speech_candidate = False
+            speech_confidence = 0.0
+
+            # Energy Threshold (Silence Gate)
+            if metrics["rms"] > 0.01: # -40dB approx
+                # Pitch Check (Human fundamental frequency range roughly 50Hz to 500Hz)
+                if 50 <= metrics["pitch_estimation"] <= 600:
+                    speech_confidence += 0.4
+
+                # Spectral Centroid Check (Speech usually centered around 500-1500Hz, noise often higher)
+                if 200 <= metrics["spectral_centroid"] <= 3500:
+                    speech_confidence += 0.3
+
+                # ZCR Check (Speech has lower ZCR than hiss/noise)
+                if metrics["zcr"] < 0.2:
+                    speech_confidence += 0.3
+
+            metrics["speech_confidence"] = float(min(speech_confidence, 1.0))
+            metrics["is_speech"] = metrics["speech_confidence"] > 0.6
 
             # --- History / Time-Series Features ---
             self.rms_history.append(metrics["rms"])
