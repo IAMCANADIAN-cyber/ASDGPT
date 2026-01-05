@@ -46,6 +46,11 @@ State Estimation Guidance:
 
 If no intervention is needed, set "suggestion" to null.
 
+Intervention Policy:
+1. RESPECT SUPPRESSIONS: Do not suggest interventions listed in the "Suppressed Interventions" list provided in the user context.
+2. PRIORITIZE PREFERENCES: If the user context lists "Preferred Interventions" and one is relevant to the current state, favor it.
+3. MINIMUM EFFECTIVE DOSE: Prefer Tier 1 interventions unless the state is critical (High Overload/Arousal).
+
 Available Interventions (by ID):
 {interventions_list}
 
