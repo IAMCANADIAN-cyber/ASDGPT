@@ -125,6 +125,10 @@ class AudioSensor:
             self._handle_stream_error()
             return None, error_msg
         except Exception as e:
+            # Check if this exception occurred while the stream was stopping/closing (expected race)
+            if self.stream and self.stream.closed:
+                return None, "Stream closed."
+
             self.error_state = True
             error_msg = "Generic exception while reading audio chunk."
             self._log_error(error_msg, str(e))
@@ -141,6 +145,15 @@ class AudioSensor:
                 self._log_error("Exception during emergency closure of audio stream.", str(e))
         self.stream = None # Ensure stream is marked as None after closure
 
+
+    def stop(self):
+        """Explicitly stops the audio stream."""
+        if self.stream and not self.stream.closed:
+            self._log_info("Stopping audio stream.")
+            try:
+                self.stream.stop()
+            except Exception as e:
+                self._log_error("Exception while stopping audio stream.", str(e))
 
     def release(self):
         if self.stream and not self.stream.closed:
