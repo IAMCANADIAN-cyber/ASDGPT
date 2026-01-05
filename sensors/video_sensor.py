@@ -8,6 +8,8 @@ class VideoSensor:
         self.logger = data_logger
         self.cap = None
         self.last_frame = None
+        self.error_state = False
+        self.last_error_message = ""
         self._initialize_camera()
 
         # Load Haarcascade for face detection
@@ -26,6 +28,8 @@ class VideoSensor:
         else: print(f"VideoSensor [WARN]: {message}")
 
     def _log_error(self, message):
+        self.error_state = True
+        self.last_error_message = message
         if self.logger: self.logger.log_error(f"VideoSensor: {message}")
         else: print(f"VideoSensor [ERROR]: {message}")
 
@@ -230,3 +234,10 @@ class VideoSensor:
         if self.cap:
             self.cap.release()
             self.cap = None
+        self.error_state = False
+
+    def has_error(self):
+        return self.error_state
+
+    def get_last_error(self):
+        return self.last_error_message

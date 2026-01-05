@@ -319,26 +319,37 @@ class Application:
     def _shutdown(self) -> None:
         self.data_logger.log_info("Application shutting down...")
 
-        # self.running is already False by the time we are here if quit_application() was called
-        # The worker threads check self.running, so they should terminate.
+        # self.running is already False.
+        # Explicitly release sensors first to unblock any pending reads in worker threads.
+        if hasattr(self, 'video_sensor') and self.video_sensor:
+            self.data_logger.log_info("Releasing video sensor...")
+            self.video_sensor.release()
 
+        if hasattr(self, 'audio_sensor') and self.audio_sensor:
+            self.data_logger.log_info("Releasing audio sensor...")
+            self.audio_sensor.release()
+
+        # Stop logic and intervention engines (signals their internal threads to stop)
+        if hasattr(self, 'logic_engine') and self.logic_engine: self.logic_engine.shutdown()
+        if hasattr(self, 'intervention_engine') and self.intervention_engine: self.intervention_engine.shutdown()
+
+        # Now join the worker threads
         if self.video_thread and self.video_thread.is_alive():
             self.data_logger.log_info("Waiting for video worker thread to join...")
             self.video_thread.join(timeout=2) # Wait for 2 seconds
             if self.video_thread.is_alive():
                  self.data_logger.log_warning("Video worker thread did not join in time.")
+            else:
+                 self.data_logger.log_info("Video worker thread joined.")
 
         if self.audio_thread and self.audio_thread.is_alive():
             self.data_logger.log_info("Waiting for audio worker thread to join...")
             self.audio_thread.join(timeout=2)
             if self.audio_thread.is_alive():
                  self.data_logger.log_warning("Audio worker thread did not join in time.")
+            else:
+                 self.data_logger.log_info("Audio worker thread joined.")
 
-        if hasattr(self, 'logic_engine') and self.logic_engine: self.logic_engine.shutdown()
-        if hasattr(self, 'intervention_engine') and self.intervention_engine: self.intervention_engine.shutdown()
-
-        if hasattr(self, 'video_sensor') and self.video_sensor: self.video_sensor.release()
-        if hasattr(self, 'audio_sensor') and self.audio_sensor: self.audio_sensor.release()
         if hasattr(self, 'tray_icon') and self.tray_icon: self.tray_icon.stop()
 
         try:
