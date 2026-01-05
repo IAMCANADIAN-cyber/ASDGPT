@@ -1,0 +1,107 @@
+2026-01-05T12:03:47.409548 [INFO] DataLogger initialized. Log level: INFO. Log file: test_crash.log
+2026-01-05T12:03:47.409667 [INFO] ACR Application Initializing...
+2026-01-05T12:03:47.409973 [INFO] AudioSensor: Available audio devices: [{'name': 'Mock Device'}]
+2026-01-05T12:03:47.410110 [INFO] AudioSensor: Default input audio device: [{'name': 'Mock Device'}]
+2026-01-05T12:03:47.410158 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T12:03:47.410255 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T12:03:47.410363 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T12:03:47.410444 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T12:03:47.410558 [INFO] InterventionEngine initialized.
+2026-01-05T12:03:47.414325 [INFO] Setting up hotkeys...
+2026-01-05T12:03:47.414920 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T12:03:47.414994 [INFO] ACR Initialized. Mode: active.
+2026-01-05T12:03:47.415082 [INFO] Press Esc to quit.
+2026-01-05T12:03:47.415121 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T12:03:47.415154 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T12:03:47.417186 [INFO] Video worker thread started.
+2026-01-05T12:03:47.417478 [INFO] Audio worker thread started.
+2026-01-05T12:03:48.416352 [INFO] Quit signal received.
+2026-01-05T12:03:48.416585 [INFO] AudioSensor: Releasing audio stream.
+2026-01-05T12:04:15.874010 [INFO] DataLogger initialized. Log level: INFO. Log file: test_crash.log
+2026-01-05T12:04:15.874112 [INFO] ACR Application Initializing...
+2026-01-05T12:04:15.874383 [INFO] AudioSensor: Available audio devices: [{'name': 'Mock Device'}]
+2026-01-05T12:04:15.874463 [INFO] AudioSensor: Default input audio device: [{'name': 'Mock Device'}]
+2026-01-05T12:04:15.874506 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T12:04:15.874604 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T12:04:15.874702 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T12:04:15.874845 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T12:04:15.874953 [INFO] InterventionEngine initialized.
+2026-01-05T12:04:15.878432 [INFO] Setting up hotkeys...
+2026-01-05T12:04:15.879082 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T12:04:15.879156 [INFO] ACR Initialized. Mode: active.
+2026-01-05T12:04:15.879197 [INFO] Press Esc to quit.
+2026-01-05T12:04:15.879232 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T12:04:15.879319 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T12:04:15.881075 [INFO] Video worker thread started.
+2026-01-05T12:04:15.881363 [INFO] Audio worker thread started.
+2026-01-05T12:04:16.880497 [INFO] Quit signal received.
+2026-01-05T12:04:16.887128 [INFO] Application shutting down...
+2026-01-05T12:04:16.887405 [INFO] Waiting for video worker thread to join...
+2026-01-05T12:04:18.887675 [WARNING] Video worker thread did not join in time.
+2026-01-05T12:04:18.887905 [INFO] Waiting for audio worker thread to join...
+2026-01-05T12:04:18.938822 [INFO] Video worker thread stopped.
+2026-01-05T12:04:18.939214 [INFO] Audio worker thread stopped.
+2026-01-05T12:04:18.939579 [INFO] LogicEngine shutting down...
+2026-01-05T12:04:18.939675 [INFO] InterventionEngine shutting down...
+2026-01-05T12:04:18.939720 [INFO] No active intervention to stop.
+2026-01-05T12:04:18.939769 [INFO] AudioSensor: Releasing audio stream.
+2026-01-05T12:04:18.941262 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T12:04:18.941343 [INFO] Application shutdown complete.
+2026-01-05T12:04:59.431180 [INFO] DataLogger initialized. Log level: INFO. Log file: test_crash.log
+2026-01-05T12:04:59.431341 [INFO] ACR Application Initializing...
+2026-01-05T12:04:59.431701 [INFO] AudioSensor: Available audio devices: [{'name': 'Mock Device'}]
+2026-01-05T12:04:59.431909 [INFO] AudioSensor: Default input audio device: [{'name': 'Mock Device'}]
+2026-01-05T12:04:59.431973 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T12:04:59.432091 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T12:04:59.432464 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T12:04:59.432573 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T12:04:59.432839 [INFO] InterventionEngine initialized.
+2026-01-05T12:04:59.437443 [INFO] Setting up hotkeys...
+2026-01-05T12:04:59.438389 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T12:04:59.438467 [INFO] ACR Initialized. Mode: active.
+2026-01-05T12:04:59.438507 [INFO] Press Esc to quit.
+2026-01-05T12:04:59.438542 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T12:04:59.438575 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T12:04:59.448768 [INFO] Video worker thread started.
+2026-01-05T12:04:59.449218 [INFO] Audio worker thread started.
+2026-01-05T12:05:00.439822 [INFO] Quit signal received.
+2026-01-05T12:05:00.454627 [INFO] Application shutting down...
+2026-01-05T12:05:00.454802 [INFO] AudioSensor: Releasing audio stream.
+2026-01-05T12:05:00.454870 [INFO] Waiting for video worker thread to join...
+2026-01-05T12:05:00.602344 [INFO] Video worker thread stopped.
+2026-01-05T12:05:00.602636 [INFO] Audio worker thread stopped.
+2026-01-05T12:05:00.602834 [INFO] Waiting for audio worker thread to join...
+2026-01-05T12:05:00.603149 [INFO] LogicEngine shutting down...
+2026-01-05T12:05:00.603235 [INFO] InterventionEngine shutting down...
+2026-01-05T12:05:00.603349 [INFO] No active intervention to stop.
+2026-01-05T12:05:00.604536 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T12:05:00.604603 [INFO] Application shutdown complete.
+2026-01-05T12:12:09.648606 [INFO] DataLogger initialized. Log level: INFO. Log file: test_crash.log
+2026-01-05T12:12:09.648809 [INFO] ACR Application Initializing...
+2026-01-05T12:12:09.649177 [INFO] AudioSensor: Available audio devices: [{'name': 'Mock Device'}]
+2026-01-05T12:12:09.649320 [INFO] AudioSensor: Default input audio device: [{'name': 'Mock Device'}]
+2026-01-05T12:12:09.649372 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T12:12:09.649528 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T12:12:09.649653 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T12:12:09.649734 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T12:12:09.649941 [INFO] InterventionEngine initialized.
+2026-01-05T12:12:09.653997 [INFO] Setting up hotkeys...
+2026-01-05T12:12:09.654948 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T12:12:09.655027 [INFO] ACR Initialized. Mode: active.
+2026-01-05T12:12:09.655129 [INFO] Press Esc to quit.
+2026-01-05T12:12:09.655179 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T12:12:09.655250 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T12:12:09.657119 [INFO] Audio worker thread started.
+2026-01-05T12:12:09.656846 [INFO] Video worker thread started.
+2026-01-05T12:12:10.656405 [INFO] Quit signal received.
+2026-01-05T12:12:10.663166 [INFO] Application shutting down...
+2026-01-05T12:12:10.663487 [INFO] AudioSensor: Releasing audio stream.
+2026-01-05T12:12:10.663576 [INFO] Waiting for video worker thread to join...
+2026-01-05T12:12:10.810852 [INFO] Video worker thread stopped.
+2026-01-05T12:12:10.810955 [INFO] Audio worker thread stopped.
+2026-01-05T12:12:10.811589 [INFO] Waiting for audio worker thread to join...
+2026-01-05T12:12:10.811929 [INFO] LogicEngine shutting down...
+2026-01-05T12:12:10.812035 [INFO] InterventionEngine shutting down...
+2026-01-05T12:12:10.812095 [INFO] No active intervention to stop.
+2026-01-05T12:12:10.813739 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T12:12:10.813819 [INFO] Application shutdown complete.

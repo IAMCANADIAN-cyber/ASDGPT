@@ -294,8 +294,8 @@ class LogicEngine:
                 triggered_intervention_id = None
                 if visual_context:
                     self.logger.log_info(f"LMM Detected Visual Context: {visual_context}")
-                    reflexive_intervention_id = self._process_visual_context_triggers(visual_context)
                     triggered_intervention_id = self._process_visual_context_triggers(visual_context)
+                    reflexive_intervention_id = triggered_intervention_id # Alias for below logic if needed
 
                 # Log state update event
                 self.logger.log_event("state_update", self.state_engine.get_state())
@@ -325,8 +325,8 @@ class LogicEngine:
                      suggestion = {"id": reflexive_intervention_id}
 
                 if suggestion:
-                # Priority: System Triggers > LMM Suggestion
-                final_intervention = None
+                    # Priority: System Triggers > LMM Suggestion
+                    final_intervention = None
 
                 if triggered_intervention_id:
                     final_intervention = {"id": triggered_intervention_id}
