@@ -47,6 +47,7 @@ class TestContextLoop(unittest.TestCase):
         # 1. First Pass
         self.logic_engine.process_video_data(frame)
         self.logic_engine.process_audio_data(audio)
+        self.logic_engine.context_persistence = {} # Reset manually to be sure
         self.logic_engine._trigger_lmm_analysis(reason="test")
 
         # Wait for thread

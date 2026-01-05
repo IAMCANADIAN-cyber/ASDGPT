@@ -8,14 +8,22 @@ class VideoSensor:
         self.logger = data_logger
         self.cap = None
         self.last_frame = None
+        self.error_state = False
+        self.last_error_message = ""
         self._initialize_camera()
 
         # Load Haarcascade for face detection
-        # Ensure the path is correct or use a system path
-        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        self.face_cascade = cv2.CascadeClassifier(cascade_path)
-        if self.face_cascade.empty():
-            self._log_error("Could not load face cascade classifier.")
+        try:
+            cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            self.face_cascade = cv2.CascadeClassifier(cascade_path)
+            if self.face_cascade.empty():
+                self._log_error("Could not load face cascade classifier.")
+                self.error_state = True
+                self.last_error_message = "Could not load face cascade"
+        except Exception as e:
+            self._log_error(f"Error loading face cascade: {e}")
+            self.error_state = True
+            self.last_error_message = str(e)
 
     def _log_info(self, message):
         if self.logger: self.logger.log_info(f"VideoSensor: {message}")
@@ -28,6 +36,7 @@ class VideoSensor:
     def _log_error(self, message):
         if self.logger: self.logger.log_error(f"VideoSensor: {message}")
         else: print(f"VideoSensor [ERROR]: {message}")
+        self.last_error_message = message
 
     def _initialize_camera(self):
         try:
@@ -39,24 +48,36 @@ class VideoSensor:
             if not self.cap.isOpened():
                 self._log_warning(f"Could not open video camera {self.camera_index}.")
                 self.cap = None
+                self.error_state = True
+                self.last_error_message = f"Could not open camera {self.camera_index}"
+            else:
+                self.error_state = False
         except Exception as e:
             self._log_error(f"Error initializing camera: {e}")
             self.cap = None
+            self.error_state = True
+            self.last_error_message = str(e)
 
     def get_frame(self):
         if self.cap is None or not self.cap.isOpened():
-             # Try to reconnect occasionally?
-             return None
+             # Could check if it's time to retry
+             return None, "Camera not initialized"
 
         try:
             ret, frame = self.cap.read()
             if not ret:
                 self._log_warning("Failed to capture video frame.")
-                return None
-            return frame
+                return None, "Failed to capture frame"
+            return frame, None
         except Exception as e:
              self._log_error(f"Error capturing frame: {e}")
-             return None
+             return None, str(e)
+
+    def has_error(self):
+        return self.error_state
+
+    def get_last_error(self):
+        return self.last_error_message
 
     def calculate_raw_activity(self, gray_frame):
         """
@@ -91,19 +112,8 @@ class VideoSensor:
 
         try:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            # Resize for performance consistency if needed, but analyze_frame uses full size?
-            # Let's keep it consistent. If we resize here, we should resize for everything.
-            # LogicEngine used full size or didn't specify.
-            # analyze_frame uses full size for face detection.
-            # We'll use full size for now to be accurate, or small resize for speed.
-            # Previous implementation resized to 100x100. Let's stick to that for 'activity' to match expected values.
-
             gray_small = cv2.resize(gray, (100, 100))
-
             raw_score = self.calculate_raw_activity(gray_small)
-
-            # Normalize (arbitrary scaling factor based on testing)
-            # Previous logic: min(1.0, score / 50.0)
             return min(1.0, raw_score / 50.0)
 
         except Exception as e:
@@ -114,7 +124,9 @@ class VideoSensor:
         """
         Convenience method to get frame and calculate activity.
         """
-        frame = self.get_frame()
+        frame, error = self.get_frame()
+        if error or frame is None:
+            return 0.0
         return self.calculate_activity(frame)
 
     def process_frame(self, frame):
@@ -184,13 +196,6 @@ class VideoSensor:
         Legacy wrapper for backward compatibility if needed,
         or just for face detection specifically.
         """
-        # We can implement this by calling process_frame and filtering keys,
-        # but process_frame updates state (last_frame).
-        # If analyze_frame is called separately, it might mess up activity diff if not careful.
-        # But generally, LogicEngine should assume 'process_frame' is the main entry.
-        # For now, we keep the original logic for analyze_frame to be safe,
-        # BUT note that it doesn't touch 'last_frame'.
-
         if frame is None:
             return {}
 
@@ -230,3 +235,4 @@ class VideoSensor:
         if self.cap:
             self.cap.release()
             self.cap = None
+        self.error_state = False

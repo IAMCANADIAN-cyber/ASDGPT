@@ -185,6 +185,7 @@ class Application:
                 sensor_error = self.sensor_error_active
             if self.logic_engine.get_mode() == "active" and not sensor_error:
                 try:
+                    # UPDATED: Unpack tuple (frame, error)
                     frame, error = self.video_sensor.get_frame()
                     if error:
                         self.data_logger.log_warning(f"Video sensor error in worker: {error}")
@@ -221,6 +222,7 @@ class Application:
                 sensor_error = self.sensor_error_active
             if self.logic_engine.get_mode() == "active" and not sensor_error:
                 try:
+                    # UPDATED: Unpack tuple (chunk, error)
                     chunk, error = self.audio_sensor.get_chunk()
                     if error:
                         self.data_logger.log_warning(f"Audio sensor error in worker: {error}")
@@ -339,7 +341,7 @@ class Application:
 
         if hasattr(self, 'video_sensor') and self.video_sensor: self.video_sensor.release()
         if hasattr(self, 'audio_sensor') and self.audio_sensor: self.audio_sensor.release()
-        if hasattr(self, 'tray_icon') and self.tray_icon: self.tray_icon.stop()
+        if hasattr(self, 'tray_icon') and self.tray_icon and hasattr(self.tray_icon, 'stop'): self.tray_icon.stop()
 
         try:
             import keyboard

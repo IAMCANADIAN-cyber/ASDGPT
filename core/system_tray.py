@@ -1,11 +1,27 @@
-import pystray
-from PIL import Image, ImageDraw # Pillow is needed for Image.open and potentially for creating icons on the fly
 import threading
 import config
 import os # For path joining
+import time
+
+# Optional imports
+try:
+    from PIL import Image, ImageDraw
+except ImportError:
+    Image = None
+    ImageDraw = None
+
+# Handle pystray import and initialization errors (e.g. headless environment)
+pystray = None
+try:
+    import pystray
+    # Trigger backend detection to fail early if no display
+    # This might not be enough if pystray delays backend init, but Xlib usually fails on import/init
+except Exception as e:
+    print(f"Warning: pystray could not be imported or initialized (Headless?): {e}")
 
 # Helper function to load images, creating a fallback if not found
 def load_image(path):
+    if Image is None: return None
     try:
         # Check if the path is absolute or relative and adjust
         if not os.path.isabs(path):
@@ -37,6 +53,12 @@ def load_image(path):
 class ACRTrayIcon:
     def __init__(self, application_instance):
         self.app = application_instance # Reference to the main Application instance
+
+        if pystray is None:
+            print("System Tray disabled (pystray not available).")
+            self.tray_icon = None
+            return
+
         self.icon_paths = {
             "active": "assets/icons/active_icon.png",
             "paused": "assets/icons/paused_icon.png",
@@ -44,30 +66,54 @@ class ACRTrayIcon:
             "error": "assets/icons/error_icon.png",
             "default": "assets/icons/default_icon.png"
         }
-        self.icons = {name: load_image(path) for name, path in self.icon_paths.items()}
+
+        self.icons = {}
+        for name, path in self.icon_paths.items():
+            img = load_image(path)
+            if img: self.icons[name] = img
 
         self.current_icon_state = "default" # e.g., "active", "paused"
 
         # Menu items
-        menu = (
-            pystray.MenuItem('Pause/Resume', self.on_toggle_pause_resume),
-            pystray.MenuItem('Snooze for 1 Hour', self.on_snooze),
-            pystray.Menu.SEPARATOR,
-            pystray.MenuItem('Last: Helpful', self.on_feedback_helpful),
-            pystray.MenuItem('Last: Unhelpful', self.on_feedback_unhelpful),
-            pystray.Menu.SEPARATOR,
-            pystray.MenuItem('Quit', self.on_quit)
-        )
+        try:
+            menu = (
+                pystray.MenuItem('Pause/Resume', self.on_toggle_pause_resume),
+                pystray.MenuItem('Snooze for 1 Hour', self.on_snooze),
+                pystray.Menu.SEPARATOR,
+                pystray.MenuItem('Last: Helpful', self.on_feedback_helpful),
+                pystray.MenuItem('Last: Unhelpful', self.on_feedback_unhelpful),
+                pystray.Menu.SEPARATOR,
+                pystray.MenuItem('Quit', self.on_quit)
+            )
 
-        self.tray_icon = pystray.Icon(config.APP_NAME, self.icons[self.current_icon_state], config.APP_NAME, menu)
+            # Use default icon or fallback
+            icon_img = self.icons.get(self.current_icon_state)
+            if not icon_img and Image:
+                 icon_img = Image.new('RGB', (64, 64), color='red')
+
+            if icon_img:
+                self.tray_icon = pystray.Icon(config.APP_NAME, icon_img, config.APP_NAME, menu)
+            else:
+                print("Could not create tray icon: No image available.")
+                self.tray_icon = None
+
+        except Exception as e:
+            print(f"Error creating pystray Icon: {e}")
+            self.tray_icon = None
+
         self.thread = None
 
     def run_threaded(self):
         # pystray needs to run in its own thread if the main app has its own loop
-        if not self.thread or not self.thread.is_alive():
-            self.thread = threading.Thread(target=self.tray_icon.run, daemon=True)
-            self.thread.start()
-            print("System tray icon thread started.")
+        if self.tray_icon:
+            if not self.thread or not self.thread.is_alive():
+                self.thread = threading.Thread(target=self.tray_icon.run, daemon=True)
+                self.thread.start()
+                print("System tray icon thread started.")
+        else:
+            print("System tray icon not available, skipping thread start.")
+            # Ensure thread attribute exists even if not started
+            self.thread = None
 
     def stop(self):
         if self.tray_icon:
@@ -116,14 +162,15 @@ class ACRTrayIcon:
         Updates the tray icon based on the application status.
         :param status: A string like "active", "paused", "snoozed", "error".
         """
+        if not self.tray_icon: return
+
         if status in self.icons:
             self.current_icon_state = status
-            if self.tray_icon:
-                self.tray_icon.icon = self.icons[status]
+            self.tray_icon.icon = self.icons[status]
             # Logging handled by caller or kept minimal to avoid spam
         else:
             self.current_icon_state = "default"
-            if self.tray_icon:
+            if "default" in self.icons:
                 self.tray_icon.icon = self.icons["default"]
             print(f"Tray icon updated to default (unknown status: {status})")
 
@@ -224,11 +271,13 @@ if __name__ == '__main__':
     # Update status for testing
     tray.update_icon_status("active")
 
-    print("Tray icon should be visible. Right-click for options. Close the tray or press Ctrl+C to exit if it hangs.")
-
-    # pystray's run() is blocking, so it should be the last call or in a thread.
-    # For this direct test, we run it on the main thread.
-    tray.run_threaded()
+    if tray.tray_icon:
+        print("Tray icon should be visible. Right-click for options. Close the tray or press Ctrl+C to exit if it hangs.")
+        # pystray's run() is blocking, so it should be the last call or in a thread.
+        # For this direct test, we run it on the main thread.
+        tray.run_threaded()
+    else:
+        print("Tray icon not available (Headless check passed).")
 
     # Keep the main thread alive to see the tray icon, or pystray will run it.
     # If run_threaded() is used, the main thread can do other things or just wait.
