@@ -289,10 +289,12 @@ class LogicEngine:
                 self.logger.log_info("LMM analysis complete and state updated.")
 
                 # Process Visual Context
+                reflexive_intervention_id = None
                 visual_context = analysis.get("visual_context", [])
                 triggered_intervention_id = None
                 if visual_context:
                     self.logger.log_info(f"LMM Detected Visual Context: {visual_context}")
+                    reflexive_intervention_id = self._process_visual_context_triggers(visual_context)
                     triggered_intervention_id = self._process_visual_context_triggers(visual_context)
 
                 # Log state update event
@@ -315,6 +317,14 @@ class LogicEngine:
             if analysis and self.intervention_engine:
                 suggestion = self.lmm_interface.get_intervention_suggestion(analysis)
 
+                # Reflexive triggers take priority over lack of suggestion,
+                # OR can override if needed (policy decision).
+                # For now: if LMM suggests nothing (or None), but we have a reflexive trigger, use it.
+                if not suggestion and reflexive_intervention_id:
+                     self.logger.log_info(f"Reflexive Trigger activated: {reflexive_intervention_id}")
+                     suggestion = {"id": reflexive_intervention_id}
+
+                if suggestion:
                 # Priority: System Triggers > LMM Suggestion
                 final_intervention = None
 
@@ -338,6 +348,7 @@ class LogicEngine:
     def _process_visual_context_triggers(self, visual_context: list) -> Optional[str]:
         """
         Analyzes visual context tags for persistent patterns (e.g., Doom Scrolling).
+        Returns an intervention ID string if a specific persistent trigger is met, else None.
         Returns an intervention ID if a trigger condition is met, else None.
         """
         # Tags we track for persistence
