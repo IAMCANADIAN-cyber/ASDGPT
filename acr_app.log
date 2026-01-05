@@ -102,3 +102,327 @@
 2026-01-04T07:40:26.762946 [INFO] LMM Detected Visual Context: ['phone_usage']
 2026-01-04T07:40:26.762987 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
 2026-01-04T07:40:26.763030 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 40, 'focus': 50, 'energy': 56, 'mood': 50}
+2026-01-05T03:05:34.218323 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:05:34.218447 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:05:34.218495 [INFO] ACR Application Initializing...
+2026-01-05T03:05:34.219222 [WARNING] VideoSensor: Could not open video camera 0.
+2026-01-05T03:05:34.242069 [WARNING] AudioSensor: sounddevice not available. Audio features disabled.
+2026-01-05T03:05:34.242250 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T03:05:34.242346 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T03:05:34.242476 [INFO] InterventionEngine initialized.
+2026-01-05T03:05:34.242555 [INFO] Setting up hotkeys...
+2026-01-05T03:05:34.247139 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T03:05:34.247222 [INFO] ACR Initialized. Mode: active.
+2026-01-05T03:05:34.247262 [INFO] Press Esc to quit.
+2026-01-05T03:05:34.247299 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T03:05:34.247333 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T03:05:34.247742 [INFO] Video worker thread started.
+2026-01-05T03:05:34.248155 [INFO] Audio worker thread started.
+2026-01-05T03:05:34.248701 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:05:34.248284 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T03:05:34.299158 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:05:34.349512 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:05:34.400050 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:05:34.450355 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:05:34.500649 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:05:34.550967 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:05:34.601338 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:05:34.651691 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:05:34.701539 [ERROR] Unhandled exception in main execution: 'VideoSensor' object has no attribute 'has_error' | Details: <traceback object at 0x7fd2eadf48c0>
+2026-01-05T03:05:34.701746 [INFO] Ensuring application quit in finally block.
+2026-01-05T03:05:34.701803 [INFO] Quit signal received.
+2026-01-05T03:05:34.701883 [INFO] Main script execution finished.
+2026-01-05T03:06:06.603029 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:06:06.603155 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:06:06.603205 [INFO] ACR Application Initializing...
+2026-01-05T03:06:06.603818 [WARNING] VideoSensor: Could not open video camera 0.
+2026-01-05T03:06:06.627710 [WARNING] AudioSensor: sounddevice not available. Audio features disabled.
+2026-01-05T03:06:06.627925 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T03:06:06.628022 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T03:06:06.628148 [INFO] InterventionEngine initialized.
+2026-01-05T03:06:06.628239 [INFO] Setting up hotkeys...
+2026-01-05T03:06:06.636271 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T03:06:06.636398 [INFO] ACR Initialized. Mode: active.
+2026-01-05T03:06:06.636459 [INFO] Press Esc to quit.
+2026-01-05T03:06:06.636502 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T03:06:06.636538 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T03:06:06.636941 [INFO] Video worker thread started.
+2026-01-05T03:06:06.637356 [INFO] Audio worker thread started.
+2026-01-05T03:06:06.637809 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:06.637925 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:06.688626 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:06.688449 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:06.739127 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:06.739042 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:06.789568 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:06.789810 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:06.840200 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:06.840283 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:06.890806 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:06.890718 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:06.941306 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:06.941548 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:06.992040 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:06.991956 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:07.042600 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:07.042524 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:07.089902 [ERROR] One or more sensors have entered an error state.
+2026-01-05T03:06:07.090053 [WARNING] Video sensor error: Could not open camera 0
+2026-01-05T03:06:07.090098 [WARNING] Audio sensor error: Audio library unavailable
+2026-01-05T03:06:07.090149 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T03:06:07.112261 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T03:06:08.713763 [WARNING] Signal SIGTERM received. Initiating shutdown.
+2026-01-05T03:06:08.713948 [INFO] Quit signal received.
+2026-01-05T03:06:08.748809 [INFO] Application shutting down...
+2026-01-05T03:06:08.748992 [INFO] Waiting for video worker thread to join...
+2026-01-05T03:06:08.894991 [INFO] Audio worker thread stopped.
+2026-01-05T03:06:08.895302 [INFO] Video worker thread stopped.
+2026-01-05T03:06:08.895647 [INFO] LogicEngine shutting down...
+2026-01-05T03:06:08.895748 [INFO] InterventionEngine shutting down...
+2026-01-05T03:06:08.895791 [INFO] No active intervention to stop.
+2026-01-05T03:06:08.895858 [ERROR] Unhandled exception in main execution: 'ACRTrayIcon' object has no attribute 'thread' | Details: <traceback object at 0x7f22b8237a00>
+2026-01-05T03:06:08.895896 [INFO] Main script execution finished.
+2026-01-05T03:06:25.133769 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:06:25.133901 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:06:25.133963 [INFO] ACR Application Initializing...
+2026-01-05T03:06:25.134533 [WARNING] VideoSensor: Could not open video camera 0.
+2026-01-05T03:06:25.157967 [WARNING] AudioSensor: sounddevice not available. Audio features disabled.
+2026-01-05T03:06:25.158209 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T03:06:25.158316 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T03:06:25.158442 [INFO] InterventionEngine initialized.
+2026-01-05T03:06:25.158522 [INFO] Setting up hotkeys...
+2026-01-05T03:06:25.162990 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T03:06:25.163122 [INFO] ACR Initialized. Mode: active.
+2026-01-05T03:06:25.163170 [INFO] Press Esc to quit.
+2026-01-05T03:06:25.163210 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T03:06:25.163246 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T03:06:25.163646 [INFO] Video worker thread started.
+2026-01-05T03:06:25.163970 [INFO] Audio worker thread started.
+2026-01-05T03:06:25.164162 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:25.164581 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:25.214871 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:25.215084 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:25.265545 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:25.265436 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:25.316102 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:25.316292 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:25.366667 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:25.366590 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:25.417160 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:25.417311 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:25.467758 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:25.467639 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:25.518281 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:25.518187 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:25.568792 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:25.568705 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:25.616934 [ERROR] One or more sensors have entered an error state.
+2026-01-05T03:06:25.617138 [WARNING] Video sensor error: Could not open camera 0
+2026-01-05T03:06:25.617195 [WARNING] Audio sensor error: Audio library unavailable
+2026-01-05T03:06:25.617244 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T03:06:25.619423 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T03:06:27.247524 [WARNING] Signal SIGTERM received. Initiating shutdown.
+2026-01-05T03:06:27.247721 [INFO] Quit signal received.
+2026-01-05T03:06:27.276934 [INFO] Application shutting down...
+2026-01-05T03:06:27.277139 [INFO] Waiting for video worker thread to join...
+2026-01-05T03:06:27.421517 [INFO] Audio worker thread stopped.
+2026-01-05T03:06:27.421428 [INFO] Video worker thread stopped.
+2026-01-05T03:06:27.422113 [INFO] LogicEngine shutting down...
+2026-01-05T03:06:27.422208 [INFO] InterventionEngine shutting down...
+2026-01-05T03:06:27.422251 [INFO] No active intervention to stop.
+2026-01-05T03:06:27.422316 [ERROR] Unhandled exception in main execution: 'ACRTrayIcon' object has no attribute 'thread' | Details: <traceback object at 0x7fad6b02a3c0>
+2026-01-05T03:06:27.422355 [INFO] Main script execution finished.
+2026-01-05T03:06:39.745282 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:06:39.745401 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:06:39.745450 [INFO] ACR Application Initializing...
+2026-01-05T03:06:39.746095 [WARNING] VideoSensor: Could not open video camera 0.
+2026-01-05T03:06:39.770216 [WARNING] AudioSensor: sounddevice not available. Audio features disabled.
+2026-01-05T03:06:39.770406 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T03:06:39.770501 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T03:06:39.770631 [INFO] InterventionEngine initialized.
+2026-01-05T03:06:39.772214 [INFO] Setting up hotkeys...
+2026-01-05T03:06:39.777149 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T03:06:39.777234 [INFO] ACR Initialized. Mode: active.
+2026-01-05T03:06:39.777278 [INFO] Press Esc to quit.
+2026-01-05T03:06:39.777315 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T03:06:39.777350 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T03:06:39.777885 [INFO] Video worker thread started.
+2026-01-05T03:06:39.778288 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:39.778427 [INFO] Audio worker thread started.
+2026-01-05T03:06:39.778929 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:39.829090 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:39.829463 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:39.879642 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:39.879819 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:39.930222 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:39.930132 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:39.980741 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:39.980973 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:40.031479 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:40.031346 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:40.081928 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:40.081859 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:40.132434 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:40.132352 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:40.182911 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:40.183093 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:40.231624 [ERROR] One or more sensors have entered an error state.
+2026-01-05T03:06:40.231830 [WARNING] Video sensor error: Could not open camera 0
+2026-01-05T03:06:40.231894 [WARNING] Audio sensor error: Audio library unavailable
+2026-01-05T03:06:40.231959 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T03:06:40.233949 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T03:06:41.805431 [WARNING] Signal SIGTERM received. Initiating shutdown.
+2026-01-05T03:06:41.805757 [INFO] Quit signal received.
+2026-01-05T03:06:41.837309 [INFO] Audio worker thread stopped.
+2026-01-05T03:06:41.837242 [INFO] Video worker thread stopped.
+2026-01-05T03:06:41.841755 [INFO] Application shutting down...
+2026-01-05T03:06:41.841875 [INFO] LogicEngine shutting down...
+2026-01-05T03:06:41.841926 [INFO] InterventionEngine shutting down...
+2026-01-05T03:06:41.841962 [INFO] No active intervention to stop.
+2026-01-05T03:06:41.842034 [INFO] Application shutdown complete.
+2026-01-05T03:06:41.842071 [INFO] Main script execution finished.
+2026-01-05T03:06:48.429225 [INFO] DataLogger initialized. Log level: DEBUG. Log file: acr_app.log
+2026-01-05T03:06:48.429352 [INFO] DataLogger initialized. Log level: DEBUG. Log file: acr_app.log
+2026-01-05T03:06:48.429402 [INFO] ACR Application Initializing...
+2026-01-05T03:06:48.430052 [WARNING] VideoSensor: Could not open video camera 0.
+2026-01-05T03:06:48.453325 [WARNING] AudioSensor: sounddevice not available. Audio features disabled.
+2026-01-05T03:06:48.453551 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T03:06:48.453751 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T03:06:48.453905 [INFO] InterventionEngine initialized.
+2026-01-05T03:06:48.453989 [INFO] Setting up hotkeys...
+2026-01-05T03:06:48.458555 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T03:06:48.458688 [INFO] ACR Initialized. Mode: active.
+2026-01-05T03:06:48.458741 [INFO] Press Esc to quit.
+2026-01-05T03:06:48.458779 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T03:06:48.458815 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T03:06:48.459252 [INFO] Video worker thread started.
+2026-01-05T03:06:48.459894 [DEBUG] No new sensor data to send to LMM.
+2026-01-05T03:06:48.459613 [INFO] Audio worker thread started.
+2026-01-05T03:06:48.460196 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:48.460633 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:48.511108 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:48.511308 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:48.561703 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:48.561939 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:48.612420 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:48.612299 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:48.662848 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:48.662953 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:48.713551 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:48.713458 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:48.764158 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:48.764327 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:48.814705 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:48.814616 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:48.865126 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:06:48.865056 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:06:48.913151 [ERROR] One or more sensors have entered an error state.
+2026-01-05T03:06:48.913302 [WARNING] Video sensor error: Could not open camera 0
+2026-01-05T03:06:48.913360 [WARNING] Audio sensor error: Audio library unavailable
+2026-01-05T03:06:48.913410 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T03:06:48.915530 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T03:06:52.789442 [WARNING] Signal SIGTERM received. Initiating shutdown.
+2026-01-05T03:06:52.789744 [INFO] Quit signal received.
+2026-01-05T03:06:52.834479 [INFO] Application shutting down...
+2026-01-05T03:06:52.834840 [INFO] Waiting for video worker thread to join...
+2026-01-05T03:06:52.920379 [INFO] Video worker thread stopped.
+2026-01-05T03:06:52.920236 [INFO] Audio worker thread stopped.
+2026-01-05T03:06:52.921032 [INFO] LogicEngine shutting down...
+2026-01-05T03:06:52.921131 [INFO] InterventionEngine shutting down...
+2026-01-05T03:06:52.921178 [INFO] No active intervention to stop.
+2026-01-05T03:06:52.921258 [INFO] Application shutdown complete.
+2026-01-05T03:06:52.921297 [INFO] Main script execution finished.
+2026-01-05T03:08:00.357866 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:08:00.358076 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T03:08:00.358758 [INFO] Triggering LMM analysis (Reason: test)...
+2026-01-05T03:08:00.358867 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
+2026-01-05T03:08:00.359480 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T03:08:00.359666 [INFO] LMM analysis complete and state updated.
+2026-01-05T03:08:00.359725 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T03:08:00.359783 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T03:08:24.126316 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:08:24.126510 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T03:08:24.127136 [INFO] Triggering LMM analysis (Reason: test)...
+2026-01-05T03:08:24.127237 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
+2026-01-05T03:08:24.127955 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T03:08:24.128165 [INFO] LMM analysis complete and state updated.
+2026-01-05T03:08:24.128230 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T03:08:24.128357 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T03:08:57.082097 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:08:57.082267 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T03:08:57.082929 [INFO] Triggering LMM analysis (Reason: test)...
+2026-01-05T03:08:57.083057 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
+2026-01-05T03:08:57.083706 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T03:08:57.083923 [INFO] LMM analysis complete and state updated.
+2026-01-05T03:08:57.084047 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T03:08:57.084107 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T03:08:57.084536 [INFO] Triggering LMM analysis (Reason: test)...
+2026-01-05T03:08:57.084625 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
+2026-01-05T03:08:57.085134 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 20, 'focus': 50, 'energy': 68, 'mood': 50}
+2026-01-05T03:08:57.085281 [INFO] LMM analysis complete and state updated.
+2026-01-05T03:08:57.085344 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T03:08:57.085397 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 20, 'focus': 50, 'energy': 68, 'mood': 50}
+2026-01-05T03:08:57.085833 [INFO] Triggering LMM analysis (Reason: test)...
+2026-01-05T03:08:57.085921 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
+2026-01-05T03:08:57.086349 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 30, 'focus': 50, 'energy': 62, 'mood': 50}
+2026-01-05T03:08:57.086486 [INFO] LMM analysis complete and state updated.
+2026-01-05T03:08:57.086535 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T03:08:57.086578 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
+2026-01-05T03:08:57.086631 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 30, 'focus': 50, 'energy': 62, 'mood': 50}
+2026-01-05T03:08:57.087051 [INFO] Triggering LMM analysis (Reason: test)...
+2026-01-05T03:08:57.087131 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
+2026-01-05T03:08:57.087522 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 40, 'focus': 50, 'energy': 56, 'mood': 50}
+2026-01-05T03:08:57.087667 [INFO] LMM analysis complete and state updated.
+2026-01-05T03:08:57.087719 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T03:08:57.087764 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
+2026-01-05T03:08:57.087809 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 40, 'focus': 50, 'energy': 56, 'mood': 50}
+2026-01-05T03:13:13.225695 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:13:13.225979 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:13:13.226050 [INFO] ACR Application Initializing...
+2026-01-05T03:13:13.226679 [WARNING] VideoSensor: Could not open video camera 0.
+2026-01-05T03:13:13.250216 [WARNING] AudioSensor: sounddevice not available. Audio features disabled.
+2026-01-05T03:13:13.250430 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T03:13:13.250531 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T03:13:13.250660 [INFO] InterventionEngine initialized.
+2026-01-05T03:13:13.250739 [INFO] Setting up hotkeys...
+2026-01-05T03:13:13.255887 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T03:13:13.255989 [INFO] ACR Initialized. Mode: active.
+2026-01-05T03:13:13.256033 [INFO] Press Esc to quit.
+2026-01-05T03:13:13.256070 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T03:13:13.256105 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T03:13:13.256578 [INFO] Video worker thread started.
+2026-01-05T03:13:13.256947 [INFO] Audio worker thread started.
+2026-01-05T03:13:13.257478 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:13:13.257378 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.307985 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:13:13.308276 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.358356 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:13:13.358614 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.408972 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.410484 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:13:13.459320 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.460799 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:13:13.509698 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.511079 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:13:13.560008 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.561453 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:13:13.610386 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.611760 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:13:13.660770 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.662707 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:13:13.709804 [ERROR] One or more sensors have entered an error state.
+2026-01-05T03:13:13.709980 [WARNING] Video sensor error: Could not open camera 0
+2026-01-05T03:13:13.710099 [WARNING] Audio sensor error: Audio library unavailable
+2026-01-05T03:13:13.710250 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T03:13:13.712280 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T03:13:15.187072 [WARNING] Signal SIGTERM received. Initiating shutdown.
+2026-01-05T03:13:15.187297 [INFO] Quit signal received.
+2026-01-05T03:13:15.219523 [INFO] Application shutting down...
+2026-01-05T03:13:15.219712 [INFO] Waiting for video worker thread to join...
+2026-01-05T03:13:15.313247 [INFO] Audio worker thread stopped.
+2026-01-05T03:13:15.314610 [INFO] Video worker thread stopped.
+2026-01-05T03:13:15.314920 [INFO] LogicEngine shutting down...
+2026-01-05T03:13:15.315018 [INFO] InterventionEngine shutting down...
+2026-01-05T03:13:15.315060 [INFO] No active intervention to stop.
+2026-01-05T03:13:15.315189 [INFO] Application shutdown complete.
+2026-01-05T03:13:15.315239 [INFO] Main script execution finished.

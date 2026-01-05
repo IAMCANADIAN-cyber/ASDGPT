@@ -1,8 +1,12 @@
-import sounddevice as sd
 import numpy as np
 import time
 import collections
 import config # Potentially for audio device settings in the future
+
+try:
+    import sounddevice as sd
+except (ImportError, OSError):
+    sd = None
 
 class AudioSensor:
     def __init__(self, data_logger=None, sample_rate=44100, chunk_duration=1.0, channels=1, history_seconds=5):
@@ -28,8 +32,13 @@ class AudioSensor:
         self.retry_delay = 30  # seconds
         self.last_retry_time = 0
 
-        self._check_devices()
-        self._initialize_stream()
+        if sd:
+            self._check_devices()
+            self._initialize_stream()
+        else:
+            self._log_warning("sounddevice not available. Audio features disabled.")
+            self.error_state = True
+            self.last_error_message = "Audio library unavailable"
 
     def _log_info(self, message):
         if self.logger: self.logger.log_info(f"AudioSensor: {message}")
@@ -60,6 +69,7 @@ class AudioSensor:
 
 
     def _initialize_stream(self):
+        if not sd: return
         self._log_info(f"Attempting to initialize audio stream (SampleRate: {self.sample_rate}, Channels: {self.channels})...")
         try:
             self.stream = sd.InputStream(
@@ -90,6 +100,9 @@ class AudioSensor:
         self.last_retry_time = time.time()
 
     def get_chunk(self):
+        if not sd:
+            return None, "Audio library unavailable"
+
         if self.error_state:
             if time.time() - self.last_retry_time >= self.retry_delay:
                 self._log_info("Attempting to re-initialize audio stream due to previous error...")

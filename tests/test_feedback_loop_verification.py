@@ -85,6 +85,9 @@ class TestFeedbackLoop(unittest.TestCase):
         if self.engine.intervention_thread:
             self.engine.intervention_thread.join(timeout=1)
 
+        # Force save to ensure it persists if that's part of the check
+        self.engine._save_suppressions()
+
         result = self.engine.start_intervention({"id": "box_breathing"})
         self.assertFalse(result, "Intervention should have been suppressed")
 

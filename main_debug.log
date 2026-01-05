@@ -1,0 +1,95 @@
+[ WARN:0@0.496] global cap_v4l.cpp:914 open VIDEOIO(V4L2:/dev/video0): can't open camera by index
+[ERROR:0@0.496] global obsensor_uvc_stream_channel.cpp:163 getStreamChannelGroup Camera index out of range
+Warning: pystray could not be imported or initialized (Headless?): Can't connect to display ":0": [Errno 111] Connection refused
+2026-01-05T03:13:13.225695 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:13:13.225979 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T03:13:13.226050 [INFO] ACR Application Initializing...
+2026-01-05T03:13:13.226679 [WARNING] VideoSensor: Could not open video camera 0.
+2026-01-05T03:13:13.250216 [WARNING] AudioSensor: sounddevice not available. Audio features disabled.
+2026-01-05T03:13:13.250430 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T03:13:13.250531 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T03:13:13.250660 [INFO] InterventionEngine initialized.
+System Tray disabled (pystray not available).
+2026-01-05T03:13:13.250739 [INFO] Setting up hotkeys...
+2026-01-05T03:13:13.255887 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T03:13:13.255989 [INFO] ACR Initialized. Mode: active.
+2026-01-05T03:13:13.256033 [INFO] Press Esc to quit.
+2026-01-05T03:13:13.256070 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T03:13:13.256105 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+System tray icon not available, skipping thread start.
+2026-01-05T03:13:13.256578 [INFO] Video worker thread started.
+2026-01-05T03:13:13.256947 [INFO] Audio worker thread started.
+Main loop iteration: 0
+2026-01-05T03:13:13.257378 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.257478 [WARNING] Video sensor error in worker: Camera not initialized
+Main loop iteration: 1
+2026-01-05T03:13:13.307985 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:13:13.308276 [WARNING] Audio sensor error in worker: Audio library unavailable
+Main loop iteration: 2
+2026-01-05T03:13:13.358356 [WARNING] Video sensor error in worker: Camera not initialized
+2026-01-05T03:13:13.358614 [WARNING] Audio sensor error in worker: Audio library unavailable
+Main loop iteration: 3
+2026-01-05T03:13:13.408972 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.410484 [WARNING] Video sensor error in worker: Camera not initialized
+Main loop iteration: 4
+2026-01-05T03:13:13.459320 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.460799 [WARNING] Video sensor error in worker: Camera not initialized
+Main loop iteration: 5
+2026-01-05T03:13:13.509698 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.511079 [WARNING] Video sensor error in worker: Camera not initialized
+Main loop iteration: 6
+2026-01-05T03:13:13.560008 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.561453 [WARNING] Video sensor error in worker: Camera not initialized
+Main loop iteration: 7
+2026-01-05T03:13:13.610386 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.611760 [WARNING] Video sensor error in worker: Camera not initialized
+Main loop iteration: 8
+2026-01-05T03:13:13.660770 [WARNING] Audio sensor error in worker: Audio library unavailable
+2026-01-05T03:13:13.662707 [WARNING] Video sensor error in worker: Camera not initialized
+Main loop iteration: 9
+2026-01-05T03:13:13.709804 [ERROR] One or more sensors have entered an error state.
+2026-01-05T03:13:13.709980 [WARNING] Video sensor error: Could not open camera 0
+2026-01-05T03:13:13.710099 [WARNING] Audio sensor error: Audio library unavailable
+2026-01-05T03:13:13.710250 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T03:13:13.712280 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+Main loop iteration: 10
+Main loop iteration: 11
+Main loop iteration: 12
+Main loop iteration: 13
+Main loop iteration: 14
+Main loop iteration: 15
+Main loop iteration: 16
+Main loop iteration: 17
+Main loop iteration: 18
+Main loop iteration: 19
+Main loop iteration: 20
+Main loop iteration: 21
+Main loop iteration: 22
+Main loop iteration: 23
+Main loop iteration: 24
+Main loop iteration: 25
+Main loop iteration: 26
+Main loop iteration: 27
+Main loop iteration: 28
+Main loop iteration: 29
+Main loop iteration: 30
+Main loop iteration: 31
+Main loop iteration: 32
+Main loop iteration: 33
+Main loop iteration: 34
+Main loop iteration: 35
+Main loop iteration: 36
+Main loop iteration: 37
+Main loop iteration: 38
+2026-01-05T03:13:15.187072 [WARNING] Signal SIGTERM received. Initiating shutdown.
+2026-01-05T03:13:15.187297 [INFO] Quit signal received.
+2026-01-05T03:13:15.219523 [INFO] Application shutting down...
+2026-01-05T03:13:15.219712 [INFO] Waiting for video worker thread to join...
+2026-01-05T03:13:15.313247 [INFO] Audio worker thread stopped.
+2026-01-05T03:13:15.314610 [INFO] Video worker thread stopped.
+2026-01-05T03:13:15.314920 [INFO] LogicEngine shutting down...
+2026-01-05T03:13:15.315018 [INFO] InterventionEngine shutting down...
+2026-01-05T03:13:15.315060 [INFO] No active intervention to stop.
+System tray icon stopped.
+2026-01-05T03:13:15.315189 [INFO] Application shutdown complete.
+2026-01-05T03:13:15.315239 [INFO] Main script execution finished.
