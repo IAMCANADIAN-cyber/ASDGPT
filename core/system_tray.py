@@ -1,4 +1,11 @@
-import pystray
+try:
+    import pystray
+except ImportError:
+    pystray = None
+except Exception:
+    # Handle Xlib display errors which happen during import on headless systems
+    pystray = None
+
 from PIL import Image, ImageDraw # Pillow is needed for Image.open and potentially for creating icons on the fly
 import threading
 import config
@@ -48,23 +55,31 @@ class ACRTrayIcon:
 
         self.current_icon_state = "default" # e.g., "active", "paused"
 
-        # Menu items
-        menu = (
-            pystray.MenuItem('Pause/Resume', self.on_toggle_pause_resume),
-            pystray.MenuItem('Snooze for 1 Hour', self.on_snooze),
-            pystray.Menu.SEPARATOR,
-            pystray.MenuItem('Last: Helpful', self.on_feedback_helpful),
-            pystray.MenuItem('Last: Unhelpful', self.on_feedback_unhelpful),
-            pystray.Menu.SEPARATOR,
-            pystray.MenuItem('Quit', self.on_quit)
-        )
+        if pystray:
+            # Menu items
+            menu = (
+                pystray.MenuItem('Pause/Resume', self.on_toggle_pause_resume),
+                pystray.MenuItem('Snooze for 1 Hour', self.on_snooze),
+                pystray.Menu.SEPARATOR,
+                pystray.MenuItem('Last: Helpful', self.on_feedback_helpful),
+                pystray.MenuItem('Last: Unhelpful', self.on_feedback_unhelpful),
+                pystray.Menu.SEPARATOR,
+                pystray.MenuItem('Quit', self.on_quit)
+            )
 
-        self.tray_icon = pystray.Icon(config.APP_NAME, self.icons[self.current_icon_state], config.APP_NAME, menu)
+            try:
+                self.tray_icon = pystray.Icon(config.APP_NAME, self.icons[self.current_icon_state], config.APP_NAME, menu)
+            except Exception as e:
+                print(f"Failed to initialize pystray icon: {e}")
+                self.tray_icon = None
+        else:
+            self.tray_icon = None
+
         self.thread = None
 
     def run_threaded(self):
         # pystray needs to run in its own thread if the main app has its own loop
-        if not self.thread or not self.thread.is_alive():
+        if self.tray_icon and (not self.thread or not self.thread.is_alive()):
             self.thread = threading.Thread(target=self.tray_icon.run, daemon=True)
             self.thread.start()
             print("System tray icon thread started.")

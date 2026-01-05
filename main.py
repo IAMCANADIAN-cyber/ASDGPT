@@ -186,20 +186,17 @@ class Application:
             if self.logic_engine.get_mode() == "active" and not sensor_error:
                 try:
                     frame, error = self.video_sensor.get_frame()
-                    if error:
-                        self.data_logger.log_warning(f"Video sensor error in worker: {error}")
-                        # We might still put an error marker or None frame in queue if needed
-                        # For now, only put valid frames or rely on _check_sensors
+
+                    # Only log warning if it's a new error or intermittent
+                    if frame is None and error and not self.video_sensor.has_error():
+                         self.data_logger.log_warning(f"Video sensor error in worker: {error}")
+
                     if frame is not None:
                         try:
-                            self.video_queue.put((frame, error), timeout=0.1) # Short timeout
+                            self.video_queue.put((frame, None), timeout=0.1) # Short timeout
                         except queue.Full:
                             self.data_logger.log_debug("Video queue full, frame discarded.")
                             pass # Frame discarded
-                    elif error: # If frame is None due to error
-                         # Potentially put an error marker in the queue if main loop needs to react instantly
-                         # For now, _check_sensors will handle persistent errors.
-                         pass
 
                     # Slow down polling if sensor is fine but no frame, or to control CPU.
                     # If get_frame() is truly blocking, this sleep might be less critical
@@ -222,17 +219,17 @@ class Application:
             if self.logic_engine.get_mode() == "active" and not sensor_error:
                 try:
                     chunk, error = self.audio_sensor.get_chunk()
-                    if error:
+
+                    # Only log warning if it's not a persistent error state (which is handled by _check_sensors)
+                    if error and not self.audio_sensor.has_error():
                         self.data_logger.log_warning(f"Audio sensor error in worker: {error}")
 
                     if chunk is not None:
                         try:
-                            self.audio_queue.put((chunk, error), timeout=0.1)
+                            self.audio_queue.put((chunk, None), timeout=0.1)
                         except queue.Full:
                             self.data_logger.log_debug("Audio queue full, chunk discarded.")
                             pass # Chunk discarded
-                    elif error: # If chunk is None due to error
-                        pass
 
                     # Audio sensor's get_chunk might return None if not enough data is ready,
                     # so a short sleep helps avoid busy-looping.
@@ -319,28 +316,41 @@ class Application:
     def _shutdown(self) -> None:
         self.data_logger.log_info("Application shutting down...")
 
-        # self.running is already False by the time we are here if quit_application() was called
-        # The worker threads check self.running, so they should terminate.
+        # Ensure running flag is False
+        self.running = False
 
+        # 1. Release sensors to unblock potential I/O waits in threads
+        self.data_logger.log_info("Releasing sensors to unblock threads...")
+        if hasattr(self, 'video_sensor') and self.video_sensor:
+            self.video_sensor.release()
+        if hasattr(self, 'audio_sensor') and self.audio_sensor:
+            self.audio_sensor.release()
+
+        # 2. Join threads with timeout
         if self.video_thread and self.video_thread.is_alive():
             self.data_logger.log_info("Waiting for video worker thread to join...")
             self.video_thread.join(timeout=2) # Wait for 2 seconds
             if self.video_thread.is_alive():
                  self.data_logger.log_warning("Video worker thread did not join in time.")
+            else:
+                 self.data_logger.log_info("Video worker thread stopped.")
 
         if self.audio_thread and self.audio_thread.is_alive():
             self.data_logger.log_info("Waiting for audio worker thread to join...")
             self.audio_thread.join(timeout=2)
             if self.audio_thread.is_alive():
                  self.data_logger.log_warning("Audio worker thread did not join in time.")
+            else:
+                 self.data_logger.log_info("Audio worker thread stopped.")
 
+        # 3. Shutdown Engines
         if hasattr(self, 'logic_engine') and self.logic_engine: self.logic_engine.shutdown()
         if hasattr(self, 'intervention_engine') and self.intervention_engine: self.intervention_engine.shutdown()
 
-        if hasattr(self, 'video_sensor') and self.video_sensor: self.video_sensor.release()
-        if hasattr(self, 'audio_sensor') and self.audio_sensor: self.audio_sensor.release()
+        # 4. Stop Tray
         if hasattr(self, 'tray_icon') and self.tray_icon: self.tray_icon.stop()
 
+        # 5. Unhook Keyboard
         try:
             import keyboard
             keyboard.unhook_all()

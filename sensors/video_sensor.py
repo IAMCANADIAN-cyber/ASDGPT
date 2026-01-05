@@ -44,19 +44,24 @@ class VideoSensor:
             self.cap = None
 
     def get_frame(self):
+        """
+        Captures a frame from the video source.
+        Returns:
+            (frame, error_message): frame is np.ndarray or None, error_message is str or None
+        """
         if self.cap is None or not self.cap.isOpened():
              # Try to reconnect occasionally?
-             return None
+             return None, "Camera not initialized or closed"
 
         try:
             ret, frame = self.cap.read()
             if not ret:
                 self._log_warning("Failed to capture video frame.")
-                return None
-            return frame
+                return None, "Failed to capture video frame"
+            return frame, None
         except Exception as e:
              self._log_error(f"Error capturing frame: {e}")
-             return None
+             return None, str(e)
 
     def calculate_raw_activity(self, gray_frame):
         """
@@ -114,7 +119,7 @@ class VideoSensor:
         """
         Convenience method to get frame and calculate activity.
         """
-        frame = self.get_frame()
+        frame, _ = self.get_frame()
         return self.calculate_activity(frame)
 
     def process_frame(self, frame):
@@ -230,3 +235,9 @@ class VideoSensor:
         if self.cap:
             self.cap.release()
             self.cap = None
+
+    def has_error(self):
+        return self.cap is None or not self.cap.isOpened()
+
+    def get_last_error(self):
+        return "Camera not initialized or failed to open" if self.cap is None else ""

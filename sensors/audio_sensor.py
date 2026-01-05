@@ -1,4 +1,7 @@
-import sounddevice as sd
+try:
+    import sounddevice as sd
+except OSError:
+    sd = None
 import numpy as np
 import time
 import collections
