@@ -322,6 +322,22 @@ class Application:
         # self.running is already False by the time we are here if quit_application() was called
         # The worker threads check self.running, so they should terminate.
 
+        # 1. Logic Engine Shutdown (stops its internal threads)
+        if hasattr(self, 'logic_engine') and self.logic_engine:
+            self.logic_engine.shutdown()
+
+        # 2. Intervention Engine Shutdown
+        if hasattr(self, 'intervention_engine') and self.intervention_engine:
+            self.intervention_engine.shutdown()
+
+        # 3. Release Sensors FIRST to unblock any I/O waits in threads
+        self.data_logger.log_info("Releasing sensors to unblock threads...")
+        if hasattr(self, 'video_sensor') and self.video_sensor:
+            self.video_sensor.release()
+        if hasattr(self, 'audio_sensor') and self.audio_sensor:
+            self.audio_sensor.release()
+
+        # 4. Join Worker Threads
         if self.video_thread and self.video_thread.is_alive():
             self.data_logger.log_info("Waiting for video worker thread to join...")
             self.video_thread.join(timeout=2) # Wait for 2 seconds
@@ -334,12 +350,9 @@ class Application:
             if self.audio_thread.is_alive():
                  self.data_logger.log_warning("Audio worker thread did not join in time.")
 
-        if hasattr(self, 'logic_engine') and self.logic_engine: self.logic_engine.shutdown()
-        if hasattr(self, 'intervention_engine') and self.intervention_engine: self.intervention_engine.shutdown()
-
-        if hasattr(self, 'video_sensor') and self.video_sensor: self.video_sensor.release()
-        if hasattr(self, 'audio_sensor') and self.audio_sensor: self.audio_sensor.release()
-        if hasattr(self, 'tray_icon') and self.tray_icon: self.tray_icon.stop()
+        # 5. Stop Tray Icon
+        if hasattr(self, 'tray_icon') and self.tray_icon:
+            self.tray_icon.stop()
 
         try:
             import keyboard
