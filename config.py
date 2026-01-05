@@ -54,6 +54,22 @@ if os.path.exists(CALIBRATION_FILE):
 AUDIO_THRESHOLD_HIGH = _audio_thresh_default
 VIDEO_ACTIVITY_THRESHOLD_HIGH = _video_thresh_default
 
+# --- API Keys ---
+# (Loaded from .env if available)
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# --- Sensors ---
+CAMERA_INDEX = 0
+
+# Thresholds (Calibrated via tools/calibrate_sensors.py or .env)
+# Defaults are conservative if not set in .env
+AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
+VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
+DOOM_SCROLL_THRESHOLD = int(os.getenv("DOOM_SCROLL_THRESHOLD", "3"))
+
+# --- Intervention Engine ---
+MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds (5 minutes)
+DEFAULT_INTERVENTION_DURATION = 30 # seconds
 
 # --- LMM Configuration ---
 LOCAL_LLM_URL = "http://127.0.0.1:1234"
@@ -68,6 +84,10 @@ DEFAULT_INTERVENTION_DURATION = 30
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 # --- Tiered Intervention Configurations (Legacy/Fallback) ---
+LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
+
+# --- Tiered Intervention Configurations ---
+# (Used for legacy ad-hoc interventions or fallback defaults)
 INTERVENTION_CONFIGS = {
     "gentle_reminder_text": {
         "tier": 1,
