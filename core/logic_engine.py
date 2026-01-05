@@ -325,22 +325,22 @@ class LogicEngine:
                      suggestion = {"id": reflexive_intervention_id}
 
                 if suggestion:
-                # Priority: System Triggers > LMM Suggestion
-                final_intervention = None
+                    # Priority: System Triggers > LMM Suggestion
+                    final_intervention = None
 
-                if triggered_intervention_id:
-                    final_intervention = {"id": triggered_intervention_id}
-                    self.logger.log_info(f"System Trigger overrides LMM suggestion. Triggered: {triggered_intervention_id}")
-                elif suggestion:
-                    final_intervention = suggestion
+                    if triggered_intervention_id:
+                        final_intervention = {"id": triggered_intervention_id}
+                        self.logger.log_info(f"System Trigger overrides LMM suggestion. Triggered: {triggered_intervention_id}")
+                    elif suggestion:
+                        final_intervention = suggestion
 
-                if final_intervention:
-                    if allow_intervention:
-                        self.logger.log_info(f"Starting intervention: {final_intervention}")
-                        # start_intervention is generally thread-safe as it just sets an event/launches another thread
-                        self.intervention_engine.start_intervention(final_intervention)
-                    else:
-                        self.logger.log_info(f"Intervention suggested but suppressed due to mode: {final_intervention}")
+                    if final_intervention:
+                        if allow_intervention:
+                            self.logger.log_info(f"Starting intervention: {final_intervention}")
+                            # start_intervention is generally thread-safe as it just sets an event/launches another thread
+                            self.intervention_engine.start_intervention(final_intervention)
+                        else:
+                            self.logger.log_info(f"Intervention suggested but suppressed due to mode: {final_intervention}")
         except Exception as e:
             self.logger.log_error(f"Error in async LMM analysis: {e}")
             self.lmm_consecutive_failures += 1
