@@ -8,6 +8,8 @@ class VideoSensor:
         self.logger = data_logger
         self.cap = None
         self.last_frame = None
+        self.error_state = False
+        self.last_error_message = ""
         self._initialize_camera()
 
         # Load Haarcascade for face detection
@@ -26,6 +28,8 @@ class VideoSensor:
         else: print(f"VideoSensor [WARN]: {message}")
 
     def _log_error(self, message):
+        self.error_state = True
+        self.last_error_message = message
         if self.logger: self.logger.log_error(f"VideoSensor: {message}")
         else: print(f"VideoSensor [ERROR]: {message}")
 
@@ -44,19 +48,29 @@ class VideoSensor:
             self.cap = None
 
     def get_frame(self):
+        if self.error_state:
+             # Logic to retry connection could go here
+             return None, self.last_error_message
+
         if self.cap is None or not self.cap.isOpened():
              # Try to reconnect occasionally?
-             return None
+             return None, "Camera not initialized"
 
         try:
             ret, frame = self.cap.read()
             if not ret:
                 self._log_warning("Failed to capture video frame.")
-                return None
-            return frame
+                return None, "Failed to capture video frame"
+
+            # If we successfully got a frame, ensure error state is cleared if it was set
+            if self.error_state:
+                self.error_state = False
+                self.last_error_message = ""
+
+            return frame, None
         except Exception as e:
              self._log_error(f"Error capturing frame: {e}")
-             return None
+             return None, str(e)
 
     def calculate_raw_activity(self, gray_frame):
         """
@@ -230,3 +244,10 @@ class VideoSensor:
         if self.cap:
             self.cap.release()
             self.cap = None
+        self.error_state = False
+
+    def has_error(self):
+        return self.error_state
+
+    def get_last_error(self):
+        return self.last_error_message

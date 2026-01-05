@@ -99,14 +99,20 @@ class AudioSensor:
             if self.error_state: # If still in error state
                 return None, self.last_error_message
 
-        if not self.stream or self.stream.closed:
-            if not self.error_state:
-                 self._log_error("Audio stream is not active or closed, though not in persistent error state.")
-                 self.error_state = True
-            return None, "Audio stream not available."
+        # Check if stream is explicitly None or closed
+        if not self.stream:
+             # If error_state is False, it means we shut down intentionally or haven't started.
+             # If we are in this method, we probably expect it to be running unless shutting down.
+             # But main loop might call get_chunk right as we shut down.
+             return None, "Audio stream is None."
+
+        if self.stream.closed:
+             return None, "Audio stream is closed."
 
         try:
             # With a blocking stream (no callback), read() will wait until it has enough data.
+            # This read might block. If self.stream.close() is called from another thread,
+            # this should abort or raise an exception.
             data_chunk, overflowed = self.stream.read(self.chunk_size)
             if overflowed:
                 self._log_warning("Audio buffer overflow detected during read.")
@@ -125,6 +131,10 @@ class AudioSensor:
             self._handle_stream_error()
             return None, error_msg
         except Exception as e:
+            # Check if this exception is due to closure during read
+            if self.stream is None or self.stream.closed:
+                 return None, "Audio stream closed during read."
+
             self.error_state = True
             error_msg = "Generic exception while reading audio chunk."
             self._log_error(error_msg, str(e))

@@ -102,3 +102,660 @@
 2026-01-04T07:40:26.762946 [INFO] LMM Detected Visual Context: ['phone_usage']
 2026-01-04T07:40:26.762987 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
 2026-01-04T07:40:26.763030 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 40, 'focus': 50, 'energy': 56, 'mood': 50}
+2026-01-05T13:03:38.128954 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:03:38.129322 [INFO] ACR Application Initializing...
+2026-01-05T13:03:38.133154 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:03:38.133877 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140398267461952'>
+2026-01-05T13:03:38.134334 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140398267461952'>
+2026-01-05T13:03:38.134405 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:03:38.134849 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:03:38.134994 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:03:38.135088 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:03:38.135282 [INFO] InterventionEngine initialized.
+2026-01-05T13:03:38.137468 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:03:38.137565 [INFO] Press Esc to quit.
+2026-01-05T13:03:38.137608 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:03:38.137654 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:03:38.138552 [INFO] Application shutting down...
+2026-01-05T13:03:38.138884 [INFO] Releasing video sensor...
+2026-01-05T13:03:38.139485 [INFO] Releasing audio sensor...
+2026-01-05T13:03:38.139881 [INFO] LogicEngine shutting down...
+2026-01-05T13:03:38.139943 [INFO] InterventionEngine shutting down...
+2026-01-05T13:03:38.139986 [INFO] No active intervention to stop.
+2026-01-05T13:03:38.140301 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:03:38.140863 [WARNING] Video worker thread did not join in time.
+2026-01-05T13:03:38.141281 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:03:38.141725 [WARNING] Audio worker thread did not join in time.
+2026-01-05T13:03:38.142681 [INFO] Application shutdown complete.
+2026-01-05T13:04:01.459112 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:04:01.459268 [INFO] ACR Application Initializing...
+2026-01-05T13:04:01.463056 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:04:01.463843 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='139678249710416'>
+2026-01-05T13:04:01.464193 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='139678249710416'>
+2026-01-05T13:04:01.464256 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:04:01.464812 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:04:01.464954 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:04:01.465149 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:04:01.465291 [INFO] InterventionEngine initialized.
+2026-01-05T13:04:01.467385 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:04:01.467508 [INFO] Press Esc to quit.
+2026-01-05T13:04:01.467562 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:04:01.467598 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:04:01.468622 [INFO] Application shutting down...
+2026-01-05T13:04:01.468927 [INFO] Releasing video sensor...
+2026-01-05T13:04:01.469740 [INFO] Releasing audio sensor...
+2026-01-05T13:04:01.470182 [INFO] LogicEngine shutting down...
+2026-01-05T13:04:01.470244 [INFO] InterventionEngine shutting down...
+2026-01-05T13:04:01.470285 [INFO] No active intervention to stop.
+2026-01-05T13:04:01.470596 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:04:01.471040 [WARNING] Video worker thread did not join in time.
+2026-01-05T13:04:01.471394 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:04:01.471864 [WARNING] Audio worker thread did not join in time.
+2026-01-05T13:04:01.472731 [INFO] Application shutdown complete.
+2026-01-05T13:04:25.074502 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:04:25.074694 [INFO] ACR Application Initializing...
+2026-01-05T13:04:25.077523 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:04:25.077793 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='139915677200656'>
+2026-01-05T13:04:25.077935 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='139915677200656'>
+2026-01-05T13:04:25.077983 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:04:25.078113 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:04:25.078313 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:04:25.078414 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:04:25.078550 [INFO] InterventionEngine initialized.
+2026-01-05T13:04:25.080782 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:04:25.080886 [INFO] Press Esc to quit.
+2026-01-05T13:04:25.080930 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:04:25.080970 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:04:25.082970 [INFO] Application shutting down...
+2026-01-05T13:04:25.083273 [INFO] Releasing video sensor...
+2026-01-05T13:04:25.083766 [INFO] Releasing audio sensor...
+2026-01-05T13:04:25.084055 [INFO] LogicEngine shutting down...
+2026-01-05T13:04:25.084116 [INFO] InterventionEngine shutting down...
+2026-01-05T13:04:25.084161 [INFO] No active intervention to stop.
+2026-01-05T13:04:25.084427 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:04:25.084762 [WARNING] Video worker thread did not join in time.
+2026-01-05T13:04:25.085223 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:04:25.085540 [WARNING] Audio worker thread did not join in time.
+2026-01-05T13:04:25.086433 [INFO] Application shutdown complete.
+2026-01-05T13:04:37.040368 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:04:37.040536 [INFO] ACR Application Initializing...
+2026-01-05T13:04:37.043287 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:04:37.043511 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='139848383798144'>
+2026-01-05T13:04:37.043661 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='139848383798144'>
+2026-01-05T13:04:37.043713 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:04:37.043841 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:04:37.044037 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:04:37.044179 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:04:37.044331 [INFO] InterventionEngine initialized.
+2026-01-05T13:04:37.046680 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:04:37.046806 [INFO] Press Esc to quit.
+2026-01-05T13:04:37.046858 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:04:37.046900 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:04:37.048867 [INFO] Application shutting down...
+2026-01-05T13:04:37.049328 [INFO] Releasing video sensor...
+2026-01-05T13:04:37.049834 [INFO] Releasing audio sensor...
+2026-01-05T13:04:37.050153 [INFO] LogicEngine shutting down...
+2026-01-05T13:04:37.050225 [INFO] InterventionEngine shutting down...
+2026-01-05T13:04:37.050273 [INFO] No active intervention to stop.
+2026-01-05T13:04:37.050584 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:04:37.050887 [WARNING] Video worker thread did not join in time.
+2026-01-05T13:04:37.051268 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:04:37.051604 [WARNING] Audio worker thread did not join in time.
+2026-01-05T13:04:37.052491 [INFO] Application shutdown complete.
+2026-01-05T13:04:46.218114 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:04:46.218260 [INFO] ACR Application Initializing...
+2026-01-05T13:04:46.220861 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:04:46.221167 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140499013989680'>
+2026-01-05T13:04:46.221310 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140499013989680'>
+2026-01-05T13:04:46.221367 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:04:46.221486 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:04:46.221676 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:04:46.221770 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:04:46.221940 [INFO] InterventionEngine initialized.
+2026-01-05T13:04:46.224056 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:04:46.224144 [INFO] Press Esc to quit.
+2026-01-05T13:04:46.224187 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:04:46.224222 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:04:46.226131 [INFO] Application shutting down...
+2026-01-05T13:04:46.226445 [INFO] Releasing video sensor...
+2026-01-05T13:04:46.226915 [INFO] Releasing audio sensor...
+2026-01-05T13:04:46.227188 [INFO] LogicEngine shutting down...
+2026-01-05T13:04:46.227245 [INFO] InterventionEngine shutting down...
+2026-01-05T13:04:46.227286 [INFO] No active intervention to stop.
+2026-01-05T13:04:46.227554 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:04:46.227851 [WARNING] Video worker thread did not join in time.
+2026-01-05T13:04:46.228240 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:04:46.228542 [WARNING] Audio worker thread did not join in time.
+2026-01-05T13:04:46.229498 [INFO] Application shutdown complete.
+2026-01-05T13:05:08.146325 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:05:08.146481 [INFO] ACR Application Initializing...
+2026-01-05T13:05:08.151276 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:05:08.151530 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='139697763152960'>
+2026-01-05T13:05:08.151668 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='139697763152960'>
+2026-01-05T13:05:08.151719 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:05:08.151899 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:05:08.152122 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:05:08.152222 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:05:08.152373 [INFO] InterventionEngine initialized.
+2026-01-05T13:05:08.154692 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:05:08.154851 [INFO] Press Esc to quit.
+2026-01-05T13:05:08.154919 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:05:08.154958 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:05:08.157063 [INFO] Application shutting down...
+2026-01-05T13:05:08.157395 [INFO] Releasing video sensor...
+2026-01-05T13:05:08.157902 [INFO] Releasing audio sensor...
+2026-01-05T13:05:08.158183 [INFO] LogicEngine shutting down...
+2026-01-05T13:05:08.158242 [INFO] InterventionEngine shutting down...
+2026-01-05T13:05:08.158284 [INFO] No active intervention to stop.
+2026-01-05T13:05:08.158570 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:05:08.158905 [WARNING] Video worker thread did not join in time.
+2026-01-05T13:05:08.159326 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:05:08.159655 [WARNING] Audio worker thread did not join in time.
+2026-01-05T13:05:08.160542 [INFO] Application shutdown complete.
+2026-01-05T13:05:35.475191 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:05:35.475314 [INFO] ACR Application Initializing...
+2026-01-05T13:05:35.477367 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:05:35.479937 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140110592049664'>
+2026-01-05T13:05:35.480337 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140110592049664'>
+2026-01-05T13:05:35.480448 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:05:35.481301 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:05:35.481548 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:05:35.481658 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:05:35.481792 [INFO] InterventionEngine initialized.
+2026-01-05T13:05:35.483771 [INFO] Setting up hotkeys...
+2026-01-05T13:05:35.484033 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T13:05:35.484091 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:05:35.484138 [INFO] Press Esc to quit.
+2026-01-05T13:05:35.484176 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:05:35.484209 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:05:35.486210 [INFO] Video worker thread started.
+2026-01-05T13:05:35.487180 [ERROR] Exception in video worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T13:05:35.486541 [INFO] Audio worker thread started.
+2026-01-05T13:05:35.488677 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:35.539296 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:35.589980 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:35.640654 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:35.691315 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:35.742025 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:35.792709 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:35.843356 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:35.894056 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:35.941213 [ERROR] One or more sensors have entered an error state.
+2026-01-05T13:05:35.941460 [WARNING] Video sensor error: Could not load face cascade classifier.
+2026-01-05T13:05:35.941946 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T13:05:35.968682 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T13:05:36.485096 [INFO] Quit signal received.
+2026-01-05T13:05:36.489131 [INFO] Video worker thread stopped.
+2026-01-05T13:05:36.496778 [INFO] Application shutting down...
+2026-01-05T13:05:36.497081 [INFO] Releasing video sensor...
+2026-01-05T13:05:36.498089 [INFO] Releasing audio sensor...
+2026-01-05T13:05:36.498269 [INFO] LogicEngine shutting down...
+2026-01-05T13:05:36.498328 [INFO] InterventionEngine shutting down...
+2026-01-05T13:05:36.498367 [INFO] No active intervention to stop.
+2026-01-05T13:05:36.498461 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:05:36.545389 [INFO] Audio worker thread stopped.
+2026-01-05T13:05:36.545880 [INFO] Audio worker thread joined.
+2026-01-05T13:05:36.546969 [INFO] Application shutdown complete.
+2026-01-05T13:05:36.547148 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:05:36.547207 [INFO] ACR Application Initializing...
+2026-01-05T13:05:36.547592 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:05:36.547764 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140110592049664'>
+2026-01-05T13:05:36.547893 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140110592049664'>
+2026-01-05T13:05:36.547938 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:05:36.548048 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:05:36.548164 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:05:36.548262 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:05:36.548492 [INFO] InterventionEngine initialized.
+2026-01-05T13:05:36.549108 [INFO] Setting up hotkeys...
+2026-01-05T13:05:36.549362 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T13:05:36.549415 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:05:36.549504 [INFO] Press Esc to quit.
+2026-01-05T13:05:36.549541 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:05:36.549575 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:05:36.550924 [INFO] Video worker thread started.
+2026-01-05T13:05:36.551830 [ERROR] Exception in video worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T13:05:36.551241 [INFO] Audio worker thread started.
+2026-01-05T13:05:36.552142 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:36.602668 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:36.653280 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:36.703960 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:36.754668 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:36.805335 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:36.856002 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:36.906671 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:36.957349 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:37.004799 [ERROR] One or more sensors have entered an error state.
+2026-01-05T13:05:37.005099 [WARNING] Video sensor error: Could not load face cascade classifier.
+2026-01-05T13:05:37.005280 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T13:05:37.007521 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T13:05:37.550273 [INFO] Quit signal received.
+2026-01-05T13:05:37.552206 [INFO] Video worker thread stopped.
+2026-01-05T13:05:37.559937 [INFO] Application shutting down...
+2026-01-05T13:05:37.560146 [INFO] Releasing video sensor...
+2026-01-05T13:05:37.560381 [INFO] Releasing audio sensor...
+2026-01-05T13:05:37.560616 [INFO] LogicEngine shutting down...
+2026-01-05T13:05:37.560681 [INFO] InterventionEngine shutting down...
+2026-01-05T13:05:37.560726 [INFO] No active intervention to stop.
+2026-01-05T13:05:37.560817 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:05:37.608641 [INFO] Audio worker thread stopped.
+2026-01-05T13:05:37.609089 [INFO] Audio worker thread joined.
+2026-01-05T13:05:37.609662 [INFO] Application shutdown complete.
+2026-01-05T13:05:37.609818 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:05:37.609868 [INFO] ACR Application Initializing...
+2026-01-05T13:05:37.610232 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:05:37.610376 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140110592049664'>
+2026-01-05T13:05:37.610637 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140110592049664'>
+2026-01-05T13:05:37.610698 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:05:37.610810 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:05:37.610934 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:05:37.611014 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:05:37.611131 [INFO] InterventionEngine initialized.
+2026-01-05T13:05:37.611690 [INFO] Setting up hotkeys...
+2026-01-05T13:05:37.611942 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T13:05:37.611994 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:05:37.612029 [INFO] Press Esc to quit.
+2026-01-05T13:05:37.612062 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:05:37.612095 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:05:37.613690 [INFO] Audio worker thread started.
+2026-01-05T13:05:37.613982 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:37.613434 [INFO] Video worker thread started.
+2026-01-05T13:05:37.614605 [ERROR] Exception in video worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T13:05:37.664644 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:37.715358 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:37.766312 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:37.817162 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:37.867794 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:37.918378 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:37.969158 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:38.019767 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:38.068464 [ERROR] One or more sensors have entered an error state.
+2026-01-05T13:05:38.068712 [WARNING] Video sensor error: Could not load face cascade classifier.
+2026-01-05T13:05:38.068896 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T13:05:38.071021 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T13:05:38.612938 [INFO] Quit signal received.
+2026-01-05T13:05:38.614895 [INFO] Video worker thread stopped.
+2026-01-05T13:05:38.623364 [INFO] Application shutting down...
+2026-01-05T13:05:38.623630 [INFO] Releasing video sensor...
+2026-01-05T13:05:38.623831 [INFO] Releasing audio sensor...
+2026-01-05T13:05:38.623978 [INFO] LogicEngine shutting down...
+2026-01-05T13:05:38.624073 [INFO] InterventionEngine shutting down...
+2026-01-05T13:05:38.624114 [INFO] No active intervention to stop.
+2026-01-05T13:05:38.624162 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:05:38.671583 [INFO] Audio worker thread stopped.
+2026-01-05T13:05:38.671998 [INFO] Audio worker thread joined.
+2026-01-05T13:05:38.672642 [INFO] Application shutdown complete.
+2026-01-05T13:05:38.672791 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:05:38.672838 [INFO] ACR Application Initializing...
+2026-01-05T13:05:38.673248 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:05:38.673417 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140110592049664'>
+2026-01-05T13:05:38.673611 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140110592049664'>
+2026-01-05T13:05:38.673666 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:05:38.673776 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:05:38.673947 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:05:38.674039 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:05:38.674167 [INFO] InterventionEngine initialized.
+2026-01-05T13:05:38.674774 [INFO] Setting up hotkeys...
+2026-01-05T13:05:38.675116 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T13:05:38.675180 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:05:38.675217 [INFO] Press Esc to quit.
+2026-01-05T13:05:38.675251 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:05:38.675283 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:05:38.676737 [INFO] Video worker thread started.
+2026-01-05T13:05:38.677321 [ERROR] Exception in video worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T13:05:38.677534 [INFO] Audio worker thread started.
+2026-01-05T13:05:38.678035 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:38.728812 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:38.779739 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:38.830378 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:38.881190 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:38.931803 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:38.982424 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:39.033207 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:39.083830 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:39.132121 [ERROR] One or more sensors have entered an error state.
+2026-01-05T13:05:39.132325 [WARNING] Video sensor error: Could not load face cascade classifier.
+2026-01-05T13:05:39.132480 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T13:05:39.134925 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T13:05:39.676080 [INFO] Quit signal received.
+2026-01-05T13:05:39.678621 [INFO] Video worker thread stopped.
+2026-01-05T13:05:39.687417 [INFO] Application shutting down...
+2026-01-05T13:05:39.687738 [INFO] Releasing video sensor...
+2026-01-05T13:05:39.687945 [INFO] Releasing audio sensor...
+2026-01-05T13:05:39.688086 [INFO] LogicEngine shutting down...
+2026-01-05T13:05:39.688133 [INFO] InterventionEngine shutting down...
+2026-01-05T13:05:39.688186 [INFO] No active intervention to stop.
+2026-01-05T13:05:39.688233 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:05:39.735405 [INFO] Audio worker thread stopped.
+2026-01-05T13:05:39.735926 [INFO] Audio worker thread joined.
+2026-01-05T13:05:39.736421 [INFO] Application shutdown complete.
+2026-01-05T13:05:39.736620 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:05:39.736678 [INFO] ACR Application Initializing...
+2026-01-05T13:05:39.737121 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:05:39.737300 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140110592049664'>
+2026-01-05T13:05:39.737427 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140110592049664'>
+2026-01-05T13:05:39.737467 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:05:39.737627 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:05:39.737815 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:05:39.737891 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:05:39.738002 [INFO] InterventionEngine initialized.
+2026-01-05T13:05:39.738562 [INFO] Setting up hotkeys...
+2026-01-05T13:05:39.738805 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T13:05:39.738854 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:05:39.738889 [INFO] Press Esc to quit.
+2026-01-05T13:05:39.738921 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:05:39.738952 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:05:39.740420 [INFO] Audio worker thread started.
+2026-01-05T13:05:39.740856 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:39.740161 [INFO] Video worker thread started.
+2026-01-05T13:05:39.741413 [ERROR] Exception in video worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T13:05:39.791504 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:39.842172 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:39.892820 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:39.943616 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:39.994240 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:40.044920 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:40.095760 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:40.146345 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:05:40.194140 [ERROR] One or more sensors have entered an error state.
+2026-01-05T13:05:40.194347 [WARNING] Video sensor error: Could not load face cascade classifier.
+2026-01-05T13:05:40.194512 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T13:05:40.196822 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T13:05:40.739761 [INFO] Quit signal received.
+2026-01-05T13:05:40.741717 [INFO] Video worker thread stopped.
+2026-01-05T13:05:40.749236 [INFO] Application shutting down...
+2026-01-05T13:05:40.749446 [INFO] Releasing video sensor...
+2026-01-05T13:05:40.749704 [INFO] Releasing audio sensor...
+2026-01-05T13:05:40.749869 [INFO] LogicEngine shutting down...
+2026-01-05T13:05:40.749916 [INFO] InterventionEngine shutting down...
+2026-01-05T13:05:40.749954 [INFO] No active intervention to stop.
+2026-01-05T13:05:40.750000 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:05:40.797552 [INFO] Audio worker thread stopped.
+2026-01-05T13:05:40.798008 [INFO] Audio worker thread joined.
+2026-01-05T13:05:40.798542 [INFO] Application shutdown complete.
+2026-01-05T13:06:06.745793 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:06:06.745903 [INFO] ACR Application Initializing...
+2026-01-05T13:06:06.749810 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:06:06.750548 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140671209498544'>
+2026-01-05T13:06:06.750941 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140671209498544'>
+2026-01-05T13:06:06.751009 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:06:06.751889 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:06:06.752028 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:06:06.752114 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:06:06.752247 [INFO] InterventionEngine initialized.
+2026-01-05T13:06:06.754246 [INFO] Setting up hotkeys...
+2026-01-05T13:06:06.754500 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T13:06:06.754554 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:06:06.754587 [INFO] Press Esc to quit.
+2026-01-05T13:06:06.754620 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:06:06.754701 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:06:06.756583 [INFO] Video worker thread started.
+2026-01-05T13:06:06.757097 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:06.757309 [INFO] Audio worker thread started.
+2026-01-05T13:06:06.758501 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:06.807718 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:06.809054 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:06.858313 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:06.859612 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:06.908760 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:06.910137 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:06.959135 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:06.960960 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:07.009642 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:07.011545 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:07.060177 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:07.062103 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:07.110602 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:07.112653 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:07.161157 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:07.163229 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:07.210483 [ERROR] One or more sensors have entered an error state.
+2026-01-05T13:06:07.210727 [WARNING] Video sensor error: Could not load face cascade classifier.
+2026-01-05T13:06:07.211234 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T13:06:07.213742 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T13:06:07.755547 [INFO] Quit signal received.
+2026-01-05T13:06:07.765794 [INFO] Application shutting down...
+2026-01-05T13:06:07.766005 [INFO] Releasing video sensor...
+2026-01-05T13:06:07.766865 [INFO] Releasing audio sensor...
+2026-01-05T13:06:07.767053 [INFO] LogicEngine shutting down...
+2026-01-05T13:06:07.767105 [INFO] InterventionEngine shutting down...
+2026-01-05T13:06:07.767142 [INFO] No active intervention to stop.
+2026-01-05T13:06:07.767187 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:06:07.813393 [INFO] Video worker thread stopped.
+2026-01-05T13:06:07.813842 [INFO] Video worker thread joined.
+2026-01-05T13:06:07.813980 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:06:07.814273 [INFO] Audio worker thread stopped.
+2026-01-05T13:06:07.814596 [INFO] Audio worker thread joined.
+2026-01-05T13:06:07.815743 [INFO] Application shutdown complete.
+2026-01-05T13:06:07.815936 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:06:07.815986 [INFO] ACR Application Initializing...
+2026-01-05T13:06:07.816354 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:06:07.816511 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140671209498544'>
+2026-01-05T13:06:07.816644 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140671209498544'>
+2026-01-05T13:06:07.816686 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:06:07.816859 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:06:07.817174 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:06:07.817502 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:06:07.817687 [INFO] InterventionEngine initialized.
+2026-01-05T13:06:07.818299 [INFO] Setting up hotkeys...
+2026-01-05T13:06:07.818559 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T13:06:07.818651 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:06:07.818756 [INFO] Press Esc to quit.
+2026-01-05T13:06:07.818828 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:06:07.818883 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:06:07.820354 [INFO] Audio worker thread started.
+2026-01-05T13:06:07.820859 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:07.820063 [INFO] Video worker thread started.
+2026-01-05T13:06:07.821166 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:07.871648 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:07.871912 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:07.922615 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:07.922342 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:07.973309 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:07.973534 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:08.024329 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:08.024165 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:08.075050 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:08.075287 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:08.125924 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:08.126125 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:08.176823 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:08.177151 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:08.227860 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:08.228104 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:08.273862 [ERROR] One or more sensors have entered an error state.
+2026-01-05T13:06:08.274055 [WARNING] Video sensor error: Could not load face cascade classifier.
+2026-01-05T13:06:08.274232 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T13:06:08.276510 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T13:06:08.819548 [INFO] Quit signal received.
+2026-01-05T13:06:08.828886 [INFO] Application shutting down...
+2026-01-05T13:06:08.829258 [INFO] Releasing video sensor...
+2026-01-05T13:06:08.829611 [INFO] Releasing audio sensor...
+2026-01-05T13:06:08.829900 [INFO] LogicEngine shutting down...
+2026-01-05T13:06:08.830009 [INFO] InterventionEngine shutting down...
+2026-01-05T13:06:08.830057 [INFO] No active intervention to stop.
+2026-01-05T13:06:08.830100 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:06:08.879594 [INFO] Video worker thread stopped.
+2026-01-05T13:06:08.879474 [INFO] Audio worker thread stopped.
+2026-01-05T13:06:08.880196 [INFO] Video worker thread joined.
+2026-01-05T13:06:08.880921 [INFO] Application shutdown complete.
+2026-01-05T13:06:08.881182 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:06:08.881237 [INFO] ACR Application Initializing...
+2026-01-05T13:06:08.881571 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:06:08.881710 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140671209498544'>
+2026-01-05T13:06:08.881893 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140671209498544'>
+2026-01-05T13:06:08.881947 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:06:08.882056 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:06:08.882174 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:06:08.882261 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:06:08.882379 [INFO] InterventionEngine initialized.
+2026-01-05T13:06:08.882925 [INFO] Setting up hotkeys...
+2026-01-05T13:06:08.883155 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T13:06:08.883204 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:06:08.883239 [INFO] Press Esc to quit.
+2026-01-05T13:06:08.883289 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:06:08.883322 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:06:08.884555 [INFO] Video worker thread started.
+2026-01-05T13:06:08.885091 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:08.884917 [INFO] Audio worker thread started.
+2026-01-05T13:06:08.885813 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:08.935719 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:08.936367 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:08.986834 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:08.987248 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:09.037939 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:09.038158 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:09.088841 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:09.089220 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:09.139590 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:09.139821 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:09.190392 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:09.190620 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:09.241510 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:09.241143 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:09.292147 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:09.292489 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:09.339163 [ERROR] One or more sensors have entered an error state.
+2026-01-05T13:06:09.339351 [WARNING] Video sensor error: Could not load face cascade classifier.
+2026-01-05T13:06:09.339528 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T13:06:09.341693 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T13:06:09.884040 [INFO] Quit signal received.
+2026-01-05T13:06:09.893767 [INFO] Application shutting down...
+2026-01-05T13:06:09.894030 [INFO] Releasing video sensor...
+2026-01-05T13:06:09.894227 [INFO] Releasing audio sensor...
+2026-01-05T13:06:09.894377 [INFO] LogicEngine shutting down...
+2026-01-05T13:06:09.894440 [INFO] InterventionEngine shutting down...
+2026-01-05T13:06:09.894477 [INFO] No active intervention to stop.
+2026-01-05T13:06:09.894516 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:06:09.943900 [INFO] Video worker thread stopped.
+2026-01-05T13:06:09.944148 [INFO] Audio worker thread stopped.
+2026-01-05T13:06:09.944655 [INFO] Video worker thread joined.
+2026-01-05T13:06:09.945248 [INFO] Application shutdown complete.
+2026-01-05T13:06:09.945393 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:06:09.945441 [INFO] ACR Application Initializing...
+2026-01-05T13:06:09.945764 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:06:09.945960 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140671209498544'>
+2026-01-05T13:06:09.946098 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140671209498544'>
+2026-01-05T13:06:09.946139 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:06:09.946244 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:06:09.946364 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:06:09.946468 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:06:09.946580 [INFO] InterventionEngine initialized.
+2026-01-05T13:06:09.947176 [INFO] Setting up hotkeys...
+2026-01-05T13:06:09.947404 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T13:06:09.947460 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:06:09.947495 [INFO] Press Esc to quit.
+2026-01-05T13:06:09.947528 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:06:09.947559 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:06:09.948842 [INFO] Video worker thread started.
+2026-01-05T13:06:09.948939 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:09.949279 [INFO] Audio worker thread started.
+2026-01-05T13:06:09.949898 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:09.999960 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:10.000383 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:10.050429 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:10.050929 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:10.100934 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:10.101493 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:10.151473 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:10.152156 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:10.201994 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:10.202676 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:10.252463 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:10.253216 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:10.302997 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:10.303774 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:10.353447 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:10.354388 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:10.403043 [ERROR] One or more sensors have entered an error state.
+2026-01-05T13:06:10.403231 [WARNING] Video sensor error: Could not load face cascade classifier.
+2026-01-05T13:06:10.403387 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T13:06:10.405744 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T13:06:10.948335 [INFO] Quit signal received.
+2026-01-05T13:06:10.957968 [INFO] Application shutting down...
+2026-01-05T13:06:10.958182 [INFO] Releasing video sensor...
+2026-01-05T13:06:10.958385 [INFO] Releasing audio sensor...
+2026-01-05T13:06:10.958538 [INFO] LogicEngine shutting down...
+2026-01-05T13:06:10.958586 [INFO] InterventionEngine shutting down...
+2026-01-05T13:06:10.958622 [INFO] No active intervention to stop.
+2026-01-05T13:06:10.958685 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:06:11.005465 [INFO] Video worker thread stopped.
+2026-01-05T13:06:11.005729 [INFO] Audio worker thread stopped.
+2026-01-05T13:06:11.006254 [INFO] Video worker thread joined.
+2026-01-05T13:06:11.006749 [INFO] Application shutdown complete.
+2026-01-05T13:06:11.006939 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:06:11.006994 [INFO] ACR Application Initializing...
+2026-01-05T13:06:11.007307 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:06:11.007450 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140671209498544'>
+2026-01-05T13:06:11.007577 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140671209498544'>
+2026-01-05T13:06:11.007617 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:06:11.007726 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:06:11.007950 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:06:11.008043 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:06:11.008184 [INFO] InterventionEngine initialized.
+2026-01-05T13:06:11.008679 [INFO] Setting up hotkeys...
+2026-01-05T13:06:11.008980 [WARNING] Keyboard library not found. Hotkeys disabled.
+2026-01-05T13:06:11.009156 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:06:11.009197 [INFO] Press Esc to quit.
+2026-01-05T13:06:11.009232 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:06:11.009264 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:06:11.010356 [INFO] Video worker thread started.
+2026-01-05T13:06:11.010627 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:11.010738 [INFO] Audio worker thread started.
+2026-01-05T13:06:11.011290 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:11.061697 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:11.061275 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:11.112415 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:11.112635 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:11.163059 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:11.163442 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:11.214187 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:11.214052 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:11.265132 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:11.264723 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:11.316037 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:11.315859 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:11.366850 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:11.367168 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:11.417834 [WARNING] Audio sensor error in worker: Audio stream is closed.
+2026-01-05T13:06:11.418087 [WARNING] Video sensor error in worker: Could not load face cascade classifier.
+2026-01-05T13:06:11.464485 [ERROR] One or more sensors have entered an error state.
+2026-01-05T13:06:11.464668 [WARNING] Video sensor error: Could not load face cascade classifier.
+2026-01-05T13:06:11.464843 [INFO] SPEAKING: 'Sensor error detected. Operations affected.'
+2026-01-05T13:06:11.467121 [WARNING] TTS failed: [Errno 2] No such file or directory: 'spd-say'
+2026-01-05T13:06:12.009969 [INFO] Quit signal received.
+2026-01-05T13:06:12.019480 [INFO] Application shutting down...
+2026-01-05T13:06:12.019704 [INFO] Releasing video sensor...
+2026-01-05T13:06:12.019979 [INFO] Releasing audio sensor...
+2026-01-05T13:06:12.020154 [INFO] LogicEngine shutting down...
+2026-01-05T13:06:12.020207 [INFO] InterventionEngine shutting down...
+2026-01-05T13:06:12.020250 [INFO] No active intervention to stop.
+2026-01-05T13:06:12.020289 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:06:12.069346 [INFO] Video worker thread stopped.
+2026-01-05T13:06:12.069592 [INFO] Audio worker thread stopped.
+2026-01-05T13:06:12.070235 [INFO] Video worker thread joined.
+2026-01-05T13:06:12.070744 [INFO] Application shutdown complete.
+2026-01-05T13:06:55.727717 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T13:06:55.727861 [INFO] ACR Application Initializing...
+2026-01-05T13:06:55.732434 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T13:06:55.732668 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140143788267456'>
+2026-01-05T13:06:55.732800 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140143788267456'>
+2026-01-05T13:06:55.732847 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T13:06:55.732971 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T13:06:55.733267 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T13:06:55.733420 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T13:06:55.733569 [INFO] InterventionEngine initialized.
+2026-01-05T13:06:55.735708 [INFO] ACR Initialized. Mode: active.
+2026-01-05T13:06:55.735789 [INFO] Press Esc to quit.
+2026-01-05T13:06:55.735832 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T13:06:55.735868 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T13:06:55.737830 [INFO] Application shutting down...
+2026-01-05T13:06:55.738117 [INFO] Releasing video sensor...
+2026-01-05T13:06:55.738600 [INFO] Releasing audio sensor...
+2026-01-05T13:06:55.738851 [INFO] LogicEngine shutting down...
+2026-01-05T13:06:55.738915 [INFO] InterventionEngine shutting down...
+2026-01-05T13:06:55.738967 [INFO] No active intervention to stop.
+2026-01-05T13:06:55.739244 [INFO] Waiting for video worker thread to join...
+2026-01-05T13:06:55.739569 [WARNING] Video worker thread did not join in time.
+2026-01-05T13:06:55.739911 [INFO] Waiting for audio worker thread to join...
+2026-01-05T13:06:55.740205 [WARNING] Audio worker thread did not join in time.
+2026-01-05T13:06:55.741136 [INFO] Application shutdown complete.

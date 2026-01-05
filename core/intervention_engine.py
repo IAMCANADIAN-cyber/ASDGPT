@@ -441,6 +441,10 @@ class InterventionEngine:
         if card:
             execution_details = card.copy()
             execution_details["type"] = card["id"] # Use ID as type for logging
+
+            # Update local variable so downstream checks use the correct ID/Type
+            intervention_type = card["id"]
+
             # If caller provided specific message override, we *could* use it,
             # but usually cards have their own sequences.
         elif intervention_type and custom_message:
