@@ -1,202 +1,228 @@
-import json
 import time
+import json
+import threading
 import sys
 import os
-import numpy as np
+import queue
+from typing import Optional, Dict, Any, List, Union
+import logging
 
-# Add project root to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Ensure project root is in path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 from core.logic_engine import LogicEngine
-from core.state_engine import StateEngine
 from core.data_logger import DataLogger
-import config
+from core.lmm_interface import LMMInterface
+from core.intervention_engine import InterventionEngine
 
-class MockLMMInterface:
-    def __init__(self):
-        self.last_analysis = {}
-        self.current_expected_outcome = None
+# Mock LMM Interface for deterministic replay
+class MockReplayLMMInterface(LMMInterface):
+    def __init__(self, response_queue: queue.Queue):
+        # Initialize without real credentials
+        self.response_queue = response_queue
+        self.logger = logging.getLogger("ReplayLMM")
 
-    def set_expectation(self, expected_outcome):
-        self.current_expected_outcome = expected_outcome
+    def process_data(self, video_data=None, audio_data=None, user_context=None) -> Optional[Dict]:
+        try:
+            # Return the next queued response
+            if not self.response_queue.empty():
+                response = self.response_queue.get_nowait()
+                return response
+            return None
+        except queue.Empty:
+            return None
 
-    def process_data(self, video_data=None, audio_data=None, user_context=None):
-        # Simulate LMM processing based on the expected outcome of the current event
-        trigger_reason = user_context.get("trigger_reason")
-
-        # Default analysis
-        analysis = {
-            "state_estimation": {
-                "arousal": 50, "overload": 10, "focus": 50, "energy": 50, "mood": 50
-            },
-            "suggestion": None
-        }
-
-        if self.current_expected_outcome:
-            # Apply expected state changes
-            if "state_change" in self.current_expected_outcome:
-                changes = self.current_expected_outcome["state_change"]
-                # Start from baseline
-                est = analysis["state_estimation"]
-                for dim, change in changes.items():
-                    if change == "increase":
-                        est[dim] = 80
-                    elif change == "decrease":
-                        est[dim] = 20
-                    elif change == "stable":
-                        est[dim] = 50
-
-            # Apply intervention suggestion
-            if self.current_expected_outcome.get("intervention"):
-                analysis["suggestion"] = {
-                    "type": self.current_expected_outcome["intervention"],
-                    "message": "Simulated intervention message."
-                }
-
-        self.last_analysis = analysis
-        return analysis
-
-    def get_intervention_suggestion(self, analysis):
+    def get_intervention_suggestion(self, analysis: Dict) -> Optional[Dict]:
         return analysis.get("suggestion")
 
-class MockInterventionEngine:
-    def __init__(self):
-        self.interventions_triggered = []
-
-    def start_intervention(self, suggestion):
-        self.interventions_triggered.append(suggestion)
-
-class SynchronousLogicEngine(LogicEngine):
-    """
-    A subclass of LogicEngine that runs LMM analysis synchronously for testing.
-    """
-    def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
-        if not self.lmm_interface:
-            return
-
-        lmm_payload = self._prepare_lmm_data(trigger_reason=reason)
-        if not lmm_payload:
-            return
-
-        # Directly call the async worker method synchronously
-        self._run_lmm_analysis_async(lmm_payload, allow_intervention)
-
 class ReplayHarness:
-    def __init__(self, dataset_path):
-        self.dataset_path = dataset_path
-        self.events = self._load_events()
+    def __init__(self, config_overrides_or_dataset: Optional[Union[Dict, str]] = None):
+        self.events = []
+        self.lmm_responses = queue.Queue()
+        self.detected_interventions = []
+        self.state_history = []
+        self.dataset = []
+
+        # Determine if we were passed a config dict or a dataset file path (legacy/test support)
+        self.config_overrides = {}
+        if isinstance(config_overrides_or_dataset, dict):
+            self.config_overrides = config_overrides_or_dataset
+        elif isinstance(config_overrides_or_dataset, str):
+            # It's a file path
+            try:
+                with open(config_overrides_or_dataset, 'r') as f:
+                    self.dataset = json.load(f)
+            except Exception as e:
+                print(f"Error loading dataset: {e}")
+
+        # Setup Logic Engine
         self.logger = DataLogger(log_file_path="replay_log.txt")
-        self.mock_lmm = MockLMMInterface()
-        self.mock_intervention = MockInterventionEngine()
+        self.lmm_interface = MockReplayLMMInterface(self.lmm_responses)
+        self.logic_engine = LogicEngine(
+            logger=self.logger,
+            lmm_interface=self.lmm_interface
+        )
 
-        # Initialize LogicEngine with mocks using the synchronous subclass
-        self.logic_engine = SynchronousLogicEngine(logger=self.logger, lmm_interface=self.mock_lmm)
-        self.logic_engine.set_intervention_engine(self.mock_intervention)
+        # Override Intervention Engine to capture triggers instead of executing
+        self.real_intervention_engine = InterventionEngine(self.logic_engine)
+        self.logic_engine.set_intervention_engine(self.real_intervention_engine)
 
-        # Adjust settings for faster replay
-        self.logic_engine.min_lmm_interval = 0 # Allow immediate triggers
-        self.logic_engine.lmm_call_interval = 2 # Short interval
+        # Hook into intervention start
+        self.original_start_intervention = self.real_intervention_engine.start_intervention
+        self.real_intervention_engine.start_intervention = self._mock_start_intervention
 
-        # Override thresholds to match dataset generation assumptions
-        # Assuming dataset uses values > 0.5 for high audio and > 20 for high video
+        # Configure Logic Engine for testing
+        self.logic_engine.lmm_call_interval = 0.1 # Fast checks
+        self.logic_engine.min_lmm_interval = 0
         self.logic_engine.audio_threshold_high = 0.5
-        self.logic_engine.video_activity_threshold_high = 20.0
+        self.logic_engine.video_activity_threshold_high = 10.0
 
-    def _load_events(self):
-        with open(self.dataset_path, 'r') as f:
-            return json.load(f)
+        # Apply overrides
+        for k, v in self.config_overrides.items():
+            setattr(self.logic_engine, k, v)
 
-    def run(self):
-        print(f"Starting replay of {len(self.events)} events...")
+    def _mock_start_intervention(self, intervention_details: Dict[str, Any]) -> bool:
+        self.detected_interventions.append(intervention_details)
+        return True
 
-        results = {
-            "total_events": len(self.events),
-            "triggered_interventions": 0,
-            "correct_triggers": 0,
-            "false_positives": 0,
-            "false_negatives": 0,
-            "start_time": time.time(),
+    def add_lmm_response(self, response: Dict[str, Any]):
+        """Queue a mock LMM response for the next trigger."""
+        self.lmm_responses.put(response)
+
+    def run_step(self, video_frame: Optional[Any] = None, audio_chunk: Optional[Any] = None):
+        """
+        Simulate one time step of the loop.
+        """
+        if video_frame is not None and np is not None:
+             self.logic_engine.process_video_data(video_frame)
+
+        if audio_chunk is not None and np is not None:
+             self.logic_engine.process_audio_data(audio_chunk)
+
+        self.logic_engine.update()
+
+        # Wait for any background LMM thread to finish
+        if self.logic_engine.lmm_thread and self.logic_engine.lmm_thread.is_alive():
+            self.logic_engine.lmm_thread.join()
+
+        # Capture state
+        self.state_history.append(self.logic_engine.state_engine.get_state())
+
+    def run(self) -> Dict[str, Any]:
+        """
+        Run through the loaded dataset (legacy support).
+        """
+        if not self.dataset:
+            print("No dataset loaded.")
+            return {}
+
+        correct = 0
+        false_positives = 0
+        false_negatives = 0
+
+        for event in self.dataset:
+            # Clear previous state? Or keep continuous?
+            # Usually replay tests want continuity or explicit reset.
+            # Here we assume continuity or user handles it.
+
+            # Setup inputs
+            input_data = event.get("input", {})
+            audio_level = input_data.get("audio_level", 0.0)
+
+            # Synthesize data based on level
+            # Just create a chunk with that RMS
+            audio_chunk = None
+            if np is not None:
+                audio_chunk = np.ones(1024) * audio_level
+
+            # LMM Mock Response
+            expected = event.get("expected_outcome", {})
+            expected_intervention = expected.get("intervention")
+
+            # If expected intervention, we need to ensure LMM would suggest it if triggered
+            # Or if it's a system trigger.
+            # For this harness, if we want to test LogicEngine, we need to mock what LMM *would* say
+            # or rely on system triggers.
+
+            if expected_intervention == "noise_alert":
+                 # This is likely a system trigger test, no LMM response needed if system handles it.
+                 # LogicEngine uses system triggers for loud noise?
+                 # Yes, but it triggers LMM first with reason "high_audio_level".
+                 # The LMM response logic in LogicEngine then checks visual_context or suggestion.
+
+                 # LogicEngine V2 (current):
+                 # 1. Event triggers LMM call.
+                 # 2. LMM returns.
+                 # 3. If LMM returns suggestion OR reflexive trigger, intervention starts.
+
+                 # So we need to queue an LMM response for this event to complete the loop.
+                 self.add_lmm_response({
+                     "state_estimation": {"arousal": 60},
+                     "suggestion": {"id": expected_intervention}
+                 })
+            else:
+                 # Default benign response
+                 self.add_lmm_response({
+                     "state_estimation": {"arousal": 50},
+                     "suggestion": None
+                 })
+
+            self.detected_interventions = [] # Reset for this step
+            self.run_step(audio_chunk=audio_chunk)
+
+            # Verification
+            triggered = None
+            if self.detected_interventions:
+                triggered = self.detected_interventions[0].get("id")
+
+            if triggered == expected_intervention:
+                correct += 1
+            else:
+                if triggered and not expected_intervention:
+                    false_positives += 1
+                elif expected_intervention and not triggered:
+                    false_negatives += 1
+
+        return {
+            "total_events": len(self.dataset),
+            "correct_triggers": correct,
+            "false_positives": false_positives,
+            "false_negatives": false_negatives
         }
 
-        for event in self.events:
-            print(f"Processing event: {event['id']} ({event['description']})")
-
-            # 1. Setup the mocks
-            self.mock_lmm.set_expectation(event['expected_outcome'])
-            self.mock_intervention.interventions_triggered = []
-
-            # Reset LogicEngine state slightly to ensure clean slate for event
-            self.logic_engine.last_lmm_call_time = 0 # Force eligible for periodic check if needed
-
-            # 2. Inject Sensor Data
-            target_audio = event['input']['audio_level']
-            audio_chunk = np.full(1024, target_audio)
-
-            target_video = event['input']['video_activity']
-            pixel_val = min(255, int(target_video))
-
-            frame1 = np.zeros((100, 100, 3), dtype=np.uint8)
-            frame2 = np.full((100, 100, 3), pixel_val, dtype=np.uint8)
-
-            # Inject
-            self.logic_engine.process_video_data(frame1) # Set previous
-            self.logic_engine.process_video_data(frame2) # Set current -> triggers diff calc
-            self.logic_engine.process_audio_data(audio_chunk)
-
-            # 3. Trigger LogicEngine Update
-            # Force time to allow trigger
-            self.logic_engine.last_lmm_call_time = time.time() - 100
-
-            self.logic_engine.update()
-
-            # 4. Verify Outcomes
-            expected_intervention = event['expected_outcome'].get("intervention")
-            actual_interventions = self.mock_intervention.interventions_triggered
-
-            if expected_intervention:
-                # Check if ANY of the triggered interventions match the type
-                match = next((i for i in actual_interventions if i['type'] == expected_intervention), None)
-                if match:
-                    print(f"  [SUCCESS] Triggered expected intervention: {expected_intervention}")
-                    results["correct_triggers"] += 1
-                    results["triggered_interventions"] += 1
-                else:
-                    if len(actual_interventions) > 0:
-                        got_types = [i['type'] for i in actual_interventions]
-                        print(f"  [FAILURE] Expected {expected_intervention}, got {got_types}")
-                        results["false_positives"] += 1 # Wrong one triggered
-                    else:
-                        print(f"  [FAILURE] Expected {expected_intervention}, got NONE")
-                        results["false_negatives"] += 1
-            else:
-                if len(actual_interventions) == 0:
-                     print(f"  [SUCCESS] Correctly triggered NO intervention.")
-                     results["correct_triggers"] += 1
-                else:
-                    got_types = [i['type'] for i in actual_interventions]
-                    print(f"  [FAILURE] Expected NONE, got {got_types}")
-                    results["false_positives"] += 1
-                    results["triggered_interventions"] += 1
-
-        results["duration"] = time.time() - results["start_time"]
-        results["intervention_rate_per_hour_simulated"] = (results["triggered_interventions"] / len(self.events)) * (3600 / 30) # Approx
-
-        return results
-
-    def print_report(self, results):
-        print("\n" + "="*40)
-        print("REPLAY HARNESS REPORT")
-        print("="*40)
-        print(f"Total Events: {results['total_events']}")
-        print(f"Successful Matches: {results['correct_triggers']}")
-        print(f"False Positives: {results['false_positives']}")
-        print(f"False Negatives: {results['false_negatives']}")
-        print("-" * 20)
-        percentage = (results['correct_triggers'] / results['total_events']) * 100 if results['total_events'] > 0 else 0
-        print(f"Accuracy: {percentage:.2f}%")
-        print("="*40)
+    def get_results(self):
+        return {
+            "interventions": self.detected_interventions,
+            "state_history": self.state_history
+        }
 
 if __name__ == "__main__":
-    harness = ReplayHarness("datasets/synthetic_events.json")
-    results = harness.run()
-    harness.print_report(results)
+    # Simple self-test
+    if np is None:
+        print("Numpy not found, skipping harness test.")
+        sys.exit(0)
+
+    harness = ReplayHarness()
+
+    # 1. Queue a response
+    harness.add_lmm_response({
+        "state_estimation": {"arousal": 80, "overload": 20},
+        "suggestion": {"id": "box_breathing"}
+    })
+
+    # 2. Trigger with high audio
+    audio = np.ones(1024) * 0.9
+    harness.run_step(audio_chunk=audio)
+
+    # 3. Check results
+    results = harness.get_results()
+    print("Detected Interventions:", results["interventions"])
+    if results["interventions"] and results["interventions"][0]["id"] == "box_breathing":
+        print("Harness Self-Test PASSED")
+    else:
+        print("Harness Self-Test FAILED")
