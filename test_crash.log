@@ -1,0 +1,128 @@
+2026-01-05T23:03:00.886794 [INFO] DataLogger initialized. Log level: INFO. Log file: test_crash.log
+2026-01-05T23:03:00.890032 [INFO] ACR Application Initializing...
+2026-01-05T23:03:00.894776 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T23:03:00.895578 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140002092416032'>
+2026-01-05T23:03:00.896028 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140002092416032'>
+2026-01-05T23:03:00.896118 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T23:03:00.896979 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T23:03:00.898814 [INFO] LMMInterface: LMMInterface initializing with URL: <MagicMock name='mock.LOCAL_LLM_URL.rstrip()' id='140002060720736'>
+2026-01-05T23:03:00.900261 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T23:03:00.901410 [ERROR] Failed to load suppressions: [Errno 9] Bad file descriptor
+2026-01-05T23:03:00.902049 [INFO] InterventionEngine initialized.
+2026-01-05T23:03:00.905209 [INFO] Setting up hotkeys...
+2026-01-05T23:03:00.906062 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T23:03:00.906142 [INFO] ACR Initialized. Mode: active.
+2026-01-05T23:03:00.906180 [INFO] Press Esc to quit.
+2026-01-05T23:03:00.906216 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T23:03:00.906255 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+h), Unhelpful (ctrl+alt+u)
+2026-01-05T23:03:00.908505 [INFO] Video worker thread started.
+2026-01-05T23:03:00.908959 [INFO] Audio worker thread started.
+2026-01-05T23:03:00.910129 [ERROR] AudioSensor: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T23:03:00.911679 [ERROR] VideoSensor: Error capturing frame: not enough values to unpack (expected 2, got 0)
+2026-01-05T23:03:00.911879 [WARNING] Audio sensor error in worker: Audio stream not available.
+2026-01-05T23:03:00.911826 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T23:03:00.962384 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T23:03:01.012812 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T23:03:01.063245 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T23:03:01.113699 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T23:03:01.164121 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T23:03:01.214735 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T23:03:01.265247 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T23:03:01.315829 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T23:03:01.366452 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T23:03:01.407958 [INFO] Quit signal received.
+2026-01-05T23:03:32.381555 [INFO] DataLogger initialized. Log level: INFO. Log file: test_crash.log
+2026-01-05T23:03:32.381689 [INFO] ACR Application Initializing...
+2026-01-05T23:03:32.384319 [INFO] LMMInterface: LMMInterface initializing with URL: <MagicMock name='mock.LOCAL_LLM_URL.rstrip()' id='140359516322032'>
+2026-01-05T23:03:32.388047 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T23:03:32.389431 [ERROR] Failed to load suppressions: [Errno 9] Bad file descriptor
+2026-01-05T23:03:32.390073 [INFO] InterventionEngine initialized.
+2026-01-05T23:03:32.394329 [INFO] Setting up hotkeys...
+2026-01-05T23:03:32.395416 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T23:03:32.395497 [INFO] ACR Initialized. Mode: active.
+2026-01-05T23:03:32.395535 [INFO] Press Esc to quit.
+2026-01-05T23:03:32.395692 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T23:03:32.395813 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+h), Unhelpful (ctrl+alt+u)
+2026-01-05T23:03:32.398537 [INFO] Audio worker thread started.
+2026-01-05T23:03:32.398107 [INFO] Video worker thread started.
+2026-01-05T23:03:32.697450 [INFO] Quit signal received.
+2026-01-05T23:03:32.701326 [INFO] Audio worker thread stopped.
+2026-01-05T23:03:32.702467 [INFO] Application shutting down...
+2026-01-05T23:03:32.702633 [INFO] Video worker thread stopped.
+2026-01-05T23:03:32.703078 [INFO] LogicEngine shutting down...
+2026-01-05T23:03:32.703207 [INFO] InterventionEngine shutting down...
+2026-01-05T23:03:32.703265 [INFO] No active intervention to stop.
+2026-01-05T23:03:32.706445 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T23:03:32.706540 [INFO] Application shutdown complete.
+2026-01-05T23:03:32.706849 [INFO] DataLogger initialized. Log level: INFO. Log file: test_crash.log
+2026-01-05T23:03:32.706962 [INFO] ACR Application Initializing...
+2026-01-05T23:03:32.707645 [INFO] LMMInterface: LMMInterface initializing with URL: <MagicMock name='mock.LOCAL_LLM_URL.rstrip()' id='140359516322032'>
+2026-01-05T23:03:32.708250 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T23:03:32.708767 [INFO] InterventionEngine initialized.
+2026-01-05T23:03:32.709762 [INFO] Setting up hotkeys...
+2026-01-05T23:03:32.710277 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T23:03:32.710349 [INFO] ACR Initialized. Mode: active.
+2026-01-05T23:03:32.710387 [INFO] Press Esc to quit.
+2026-01-05T23:03:32.710422 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T23:03:32.710456 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+h), Unhelpful (ctrl+alt+u)
+2026-01-05T23:03:32.711548 [INFO] Video worker thread started.
+2026-01-05T23:03:32.712926 [INFO] Audio worker thread started.
+2026-01-05T23:03:33.011499 [INFO] Quit signal received.
+2026-01-05T23:03:33.014446 [INFO] Application shutting down...
+2026-01-05T23:03:33.014330 [INFO] Video worker thread stopped.
+2026-01-05T23:03:33.014677 [INFO] Waiting for video worker thread to join...
+2026-01-05T23:03:33.015015 [INFO] Audio worker thread stopped.
+2026-01-05T23:03:33.015306 [INFO] Waiting for audio worker thread to join...
+2026-01-05T23:03:33.015507 [INFO] LogicEngine shutting down...
+2026-01-05T23:03:33.015580 [INFO] InterventionEngine shutting down...
+2026-01-05T23:03:33.015623 [INFO] No active intervention to stop.
+2026-01-05T23:03:33.016210 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T23:03:33.016277 [INFO] Application shutdown complete.
+2026-01-05T23:03:33.016573 [INFO] DataLogger initialized. Log level: INFO. Log file: test_crash.log
+2026-01-05T23:03:33.016634 [INFO] ACR Application Initializing...
+2026-01-05T23:03:33.017267 [INFO] LMMInterface: LMMInterface initializing with URL: <MagicMock name='mock.LOCAL_LLM_URL.rstrip()' id='140359516322032'>
+2026-01-05T23:03:33.017747 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T23:03:33.018329 [INFO] InterventionEngine initialized.
+2026-01-05T23:03:33.019255 [INFO] Setting up hotkeys...
+2026-01-05T23:03:33.019633 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T23:03:33.019733 [INFO] ACR Initialized. Mode: active.
+2026-01-05T23:03:33.019822 [INFO] Press Esc to quit.
+2026-01-05T23:03:33.020012 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T23:03:33.020067 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+h), Unhelpful (ctrl+alt+u)
+2026-01-05T23:03:33.021200 [INFO] Audio worker thread started.
+2026-01-05T23:03:33.020909 [INFO] Video worker thread started.
+2026-01-05T23:03:33.320731 [INFO] Quit signal received.
+2026-01-05T23:03:33.323403 [INFO] Application shutting down...
+2026-01-05T23:03:33.323548 [INFO] Waiting for video worker thread to join...
+2026-01-05T23:03:33.323943 [INFO] Video worker thread stopped.
+2026-01-05T23:03:33.323805 [INFO] Audio worker thread stopped.
+2026-01-05T23:03:33.324431 [INFO] LogicEngine shutting down...
+2026-01-05T23:03:33.324509 [INFO] InterventionEngine shutting down...
+2026-01-05T23:03:33.324549 [INFO] No active intervention to stop.
+2026-01-05T23:03:33.324974 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T23:03:33.325029 [INFO] Application shutdown complete.
+2026-01-05T23:03:33.325309 [INFO] DataLogger initialized. Log level: INFO. Log file: test_crash.log
+2026-01-05T23:03:33.325382 [INFO] ACR Application Initializing...
+2026-01-05T23:03:33.326140 [INFO] LMMInterface: LMMInterface initializing with URL: <MagicMock name='mock.LOCAL_LLM_URL.rstrip()' id='140359516322032'>
+2026-01-05T23:03:33.326571 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T23:03:33.327078 [INFO] InterventionEngine initialized.
+2026-01-05T23:03:33.328045 [INFO] Setting up hotkeys...
+2026-01-05T23:03:33.328384 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T23:03:33.328485 [INFO] ACR Initialized. Mode: active.
+2026-01-05T23:03:33.328534 [INFO] Press Esc to quit.
+2026-01-05T23:03:33.328568 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T23:03:33.328600 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+h), Unhelpful (ctrl+alt+u)
+2026-01-05T23:03:33.329523 [INFO] Video worker thread started.
+2026-01-05T23:03:33.329955 [INFO] Audio worker thread started.
+2026-01-05T23:03:33.629298 [INFO] Quit signal received.
+2026-01-05T23:03:33.633411 [INFO] Audio worker thread stopped.
+2026-01-05T23:03:33.633569 [INFO] Application shutting down...
+2026-01-05T23:03:33.634002 [INFO] Waiting for video worker thread to join...
+2026-01-05T23:03:33.633877 [INFO] Video worker thread stopped.
+2026-01-05T23:03:33.634662 [INFO] LogicEngine shutting down...
+2026-01-05T23:03:33.634750 [INFO] InterventionEngine shutting down...
+2026-01-05T23:03:33.634792 [INFO] No active intervention to stop.
+2026-01-05T23:03:33.635191 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T23:03:33.635251 [INFO] Application shutdown complete.
+2026-01-05T23:03:33.635527 [INFO] DataLogger initialized. Log level: INFO. Log file: test_crash.log
+2026-01-05T23:03:33.635601 [INFO] ACR Application Initializing...
