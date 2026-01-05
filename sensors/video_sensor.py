@@ -43,20 +43,36 @@ class VideoSensor:
             self._log_error(f"Error initializing camera: {e}")
             self.cap = None
 
+    def has_error(self):
+        """Returns True if the sensor is in a persistent error state."""
+        return self.cap is None or not self.cap.isOpened()
+
+    def get_last_error(self):
+        """Returns the last error message."""
+        if self.cap is None:
+            return "Camera not initialized."
+        if not self.cap.isOpened():
+            return "Camera connection lost."
+        return ""
+
     def get_frame(self):
+        """
+        Captures a frame from the camera.
+        Returns: (frame, error_message)
+        """
         if self.cap is None or not self.cap.isOpened():
-             # Try to reconnect occasionally?
-             return None
+             # Try to reconnect occasionally? (Not implemented yet)
+             return None, "Camera not connected"
 
         try:
             ret, frame = self.cap.read()
             if not ret:
                 self._log_warning("Failed to capture video frame.")
-                return None
-            return frame
+                return None, "Failed to capture frame"
+            return frame, None
         except Exception as e:
              self._log_error(f"Error capturing frame: {e}")
-             return None
+             return None, str(e)
 
     def calculate_raw_activity(self, gray_frame):
         """
@@ -114,7 +130,7 @@ class VideoSensor:
         """
         Convenience method to get frame and calculate activity.
         """
-        frame = self.get_frame()
+        frame, _ = self.get_frame()
         return self.calculate_activity(frame)
 
     def process_frame(self, frame):

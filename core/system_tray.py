@@ -1,4 +1,13 @@
-import pystray
+try:
+    import pystray
+    PYSTRAY_AVAILABLE = True
+except (ImportError, Exception):
+    # Handle both generic ImportErrors and platform-specific exceptions (like missing X11)
+    # during module load which can happen in some environments.
+    pystray = None
+    PYSTRAY_AVAILABLE = False
+    print("Warning: pystray not available or failed to initialize. System tray icon will be disabled.")
+
 from PIL import Image, ImageDraw # Pillow is needed for Image.open and potentially for creating icons on the fly
 import threading
 import config
@@ -47,22 +56,32 @@ class ACRTrayIcon:
         self.icons = {name: load_image(path) for name, path in self.icon_paths.items()}
 
         self.current_icon_state = "default" # e.g., "active", "paused"
-
-        # Menu items
-        menu = (
-            pystray.MenuItem('Pause/Resume', self.on_toggle_pause_resume),
-            pystray.MenuItem('Snooze for 1 Hour', self.on_snooze),
-            pystray.Menu.SEPARATOR,
-            pystray.MenuItem('Last: Helpful', self.on_feedback_helpful),
-            pystray.MenuItem('Last: Unhelpful', self.on_feedback_unhelpful),
-            pystray.Menu.SEPARATOR,
-            pystray.MenuItem('Quit', self.on_quit)
-        )
-
-        self.tray_icon = pystray.Icon(config.APP_NAME, self.icons[self.current_icon_state], config.APP_NAME, menu)
+        self.tray_icon = None
         self.thread = None
 
+        if PYSTRAY_AVAILABLE:
+            try:
+                # Menu items
+                menu = (
+                    pystray.MenuItem('Pause/Resume', self.on_toggle_pause_resume),
+                    pystray.MenuItem('Snooze for 1 Hour', self.on_snooze),
+                    pystray.Menu.SEPARATOR,
+                    pystray.MenuItem('Last: Helpful', self.on_feedback_helpful),
+                    pystray.MenuItem('Last: Unhelpful', self.on_feedback_unhelpful),
+                    pystray.Menu.SEPARATOR,
+                    pystray.MenuItem('Quit', self.on_quit)
+                )
+
+                self.tray_icon = pystray.Icon(config.APP_NAME, self.icons[self.current_icon_state], config.APP_NAME, menu)
+            except Exception as e:
+                print(f"Failed to initialize pystray Icon: {e}. Tray icon will be disabled.")
+                self.tray_icon = None
+
     def run_threaded(self):
+        if not self.tray_icon:
+            print("System tray icon not available (headless mode or error).")
+            return
+
         # pystray needs to run in its own thread if the main app has its own loop
         if not self.thread or not self.thread.is_alive():
             self.thread = threading.Thread(target=self.tray_icon.run, daemon=True)

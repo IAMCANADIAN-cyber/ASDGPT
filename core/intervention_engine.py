@@ -432,6 +432,7 @@ class InterventionEngine:
         # 2. If no ID or card not found, check if LMM suggested a type that matches a category/card
         # (This is a future enhancement, for now we stick to explicit ID or ad-hoc)
 
+        # Initial check, but will be updated if card found
         intervention_type = intervention_details.get("type")
         custom_message = intervention_details.get("message")
 
@@ -441,6 +442,7 @@ class InterventionEngine:
         if card:
             execution_details = card.copy()
             execution_details["type"] = card["id"] # Use ID as type for logging
+            intervention_type = card["id"] # Ensure we check suppression against the canonical ID
             # If caller provided specific message override, we *could* use it,
             # but usually cards have their own sequences.
         elif intervention_type and custom_message:
@@ -475,12 +477,18 @@ class InterventionEngine:
         # But generally start_intervention is called from LogicEngine main thread.
         # If an intervention is active, we generally want to ignore new ones unless we have a priority system (TODO).
         if self._intervention_active.is_set():
-            # FUTURE: If new intervention has higher priority (Tier 3 vs 1), stop current and start new.
-            if logger:
-                logger.log_info(f"Intervention attempt ignored: An intervention is already active.")
+            # Ensure we're not just waiting for the thread to clean up
+            if self.intervention_thread and self.intervention_thread.is_alive():
+                 # FUTURE: If new intervention has higher priority (Tier 3 vs 1), stop current and start new.
+                if logger:
+                    logger.log_info(f"Intervention attempt ignored: An intervention is already active.")
+                else:
+                    print(f"Intervention attempt ignored: An intervention is already active.")
+                return False
             else:
-                print(f"Intervention attempt ignored: An intervention is already active.")
-            return False
+                # Thread is dead but flag is set? Should have been cleared by thread end.
+                # Maybe race condition? We can safely clear it if thread is dead.
+                self._intervention_active.clear()
 
         current_app_mode = self.logic_engine.get_mode()
         if current_app_mode != "active":
