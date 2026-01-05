@@ -1,5 +1,9 @@
 import sounddevice as sd
 import numpy as np
+try:
+    from scipy import signal
+except ImportError:
+    signal = None
 import time
 import collections
 import config # Potentially for audio device settings in the future
@@ -16,6 +20,12 @@ class AudioSensor:
         self.history_size = int(history_seconds / chunk_duration)
         self.pitch_history = collections.deque(maxlen=self.history_size)
         self.rms_history = collections.deque(maxlen=self.history_size)
+
+        # VAD History (Adaptive Noise Floor)
+        # Store recent RMS values to estimate background noise
+        self.vad_history = collections.deque(maxlen=20) # ~20 seconds history
+        self.vad_hangover = 0 # Counter for hangover frames
+        self.vad_hangover_frames = 3 # Keep active for ~3 chunks after speech stops
 
         # Audio buffer for speech rate analysis (needs more context than 1 chunk)
         # Store ~1 second of audio
@@ -159,6 +169,67 @@ class AudioSensor:
     def get_last_error(self):
         return self.last_error_message
 
+    def _vad_filter(self, audio_data):
+        """
+        Applies a bandpass filter (300Hz - 3400Hz) to focus on voice frequencies.
+        Returns filtered audio data.
+        """
+        if signal is None:
+            return audio_data
+
+        try:
+            sos = signal.butter(10, [300, 3400], 'bandpass', fs=self.sample_rate, output='sos')
+            filtered = signal.sosfilt(sos, audio_data)
+            return filtered
+        except Exception as e:
+            self._log_warning(f"VAD filter failed: {e}")
+            return audio_data
+
+    def _detect_voice_activity(self, audio_data):
+        """
+        Detects if speech is present using adaptive energy thresholding on filtered audio.
+        Returns (is_speech: bool, confidence: float)
+        """
+        # 1. Filter audio to voice band
+        filtered_audio = self._vad_filter(audio_data)
+
+        # 2. Calculate Energy (RMS)
+        rms = np.sqrt(np.mean(filtered_audio**2))
+
+        # 3. Update Background Noise Estimation
+        # We assume the lowest 10% of recent RMS values represent background noise
+        self.vad_history.append(rms)
+        history_sorted = sorted(self.vad_history)
+        noise_floor_index = max(0, int(len(history_sorted) * 0.1))
+        noise_floor = history_sorted[noise_floor_index] if history_sorted else 0.001
+
+        # Ensure a sane minimum noise floor to avoid triggering on digital silence
+        noise_floor = max(noise_floor, 0.005)
+
+        # 4. Thresholding
+        # Speech is typically significantly louder than background
+        # Dynamic threshold: Noise Floor + 10dB (approx 3x amplitude) or fixed minimum
+        threshold = max(noise_floor * 3.0, 0.02)
+
+        is_active = rms > threshold
+
+        # Calculate confidence (0.0 - 1.0)
+        # Simple linear mapping: threshold -> 0.5, threshold*2 -> 1.0
+        if rms < threshold:
+            confidence = (rms / threshold) * 0.5
+        else:
+            confidence = 0.5 + min((rms - threshold) / threshold, 1.0) * 0.5
+
+        # 5. Hangover Logic
+        if is_active:
+            self.vad_hangover = self.vad_hangover_frames
+            return True, confidence
+        elif self.vad_hangover > 0:
+            self.vad_hangover -= 1
+            return True, confidence * 0.8 # Decay confidence during hangover
+
+        return False, confidence
+
     def _calculate_speech_rate(self, audio_data):
         """
         Estimates speech rate (syllables/sec) based on amplitude envelope peaks.
@@ -247,7 +318,9 @@ class AudioSensor:
             "pitch_variance": 0.0,
             "rms_variance": 0.0,
             "activity_bursts": 0, # Legacy metric kept for backward compatibility
-            "speech_rate": 0.0
+            "speech_rate": 0.0,
+            "is_speech": False,
+            "speech_confidence": 0.0
         }
 
         if chunk is None or len(chunk) == 0:
@@ -265,6 +338,11 @@ class AudioSensor:
 
             # 1. RMS (Loudness)
             metrics["rms"] = float(np.sqrt(np.mean(audio_data**2)))
+
+            # 2. VAD (Voice Activity Detection)
+            is_speech, speech_conf = self._detect_voice_activity(audio_data)
+            metrics["is_speech"] = is_speech
+            metrics["speech_confidence"] = float(speech_conf)
 
             # Normalize for other calculations (avoid div by zero, but handle silence)
             if metrics["rms"] < 1e-6:
@@ -288,11 +366,11 @@ class AudioSensor:
                 # Return early for silence, but update rms_history first
                 return metrics
 
-            # 2. Zero Crossing Rate (ZCR) - Proxy for "noisiness" or high frequency content
+            # 3. Zero Crossing Rate (ZCR) - Proxy for "noisiness" or high frequency content
             zero_crossings = np.nonzero(np.diff(audio_data > 0))[0]
             metrics["zcr"] = float(len(zero_crossings) / len(audio_data))
 
-            # 3. Spectral Features (Centroid) using FFT
+            # 4. Spectral Features (Centroid) using FFT
             # Windowing to reduce leakage
             windowed_data = audio_data * np.hanning(len(audio_data))
             spectrum = np.fft.rfft(windowed_data)
@@ -304,14 +382,14 @@ class AudioSensor:
             if sum_magnitude > 1e-6:
                 metrics["spectral_centroid"] = float(np.sum(freqs * magnitude) / sum_magnitude)
 
-            # 4. Simple Pitch Estimation (Dominant Frequency)
+            # 5. Simple Pitch Estimation (Dominant Frequency)
             # Find peak frequency (ignoring very low freq DC/rumble < 50Hz)
             valid_idx = np.where(freqs > 50)[0]
             if len(valid_idx) > 0:
                 peak_idx = valid_idx[np.argmax(magnitude[valid_idx])]
                 metrics["pitch_estimation"] = float(freqs[peak_idx])
 
-            # 5. Speech Rate (Syllable estimation using buffered audio)
+            # 6. Speech Rate (Syllable estimation using buffered audio)
             if len(self.raw_audio_buffer) >= int(0.5 * self.sample_rate): # Need at least 0.5s for meaningful rate
                 buffered_audio = np.array(self.raw_audio_buffer)
                 metrics["speech_rate"] = self._calculate_speech_rate(buffered_audio)
