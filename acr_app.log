@@ -1,104 +1,27 @@
-2026-01-04T08:34:31.990787 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
-2026-01-04T08:34:31.991268 [INFO] LogicEngine initialized. Mode: active
-2026-01-04T08:34:31.992393 [INFO] Triggering LMM analysis (Reason: periodic_check)...
-2026-01-04T08:34:31.992493 [EVENT] Event: lmm_trigger | Payload: {'reason': 'periodic_check'}
-2026-01-04T08:34:31.993249 [INFO] StateEngine: Updated state to {'arousal': 51, 'overload': 2, 'focus': 52, 'energy': 79, 'mood': 51}
-2026-01-04T08:34:31.993421 [INFO] LMM analysis complete and state updated.
-2026-01-04T08:34:31.993511 [EVENT] Event: state_update | Payload: {'arousal': 51, 'overload': 2, 'focus': 52, 'energy': 79, 'mood': 51}
-2026-01-04T08:34:31.993619 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
-2026-01-04T08:34:31.994143 [INFO] Triggering LMM analysis (Reason: high_audio_level)...
-2026-01-04T08:34:31.994274 [EVENT] Event: lmm_trigger | Payload: {'reason': 'high_audio_level'}
-2026-01-04T08:34:31.994797 [INFO] StateEngine: Updated state to {'arousal': 52, 'overload': 4, 'focus': 54, 'energy': 78, 'mood': 52}
-2026-01-04T08:34:31.994969 [INFO] LMM analysis complete and state updated.
-2026-01-04T08:34:31.995027 [EVENT] Event: state_update | Payload: {'arousal': 52, 'overload': 4, 'focus': 54, 'energy': 78, 'mood': 52}
-2026-01-04T08:34:31.995124 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
-2026-01-04T08:34:32.008427 [INFO] Triggering LMM analysis (Reason: high_video_activity)...
-2026-01-04T08:34:32.008604 [EVENT] Event: lmm_trigger | Payload: {'reason': 'high_video_activity'}
-2026-01-04T08:34:32.009094 [INFO] StateEngine: Updated state to {'arousal': 53, 'overload': 6, 'focus': 56, 'energy': 77, 'mood': 53}
-2026-01-04T08:34:32.009297 [INFO] LMM analysis complete and state updated.
-2026-01-04T08:34:32.009356 [EVENT] Event: state_update | Payload: {'arousal': 53, 'overload': 6, 'focus': 56, 'energy': 77, 'mood': 53}
-2026-01-04T08:34:32.009454 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
-2026-01-04T08:38:52.676313 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
-2026-01-04T08:38:52.676543 [INFO] LogicEngine initialized. Mode: active
-2026-01-04T08:38:52.677189 [INFO] Triggering LMM analysis (Reason: test)...
-2026-01-04T08:38:52.677290 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
-2026-01-04T08:38:52.677829 [INFO] StateEngine: Updated state to {'arousal': 18, 'overload': 18, 'focus': 82, 'energy': 82, 'mood': 82}
-2026-01-04T08:38:52.678018 [INFO] LMM analysis complete and state updated.
-2026-01-04T08:38:52.678087 [INFO] LMM Detected Visual Context: ['phone_usage']
-2026-01-04T08:38:52.678144 [EVENT] Event: state_update | Payload: {'arousal': 18, 'overload': 18, 'focus': 82, 'energy': 82, 'mood': 82}
-2026-01-04T08:38:52.678815 [INFO] Triggering LMM analysis (Reason: test)...
-2026-01-04T08:38:52.678934 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
-2026-01-04T08:38:52.679422 [INFO] StateEngine: Updated state to {'arousal': 26, 'overload': 26, 'focus': 74, 'energy': 74, 'mood': 74}
-2026-01-04T08:38:52.679632 [INFO] LMM analysis complete and state updated.
-2026-01-04T08:38:52.679691 [INFO] LMM Detected Visual Context: ['phone_usage']
-2026-01-04T08:38:52.679745 [EVENT] Event: state_update | Payload: {'arousal': 26, 'overload': 26, 'focus': 74, 'energy': 74, 'mood': 74}
-2026-01-04T08:38:52.680488 [INFO] Triggering LMM analysis (Reason: test)...
-2026-01-04T08:38:52.680591 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
-2026-01-04T08:38:52.681017 [INFO] StateEngine: Updated state to {'arousal': 34, 'overload': 34, 'focus': 66, 'energy': 66, 'mood': 66}
-2026-01-04T08:38:52.681124 [INFO] LMM analysis complete and state updated.
-2026-01-04T08:38:52.681272 [INFO] LMM Detected Visual Context: ['phone_usage']
-2026-01-04T08:38:52.681323 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
-2026-01-04T08:38:52.681369 [EVENT] Event: state_update | Payload: {'arousal': 34, 'overload': 34, 'focus': 66, 'energy': 66, 'mood': 66}
-2026-01-04T08:38:52.682090 [INFO] Triggering LMM analysis (Reason: test)...
-2026-01-04T08:38:52.682178 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
-2026-01-04T08:38:52.682586 [INFO] StateEngine: Updated state to {'arousal': 42, 'overload': 42, 'focus': 58, 'energy': 58, 'mood': 58}
-2026-01-04T08:38:52.682765 [INFO] LMM analysis complete and state updated.
-2026-01-04T08:38:52.682818 [INFO] LMM Detected Visual Context: ['phone_usage']
-2026-01-04T08:38:52.682860 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
-2026-01-04T08:38:52.682934 [EVENT] Event: state_update | Payload: {'arousal': 42, 'overload': 42, 'focus': 58, 'energy': 58, 'mood': 58}
-2026-01-04T08:40:04.389326 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
-2026-01-04T08:40:04.389455 [INFO] LogicEngine initialized. Mode: active
-2026-01-04T08:40:04.389865 [INFO] Triggering LMM analysis (Reason: test)...
-2026-01-04T08:40:04.389946 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
-2026-01-04T08:40:04.390480 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
-2026-01-04T08:40:04.390730 [INFO] LMM analysis complete and state updated.
-2026-01-04T08:40:04.390795 [INFO] LMM Detected Visual Context: ['phone_usage']
-2026-01-04T08:40:04.390851 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
-2026-01-04T08:40:04.391325 [INFO] Triggering LMM analysis (Reason: test)...
-2026-01-04T08:40:04.391422 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
-2026-01-04T08:40:04.391908 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 20, 'focus': 50, 'energy': 68, 'mood': 50}
-2026-01-04T08:40:04.392219 [INFO] LMM analysis complete and state updated.
-2026-01-04T08:40:04.392306 [INFO] LMM Detected Visual Context: ['phone_usage']
-2026-01-04T08:40:04.392363 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 20, 'focus': 50, 'energy': 68, 'mood': 50}
-2026-01-04T08:40:04.392783 [INFO] Triggering LMM analysis (Reason: test)...
-2026-01-04T08:40:04.392883 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
-2026-01-04T08:40:04.393326 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 30, 'focus': 50, 'energy': 62, 'mood': 50}
-2026-01-04T08:40:04.393477 [INFO] LMM analysis complete and state updated.
-2026-01-04T08:40:04.393533 [INFO] LMM Detected Visual Context: ['phone_usage']
-2026-01-04T08:40:04.393578 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
-2026-01-04T08:40:04.393624 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 30, 'focus': 50, 'energy': 62, 'mood': 50}
-2026-01-04T08:40:04.394045 [INFO] Triggering LMM analysis (Reason: test)...
-2026-01-04T08:40:04.394136 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
-2026-01-04T08:40:04.394510 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 40, 'focus': 50, 'energy': 56, 'mood': 50}
-2026-01-04T08:40:04.394659 [INFO] LMM analysis complete and state updated.
-2026-01-04T08:40:04.394761 [INFO] LMM Detected Visual Context: ['phone_usage']
-2026-01-04T08:40:04.394807 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
-2026-01-04T08:40:04.394852 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 40, 'focus': 50, 'energy': 56, 'mood': 50}
-2026-01-04T07:40:26.755240 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
-2026-01-04T07:40:26.755649 [INFO] LogicEngine initialized. Mode: active
-2026-01-04T07:40:26.757060 [INFO] Triggering LMM analysis (Reason: test)...
-2026-01-04T07:40:26.757225 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
-2026-01-04T07:40:26.758145 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
-2026-01-04T07:40:26.758322 [INFO] LMM analysis complete and state updated.
-2026-01-04T07:40:26.758376 [INFO] LMM Detected Visual Context: ['phone_usage']
-2026-01-04T07:40:26.758428 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 10, 'focus': 50, 'energy': 74, 'mood': 50}
-2026-01-04T07:40:26.759143 [INFO] Triggering LMM analysis (Reason: test)...
-2026-01-04T07:40:26.759233 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
-2026-01-04T07:40:26.759724 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 20, 'focus': 50, 'energy': 68, 'mood': 50}
-2026-01-04T07:40:26.759891 [INFO] LMM analysis complete and state updated.
-2026-01-04T07:40:26.759945 [INFO] LMM Detected Visual Context: ['phone_usage']
-2026-01-04T07:40:26.759996 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 20, 'focus': 50, 'energy': 68, 'mood': 50}
-2026-01-04T07:40:26.760622 [INFO] Triggering LMM analysis (Reason: test)...
-2026-01-04T07:40:26.760704 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
-2026-01-04T07:40:26.761152 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 30, 'focus': 50, 'energy': 62, 'mood': 50}
-2026-01-04T07:40:26.761317 [INFO] LMM analysis complete and state updated.
-2026-01-04T07:40:26.761370 [INFO] LMM Detected Visual Context: ['phone_usage']
-2026-01-04T07:40:26.761414 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
-2026-01-04T07:40:26.761459 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 30, 'focus': 50, 'energy': 62, 'mood': 50}
-2026-01-04T07:40:26.762116 [INFO] Triggering LMM analysis (Reason: test)...
-2026-01-04T07:40:26.762202 [EVENT] Event: lmm_trigger | Payload: {'reason': 'test'}
-2026-01-04T07:40:26.762745 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 40, 'focus': 50, 'energy': 56, 'mood': 50}
-2026-01-04T07:40:26.762897 [INFO] LMM analysis complete and state updated.
-2026-01-04T07:40:26.762946 [INFO] LMM Detected Visual Context: ['phone_usage']
-2026-01-04T07:40:26.762987 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
-2026-01-04T07:40:26.763030 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 40, 'focus': 50, 'energy': 56, 'mood': 50}
+2026-01-05T04:06:04.938855 [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-05T04:06:04.939047 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T04:06:04.939160 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T04:06:04.939903 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 2, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T04:06:04.939986 [INFO] LMM analysis complete and state updated.
+2026-01-05T04:06:04.940032 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T04:06:04.940080 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 2, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-05T04:06:04.940947 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 4, 'focus': 50, 'energy': 68, 'mood': 50}
+2026-01-05T04:06:04.941020 [INFO] LMM analysis complete and state updated.
+2026-01-05T04:06:04.941063 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T04:06:04.941109 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 4, 'focus': 50, 'energy': 68, 'mood': 50}
+2026-01-05T04:06:04.941588 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 6, 'focus': 50, 'energy': 62, 'mood': 50}
+2026-01-05T04:06:04.941656 [INFO] LMM analysis complete and state updated.
+2026-01-05T04:06:04.941696 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T04:06:04.941735 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
+2026-01-05T04:06:04.941789 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 6, 'focus': 50, 'energy': 62, 'mood': 50}
+2026-01-05T04:06:04.941880 [INFO] Reflexive Trigger activated: doom_scroll_breaker
+2026-01-05T04:06:04.941918 [INFO] System Trigger overrides LMM suggestion. Triggered: doom_scroll_breaker
+2026-01-05T04:06:04.941956 [INFO] Starting intervention: {'id': 'doom_scroll_breaker'}
+2026-01-05T04:06:04.942340 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 8, 'focus': 50, 'energy': 56, 'mood': 50}
+2026-01-05T04:06:04.942451 [INFO] LMM analysis complete and state updated.
+2026-01-05T04:06:04.942504 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-05T04:06:04.942545 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
+2026-01-05T04:06:04.942587 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 8, 'focus': 50, 'energy': 56, 'mood': 50}
+2026-01-05T04:06:04.942678 [INFO] Reflexive Trigger activated: doom_scroll_breaker
+2026-01-05T04:06:04.942717 [INFO] System Trigger overrides LMM suggestion. Triggered: doom_scroll_breaker
+2026-01-05T04:06:04.942860 [INFO] Starting intervention: {'id': 'doom_scroll_breaker'}
