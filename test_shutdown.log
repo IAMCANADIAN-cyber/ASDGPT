@@ -1,0 +1,401 @@
+2026-01-05T09:04:14.804380 [INFO] DataLogger initialized. Log level: INFO. Log file: test_shutdown.log
+2026-01-05T09:04:14.804554 [INFO] ACR Application Initializing...
+2026-01-05T09:04:14.806375 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T09:04:14.807049 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='139970217684832'>
+2026-01-05T09:04:14.807499 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='139970217684832'>
+2026-01-05T09:04:14.807580 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T09:04:14.810061 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T09:04:14.810222 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T09:04:14.810353 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T09:04:14.810508 [INFO] InterventionEngine initialized.
+2026-01-05T09:04:14.812549 [INFO] Setting up hotkeys...
+2026-01-05T09:04:14.813123 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T09:04:14.813196 [INFO] ACR Initialized. Mode: active.
+2026-01-05T09:04:14.813234 [INFO] Press Esc to quit.
+2026-01-05T09:04:14.813268 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T09:04:14.813302 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T09:04:14.814587 [INFO] Audio worker thread started.
+2026-01-05T09:04:14.813995 [INFO] Video worker thread started.
+2026-01-05T09:04:14.815858 [ERROR] AudioSensor: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:14.816058 [WARNING] Audio sensor error in worker: Audio stream not available.
+2026-01-05T09:04:14.816272 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T09:04:14.866634 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:14.917047 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:14.967489 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:15.017976 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:15.068533 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:15.118988 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:15.169438 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:15.219876 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:15.270324 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:15.314926 [INFO] Application shutting down...
+2026-01-05T09:04:15.315108 [INFO] LogicEngine shutting down...
+2026-01-05T09:04:15.315157 [INFO] InterventionEngine shutting down...
+2026-01-05T09:04:15.315202 [INFO] No active intervention to stop.
+2026-01-05T09:04:15.315246 [INFO] Releasing sensors to unblock threads...
+2026-01-05T09:04:15.315496 [INFO] Waiting for video worker thread to join...
+2026-01-05T09:04:15.320767 [INFO] Audio worker thread stopped.
+2026-01-05T09:04:15.816833 [INFO] Video worker thread stopped.
+2026-01-05T09:04:15.818745 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T09:04:15.818865 [INFO] Application shutdown complete.
+2026-01-05T09:04:15.818961 [INFO] DataLogger initialized. Log level: INFO. Log file: test_shutdown.log
+2026-01-05T09:04:15.819002 [INFO] ACR Application Initializing...
+2026-01-05T09:04:15.819259 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T09:04:15.819514 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='139970217684832'>
+2026-01-05T09:04:15.819663 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='139970217684832'>
+2026-01-05T09:04:15.819708 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T09:04:15.819814 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T09:04:15.819920 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T09:04:15.819992 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T09:04:15.820166 [INFO] InterventionEngine initialized.
+2026-01-05T09:04:15.820858 [INFO] Setting up hotkeys...
+2026-01-05T09:04:15.821057 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T09:04:15.821123 [INFO] ACR Initialized. Mode: active.
+2026-01-05T09:04:15.821161 [INFO] Press Esc to quit.
+2026-01-05T09:04:15.821195 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T09:04:15.821228 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T09:04:15.821608 [INFO] Video worker thread started.
+2026-01-05T09:04:15.821711 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T09:04:15.822160 [INFO] Audio worker thread started.
+2026-01-05T09:04:15.822544 [ERROR] AudioSensor: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:15.822616 [WARNING] Audio sensor error in worker: Audio stream not available.
+2026-01-05T09:04:15.872960 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:15.923471 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:15.973925 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:16.024446 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:16.074925 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:16.125385 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:16.176029 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:16.226714 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:16.277255 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:16.322590 [INFO] Application shutting down...
+2026-01-05T09:04:16.322784 [INFO] LogicEngine shutting down...
+2026-01-05T09:04:16.322833 [INFO] InterventionEngine shutting down...
+2026-01-05T09:04:16.322872 [INFO] No active intervention to stop.
+2026-01-05T09:04:16.322933 [INFO] Releasing sensors to unblock threads...
+2026-01-05T09:04:16.323145 [INFO] Waiting for video worker thread to join...
+2026-01-05T09:04:16.327772 [INFO] Audio worker thread stopped.
+2026-01-05T09:04:16.822333 [INFO] Video worker thread stopped.
+2026-01-05T09:04:16.823002 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T09:04:16.823102 [INFO] Application shutdown complete.
+2026-01-05T09:04:16.823185 [INFO] DataLogger initialized. Log level: INFO. Log file: test_shutdown.log
+2026-01-05T09:04:16.823225 [INFO] ACR Application Initializing...
+2026-01-05T09:04:16.823539 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T09:04:16.823692 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='139970217684832'>
+2026-01-05T09:04:16.823841 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='139970217684832'>
+2026-01-05T09:04:16.823907 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T09:04:16.824010 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T09:04:16.824128 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T09:04:16.824285 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T09:04:16.824547 [INFO] InterventionEngine initialized.
+2026-01-05T09:04:16.825033 [INFO] Setting up hotkeys...
+2026-01-05T09:04:16.825216 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T09:04:16.825266 [INFO] ACR Initialized. Mode: active.
+2026-01-05T09:04:16.825300 [INFO] Press Esc to quit.
+2026-01-05T09:04:16.825344 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T09:04:16.825382 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T09:04:16.826001 [INFO] Video worker thread started.
+2026-01-05T09:04:16.826113 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T09:04:16.826588 [INFO] Audio worker thread started.
+2026-01-05T09:04:16.826881 [ERROR] AudioSensor: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:16.826949 [WARNING] Audio sensor error in worker: Audio stream not available.
+2026-01-05T09:04:16.877241 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:16.927804 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:16.978251 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:17.028747 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:17.079241 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:17.129816 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:17.180866 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:17.231317 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:17.281846 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:17.326978 [INFO] Application shutting down...
+2026-01-05T09:04:17.327182 [INFO] LogicEngine shutting down...
+2026-01-05T09:04:17.327228 [INFO] InterventionEngine shutting down...
+2026-01-05T09:04:17.327275 [INFO] No active intervention to stop.
+2026-01-05T09:04:17.327310 [INFO] Releasing sensors to unblock threads...
+2026-01-05T09:04:17.327600 [INFO] Waiting for video worker thread to join...
+2026-01-05T09:04:17.332262 [INFO] Audio worker thread stopped.
+2026-01-05T09:04:17.826805 [INFO] Video worker thread stopped.
+2026-01-05T09:04:17.827431 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T09:04:17.827588 [INFO] Application shutdown complete.
+2026-01-05T09:04:17.827696 [INFO] DataLogger initialized. Log level: INFO. Log file: test_shutdown.log
+2026-01-05T09:04:17.827741 [INFO] ACR Application Initializing...
+2026-01-05T09:04:17.827964 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T09:04:17.828090 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='139970217684832'>
+2026-01-05T09:04:17.828315 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='139970217684832'>
+2026-01-05T09:04:17.828382 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T09:04:17.828555 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T09:04:17.828723 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T09:04:17.828799 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T09:04:17.828965 [INFO] InterventionEngine initialized.
+2026-01-05T09:04:17.829428 [INFO] Setting up hotkeys...
+2026-01-05T09:04:17.829664 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T09:04:17.829733 [INFO] ACR Initialized. Mode: active.
+2026-01-05T09:04:17.829769 [INFO] Press Esc to quit.
+2026-01-05T09:04:17.829801 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T09:04:17.829835 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T09:04:17.830171 [INFO] Video worker thread started.
+2026-01-05T09:04:17.830273 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T09:04:17.830645 [INFO] Audio worker thread started.
+2026-01-05T09:04:17.830891 [ERROR] AudioSensor: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:17.831056 [WARNING] Audio sensor error in worker: Audio stream not available.
+2026-01-05T09:04:17.881394 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:17.931887 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:17.982342 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:18.032904 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:18.083368 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:18.134009 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:18.184489 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:18.235066 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:18.285715 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:18.331269 [INFO] Application shutting down...
+2026-01-05T09:04:18.331456 [INFO] LogicEngine shutting down...
+2026-01-05T09:04:18.331503 [INFO] InterventionEngine shutting down...
+2026-01-05T09:04:18.331588 [INFO] No active intervention to stop.
+2026-01-05T09:04:18.331633 [INFO] Releasing sensors to unblock threads...
+2026-01-05T09:04:18.331882 [INFO] Waiting for video worker thread to join...
+2026-01-05T09:04:18.336185 [INFO] Audio worker thread stopped.
+2026-01-05T09:04:18.830668 [INFO] Video worker thread stopped.
+2026-01-05T09:04:18.831324 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T09:04:18.831475 [INFO] Application shutdown complete.
+2026-01-05T09:04:18.831650 [INFO] DataLogger initialized. Log level: INFO. Log file: test_shutdown.log
+2026-01-05T09:04:18.831715 [INFO] ACR Application Initializing...
+2026-01-05T09:04:18.831964 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T09:04:18.832111 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='139970217684832'>
+2026-01-05T09:04:18.832349 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='139970217684832'>
+2026-01-05T09:04:18.832429 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T09:04:18.832552 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T09:04:18.832795 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T09:04:18.832887 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T09:04:18.833152 [INFO] InterventionEngine initialized.
+2026-01-05T09:04:18.833768 [INFO] Setting up hotkeys...
+2026-01-05T09:04:18.833995 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T09:04:18.834054 [INFO] ACR Initialized. Mode: active.
+2026-01-05T09:04:18.834095 [INFO] Press Esc to quit.
+2026-01-05T09:04:18.834142 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T09:04:18.834183 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T09:04:18.834655 [INFO] Video worker thread started.
+2026-01-05T09:04:18.834970 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T09:04:18.835227 [INFO] Audio worker thread started.
+2026-01-05T09:04:18.835626 [ERROR] AudioSensor: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:18.835702 [WARNING] Audio sensor error in worker: Audio stream not available.
+2026-01-05T09:04:18.886046 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:18.936545 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:18.987027 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:19.037470 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:19.087995 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:19.138435 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:19.188966 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:19.239399 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:19.289926 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:04:19.335583 [INFO] Application shutting down...
+2026-01-05T09:04:19.335842 [INFO] LogicEngine shutting down...
+2026-01-05T09:04:19.335895 [INFO] InterventionEngine shutting down...
+2026-01-05T09:04:19.335934 [INFO] No active intervention to stop.
+2026-01-05T09:04:19.335966 [INFO] Releasing sensors to unblock threads...
+2026-01-05T09:04:19.336153 [INFO] Waiting for video worker thread to join...
+2026-01-05T09:04:19.340330 [INFO] Audio worker thread stopped.
+2026-01-05T09:04:19.835331 [INFO] Video worker thread stopped.
+2026-01-05T09:04:19.835987 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T09:04:19.836100 [INFO] Application shutdown complete.
+2026-01-05T09:07:24.616487 [INFO] DataLogger initialized. Log level: INFO. Log file: test_shutdown.log
+2026-01-05T09:07:24.616619 [INFO] ACR Application Initializing...
+2026-01-05T09:07:24.618751 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T09:07:24.619567 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140440841628960'>
+2026-01-05T09:07:24.619909 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140440841628960'>
+2026-01-05T09:07:24.619968 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T09:07:24.622591 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T09:07:24.622773 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T09:07:24.622867 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T09:07:24.622992 [INFO] InterventionEngine initialized.
+2026-01-05T09:07:24.625563 [INFO] Setting up hotkeys...
+2026-01-05T09:07:24.626262 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T09:07:24.626364 [INFO] ACR Initialized. Mode: active.
+2026-01-05T09:07:24.626412 [INFO] Press Esc to quit.
+2026-01-05T09:07:24.626449 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T09:07:24.626482 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T09:07:24.627011 [INFO] Video worker thread started.
+2026-01-05T09:07:24.627396 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T09:07:24.627977 [INFO] Audio worker thread started.
+2026-01-05T09:07:24.629091 [ERROR] AudioSensor: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:24.629218 [WARNING] Audio sensor error in worker: Audio stream not available.
+2026-01-05T09:07:24.679588 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:24.730089 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:24.780663 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:24.831176 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:24.881672 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:24.932287 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:24.982770 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:25.033300 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:25.083784 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:25.128640 [INFO] Application shutting down...
+2026-01-05T09:07:25.128834 [INFO] LogicEngine shutting down...
+2026-01-05T09:07:25.128888 [INFO] InterventionEngine shutting down...
+2026-01-05T09:07:25.128928 [INFO] No active intervention to stop.
+2026-01-05T09:07:25.128961 [INFO] Releasing sensors to unblock threads...
+2026-01-05T09:07:25.129245 [INFO] Waiting for video worker thread to join...
+2026-01-05T09:07:25.134272 [INFO] Audio worker thread stopped.
+2026-01-05T09:07:25.627786 [INFO] Video worker thread stopped.
+2026-01-05T09:07:25.629571 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T09:07:25.629688 [INFO] Application shutdown complete.
+2026-01-05T09:07:25.629779 [INFO] DataLogger initialized. Log level: INFO. Log file: test_shutdown.log
+2026-01-05T09:07:25.629820 [INFO] ACR Application Initializing...
+2026-01-05T09:07:25.630159 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T09:07:25.630324 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140440841628960'>
+2026-01-05T09:07:25.630451 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140440841628960'>
+2026-01-05T09:07:25.630494 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T09:07:25.630609 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T09:07:25.630728 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T09:07:25.630824 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T09:07:25.630945 [INFO] InterventionEngine initialized.
+2026-01-05T09:07:25.631561 [INFO] Setting up hotkeys...
+2026-01-05T09:07:25.631776 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T09:07:25.631826 [INFO] ACR Initialized. Mode: active.
+2026-01-05T09:07:25.631861 [INFO] Press Esc to quit.
+2026-01-05T09:07:25.631895 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T09:07:25.631939 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T09:07:25.632474 [INFO] Video worker thread started.
+2026-01-05T09:07:25.632907 [INFO] Audio worker thread started.
+2026-01-05T09:07:25.633402 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T09:07:25.633689 [ERROR] AudioSensor: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:25.633762 [WARNING] Audio sensor error in worker: Audio stream not available.
+2026-01-05T09:07:25.684120 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:25.734666 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:25.785155 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:25.835657 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:25.886203 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:25.936707 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:25.987228 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:26.037711 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:26.088293 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:26.138744 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:26.142551 [INFO] Application shutting down...
+2026-01-05T09:07:26.142728 [INFO] LogicEngine shutting down...
+2026-01-05T09:07:26.142776 [INFO] InterventionEngine shutting down...
+2026-01-05T09:07:26.142814 [INFO] No active intervention to stop.
+2026-01-05T09:07:26.142847 [INFO] Releasing sensors to unblock threads...
+2026-01-05T09:07:26.143086 [INFO] Waiting for video worker thread to join...
+2026-01-05T09:07:26.189211 [INFO] Audio worker thread stopped.
+2026-01-05T09:07:26.633742 [INFO] Video worker thread stopped.
+2026-01-05T09:07:26.634399 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T09:07:26.634497 [INFO] Application shutdown complete.
+2026-01-05T09:07:26.634582 [INFO] DataLogger initialized. Log level: INFO. Log file: test_shutdown.log
+2026-01-05T09:07:26.634620 [INFO] ACR Application Initializing...
+2026-01-05T09:07:26.634859 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T09:07:26.635002 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140440841628960'>
+2026-01-05T09:07:26.635265 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140440841628960'>
+2026-01-05T09:07:26.635328 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T09:07:26.635439 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T09:07:26.635556 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T09:07:26.635626 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T09:07:26.635733 [INFO] InterventionEngine initialized.
+2026-01-05T09:07:26.636473 [INFO] Setting up hotkeys...
+2026-01-05T09:07:26.636703 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T09:07:26.636753 [INFO] ACR Initialized. Mode: active.
+2026-01-05T09:07:26.636788 [INFO] Press Esc to quit.
+2026-01-05T09:07:26.636821 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T09:07:26.636853 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T09:07:26.637298 [INFO] Video worker thread started.
+2026-01-05T09:07:26.637402 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T09:07:26.637789 [INFO] Audio worker thread started.
+2026-01-05T09:07:26.637991 [ERROR] AudioSensor: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:26.638163 [WARNING] Audio sensor error in worker: Audio stream not available.
+2026-01-05T09:07:26.688550 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:26.739032 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:26.789568 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:26.840124 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:26.890696 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:26.941216 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:26.991622 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:27.042237 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:27.092696 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:27.138500 [INFO] Application shutting down...
+2026-01-05T09:07:27.138688 [INFO] LogicEngine shutting down...
+2026-01-05T09:07:27.138733 [INFO] InterventionEngine shutting down...
+2026-01-05T09:07:27.138771 [INFO] No active intervention to stop.
+2026-01-05T09:07:27.138804 [INFO] Releasing sensors to unblock threads...
+2026-01-05T09:07:27.139022 [INFO] Waiting for video worker thread to join...
+2026-01-05T09:07:27.143175 [INFO] Audio worker thread stopped.
+2026-01-05T09:07:27.637937 [INFO] Video worker thread stopped.
+2026-01-05T09:07:27.638623 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T09:07:27.638716 [INFO] Application shutdown complete.
+2026-01-05T09:07:27.638799 [INFO] DataLogger initialized. Log level: INFO. Log file: test_shutdown.log
+2026-01-05T09:07:27.638839 [INFO] ACR Application Initializing...
+2026-01-05T09:07:27.639133 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T09:07:27.639283 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140440841628960'>
+2026-01-05T09:07:27.639399 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140440841628960'>
+2026-01-05T09:07:27.639448 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T09:07:27.639558 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T09:07:27.639676 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T09:07:27.639750 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T09:07:27.639866 [INFO] InterventionEngine initialized.
+2026-01-05T09:07:27.640596 [INFO] Setting up hotkeys...
+2026-01-05T09:07:27.640850 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T09:07:27.640906 [INFO] ACR Initialized. Mode: active.
+2026-01-05T09:07:27.640947 [INFO] Press Esc to quit.
+2026-01-05T09:07:27.640991 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T09:07:27.641073 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T09:07:27.641417 [INFO] Video worker thread started.
+2026-01-05T09:07:27.641515 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T09:07:27.642003 [INFO] Audio worker thread started.
+2026-01-05T09:07:27.642333 [ERROR] AudioSensor: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:27.642396 [WARNING] Audio sensor error in worker: Audio stream not available.
+2026-01-05T09:07:27.692721 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:27.743232 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:27.793711 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:27.844316 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:27.894743 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:27.945248 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:27.995708 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:28.046180 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:28.096680 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:28.142431 [INFO] Application shutting down...
+2026-01-05T09:07:28.142630 [INFO] LogicEngine shutting down...
+2026-01-05T09:07:28.142679 [INFO] InterventionEngine shutting down...
+2026-01-05T09:07:28.142723 [INFO] No active intervention to stop.
+2026-01-05T09:07:28.142757 [INFO] Releasing sensors to unblock threads...
+2026-01-05T09:07:28.143085 [INFO] Waiting for video worker thread to join...
+2026-01-05T09:07:28.147157 [INFO] Audio worker thread stopped.
+2026-01-05T09:07:28.641873 [INFO] Video worker thread stopped.
+2026-01-05T09:07:28.642771 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T09:07:28.642876 [INFO] Application shutdown complete.
+2026-01-05T09:07:28.643214 [INFO] DataLogger initialized. Log level: INFO. Log file: test_shutdown.log
+2026-01-05T09:07:28.643277 [INFO] ACR Application Initializing...
+2026-01-05T09:07:28.643553 [ERROR] VideoSensor: Could not load face cascade classifier.
+2026-01-05T09:07:28.643702 [INFO] AudioSensor: Available audio devices: <MagicMock name='mock.query_devices()' id='140440841628960'>
+2026-01-05T09:07:28.643833 [INFO] AudioSensor: Default input audio device: <MagicMock name='mock.query_devices()' id='140440841628960'>
+2026-01-05T09:07:28.643909 [INFO] AudioSensor: Attempting to initialize audio stream (SampleRate: 44100, Channels: 1)...
+2026-01-05T09:07:28.644115 [INFO] AudioSensor: Audio stream initialized and started successfully.
+2026-01-05T09:07:28.644345 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T09:07:28.644451 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T09:07:28.644572 [INFO] InterventionEngine initialized.
+2026-01-05T09:07:28.645222 [INFO] Setting up hotkeys...
+2026-01-05T09:07:28.645449 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T09:07:28.645501 [INFO] ACR Initialized. Mode: active.
+2026-01-05T09:07:28.645540 [INFO] Press Esc to quit.
+2026-01-05T09:07:28.645577 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T09:07:28.645613 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T09:07:28.645905 [INFO] Video worker thread started.
+2026-01-05T09:07:28.646047 [ERROR] Exception in video worker: cannot unpack non-iterable NoneType object
+2026-01-05T09:07:28.646509 [INFO] Audio worker thread started.
+2026-01-05T09:07:28.646711 [ERROR] AudioSensor: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:28.646802 [WARNING] Audio sensor error in worker: Audio stream not available.
+2026-01-05T09:07:28.697209 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:28.747683 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:28.798181 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:28.848662 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:28.899217 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:28.949709 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:29.000417 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:29.050903 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:29.101455 [WARNING] Audio sensor error in worker: Audio stream is not active or closed, though not in persistent error state.
+2026-01-05T09:07:29.147159 [INFO] Application shutting down...
+2026-01-05T09:07:29.147365 [INFO] LogicEngine shutting down...
+2026-01-05T09:07:29.147413 [INFO] InterventionEngine shutting down...
+2026-01-05T09:07:29.147451 [INFO] No active intervention to stop.
+2026-01-05T09:07:29.147484 [INFO] Releasing sensors to unblock threads...
+2026-01-05T09:07:29.147657 [INFO] Waiting for video worker thread to join...
+2026-01-05T09:07:29.151873 [INFO] Audio worker thread stopped.
+2026-01-05T09:07:29.646445 [INFO] Video worker thread stopped.
+2026-01-05T09:07:29.647185 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T09:07:29.647352 [INFO] Application shutdown complete.
