@@ -46,17 +46,31 @@ class VideoSensor:
     def get_frame(self):
         if self.cap is None or not self.cap.isOpened():
              # Try to reconnect occasionally?
-             return None
+             return None, "Camera not open"
 
         try:
             ret, frame = self.cap.read()
             if not ret:
                 self._log_warning("Failed to capture video frame.")
-                return None
-            return frame
+                return None, "Failed to capture frame"
+            return frame, None
         except Exception as e:
              self._log_error(f"Error capturing frame: {e}")
-             return None
+             return None, str(e)
+
+    def has_error(self):
+        # Current implementation of main.py expects this method.
+        # Since we re-init on __init__, maybe we check cap.isOpened()?
+        # But main.py tracks 'sensor_error_active' separately.
+        # If we return False always, main.py assumes it's fine until get_frame returns error.
+        # But get_frame returning error might trigger logging.
+        # Let's check cap status.
+        return self.cap is None or not self.cap.isOpened()
+
+    def get_last_error(self):
+        if self.cap is None or not self.cap.isOpened():
+            return "Camera not connected or failed to open."
+        return ""
 
     def calculate_raw_activity(self, gray_frame):
         """

@@ -322,6 +322,10 @@ class Application:
         # self.running is already False by the time we are here if quit_application() was called
         # The worker threads check self.running, so they should terminate.
 
+        # Stop sensors first to unblock any pending blocking reads in worker threads
+        if hasattr(self, 'video_sensor') and self.video_sensor: self.video_sensor.release()
+        if hasattr(self, 'audio_sensor') and self.audio_sensor: self.audio_sensor.release()
+
         if self.video_thread and self.video_thread.is_alive():
             self.data_logger.log_info("Waiting for video worker thread to join...")
             self.video_thread.join(timeout=2) # Wait for 2 seconds
@@ -337,8 +341,8 @@ class Application:
         if hasattr(self, 'logic_engine') and self.logic_engine: self.logic_engine.shutdown()
         if hasattr(self, 'intervention_engine') and self.intervention_engine: self.intervention_engine.shutdown()
 
-        if hasattr(self, 'video_sensor') and self.video_sensor: self.video_sensor.release()
-        if hasattr(self, 'audio_sensor') and self.audio_sensor: self.audio_sensor.release()
+        # Tray icon stop should be last to keep UI responsive as long as possible?
+        # Actually it runs in its own thread usually.
         if hasattr(self, 'tray_icon') and self.tray_icon: self.tray_icon.stop()
 
         try:
