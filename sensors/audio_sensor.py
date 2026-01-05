@@ -142,13 +142,22 @@ class AudioSensor:
         self.stream = None # Ensure stream is marked as None after closure
 
 
+    def stop(self):
+        """Stops and closes the audio stream. Alias for release, but specific for stream control."""
+        self.release()
+
     def release(self):
-        if self.stream and not self.stream.closed:
+        """Releases the audio stream resources safely and idempotently."""
+        if self.stream:
             self._log_info("Releasing audio stream.")
             try:
-                self.stream.stop()
-                self.stream.close()
+                # Check if closed if possible, but sounddevice streams might not have 'closed' attr depending on version/mock
+                # We wrap in try-except to be safe
+                if not getattr(self.stream, 'closed', False):
+                    self.stream.stop()
+                    self.stream.close()
             except Exception as e:
+                # Ignore errors on release if it's already bad, just log
                 self._log_error("Exception while releasing audio stream.", str(e))
         self.stream = None
         self.error_state = False

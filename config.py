@@ -1,7 +1,6 @@
 import json
 import os
 from typing import Dict, Any
-import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -25,7 +24,13 @@ def _get_conf(key: str, default: Any, cast_type: type = None) -> Any:
     Priority:
     1. Environment Variable (highest for temporary overrides)
     2. user_data/config.json (for persistent user settings)
-    3. Default value (codebase default)
+    3. user_data/calibration.json (for calibrated thresholds, specific keys only)
+    4. Default value (codebase default)
+
+    Note: Calibration data usually maps specific keys like 'audio_threshold_high'
+    which might not match the config key exactly if we don't map it.
+    Here we assume the caller handles specific calibration lookups or we map them.
+    Actually, let's keep it simple: Logic below handles calibration mapping.
     """
     # 1. Environment Variable
     env_val = os.getenv(key)
@@ -52,6 +57,30 @@ def _get_conf(key: str, default: Any, cast_type: type = None) -> Any:
     # 3. Default
     return default
 
+# --- System & Logging ---
+APP_NAME = _get_conf("APP_NAME", "ACR")
+LOG_LEVEL = _get_conf("LOG_LEVEL", "INFO") # Options: DEBUG, INFO, WARNING, ERROR
+LOG_FILE = _get_conf("LOG_FILE", "acr_app.log")
+USER_DATA_DIR = _get_conf("USER_DATA_DIR", "user_data")
+
+SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
+PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
+EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
+CALIBRATION_FILE = os.path.join(USER_DATA_DIR, "calibration.json")
+
+# --- Helper: Load Calibration Data ---
+def _load_calibration_data() -> Dict[str, Any]:
+    """Loads calibration data from USER_DATA_DIR/calibration.json if it exists."""
+    if os.path.exists(CALIBRATION_FILE):
+        try:
+            with open(CALIBRATION_FILE, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Warning: Failed to load calibration file from {CALIBRATION_FILE}: {e}")
+    return {}
+
+_calibration_data = _load_calibration_data()
+
 # --- Application Mode ---
 DEFAULT_MODE = _get_conf("DEFAULT_MODE", "active")
 SNOOZE_DURATION = _get_conf("SNOOZE_DURATION", 3600, int)
@@ -66,35 +95,20 @@ HOTKEY_FEEDBACK_UNHELPFUL = _get_conf("HOTKEY_FEEDBACK_UNHELPFUL", "ctrl+alt+dow
 FEEDBACK_WINDOW_SECONDS = _get_conf("FEEDBACK_WINDOW_SECONDS", 15, int)
 FEEDBACK_SUPPRESSION_MINUTES = _get_conf("FEEDBACK_SUPPRESSION_MINUTES", 240, int)
 
-# --- System & Logging ---
-APP_NAME = _get_conf("APP_NAME", "ACR")
-LOG_LEVEL = _get_conf("LOG_LEVEL", "INFO")
-LOG_FILE = _get_conf("LOG_FILE", "acr_app.log")
-USER_DATA_DIR = _get_conf("USER_DATA_DIR", "user_data")
-SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
-PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
-EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
-CALIBRATION_FILE = os.path.join(USER_DATA_DIR, "calibration.json")
-
 # --- Sensors ---
 CAMERA_INDEX = _get_conf("CAMERA_INDEX", 0, int)
 
-# Load Calibration if available
-_calibration_data = {}
-if os.path.exists(CALIBRATION_FILE):
-    try:
-        with open(CALIBRATION_FILE, 'r') as f:
-            _calibration_data = json.load(f)
-    except:
-        pass
+# Thresholds
+# Priority for Thresholds: Env -> User Config -> Calibration File -> Default
+# We handle calibration mapping here.
+_cal_audio = _calibration_data.get("audio_threshold_high", 0.5)
+_cal_video = _calibration_data.get("video_activity_threshold_high", 20.0)
 
-# Thresholds (Priority: Env -> User Config -> Calibration File -> Default)
-AUDIO_THRESHOLD_HIGH = _get_conf("AUDIO_THRESHOLD_HIGH", _calibration_data.get("audio_rms_threshold", 0.5), float)
-VIDEO_ACTIVITY_THRESHOLD_HIGH = _get_conf("VIDEO_ACTIVITY_THRESHOLD_HIGH", _calibration_data.get("video_activity_threshold", 20.0), float)
+AUDIO_THRESHOLD_HIGH = _get_conf("AUDIO_THRESHOLD_HIGH", _cal_audio, float)
+VIDEO_ACTIVITY_THRESHOLD_HIGH = _get_conf("VIDEO_ACTIVITY_THRESHOLD_HIGH", _cal_video, float)
 DOOM_SCROLL_THRESHOLD = _get_conf("DOOM_SCROLL_THRESHOLD", 3, int)
 
 # --- State Engine Baseline ---
-# Allows personalization of the "neutral" state.
 BASELINE_STATE = _get_conf("BASELINE_STATE", {
     "arousal": 50,
     "overload": 0,
@@ -108,7 +122,6 @@ MIN_TIME_BETWEEN_INTERVENTIONS = _get_conf("MIN_TIME_BETWEEN_INTERVENTIONS", 300
 DEFAULT_INTERVENTION_DURATION = _get_conf("DEFAULT_INTERVENTION_DURATION", 30, int)
 
 # --- LMM Configuration ---
-# Note: API Keys should ideally be strictly ENV for security, but we allow config for local URLs.
 LOCAL_LLM_URL = _get_conf("LOCAL_LLM_URL", "http://127.0.0.1:1234")
 LOCAL_LLM_MODEL_ID = _get_conf("LOCAL_LLM_MODEL_ID", "deepseek/deepseek-r1-0528-qwen3-8b")
 
@@ -116,89 +129,9 @@ LMM_FALLBACK_ENABLED = _get_conf("LMM_FALLBACK_ENABLED", True, bool)
 LMM_CIRCUIT_BREAKER_MAX_FAILURES = _get_conf("LMM_CIRCUIT_BREAKER_MAX_FAILURES", 5, int)
 LMM_CIRCUIT_BREAKER_COOLDOWN = _get_conf("LMM_CIRCUIT_BREAKER_COOLDOWN", 60, int)
 
-# --- Tiered Intervention Configurations (Optional Overrides) ---
-# Usually these are code logic, but could be overridden.
-# Keeping defaults here for now.
-# --- System & Logging ---
-APP_NAME = "ACR"
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO") # Options: DEBUG, INFO, WARNING, ERROR
-LOG_FILE = "acr_app.log"
-USER_DATA_DIR = "user_data"
-SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
-PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
-EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
-CALIBRATION_FILE = os.path.join(USER_DATA_DIR, "calibration.json")
-
-# --- Application Mode ---
-DEFAULT_MODE = "active"
-SNOOZE_DURATION = 3600
-
-# --- Hotkeys ---
-HOTKEY_CYCLE_MODE = "ctrl+alt+m"
-HOTKEY_PAUSE_RESUME = "ctrl+alt+p"
-HOTKEY_FEEDBACK_HELPFUL = "ctrl+alt+up"
-HOTKEY_FEEDBACK_UNHELPFUL = "ctrl+alt+down"
-
-# --- User Feedback ---
-FEEDBACK_WINDOW_SECONDS = 15
-FEEDBACK_SUPPRESSION_MINUTES = 240
-
-# --- Sensors & Thresholds ---
-CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", 0))
-
-# Default Thresholds (Environment Variables override code defaults)
-_audio_thresh_default = float(os.getenv("AUDIO_THRESHOLD_HIGH", 0.5))
-_video_thresh_default = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", 20.0))
-DOOM_SCROLL_THRESHOLD = int(os.getenv("DOOM_SCROLL_THRESHOLD", "3"))
-
-# Load Calibration Override if available
-if os.path.exists(CALIBRATION_FILE):
-    try:
-        with open(CALIBRATION_FILE, 'r') as f:
-            _cal_data = json.load(f)
-            # Only override if keys exist and are valid numbers
-            if "audio_threshold_high" in _cal_data:
-                _audio_thresh_default = float(_cal_data["audio_threshold_high"])
-            if "video_activity_threshold_high" in _cal_data:
-                _video_thresh_default = float(_cal_data["video_activity_threshold_high"])
-            # print(f"Loaded calibration data: {_cal_data}")
-    except Exception as e:
-        print(f"Warning: Failed to load calibration file: {e}")
-
-AUDIO_THRESHOLD_HIGH = _audio_thresh_default
-VIDEO_ACTIVITY_THRESHOLD_HIGH = _video_thresh_default
-
 # --- API Keys ---
-# (Loaded from .env if available)
+# Strictly from Environment for security, but allow fallback to None
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-
-# --- Sensors ---
-CAMERA_INDEX = 0
-
-# Thresholds (Calibrated via tools/calibrate_sensors.py or .env)
-# Defaults are conservative if not set in .env
-AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
-VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
-DOOM_SCROLL_THRESHOLD = int(os.getenv("DOOM_SCROLL_THRESHOLD", "3"))
-
-# --- Intervention Engine ---
-MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds (5 minutes)
-DEFAULT_INTERVENTION_DURATION = 30 # seconds
-
-# --- LMM Configuration ---
-LOCAL_LLM_URL = "http://127.0.0.1:1234"
-LOCAL_LLM_MODEL_ID = "deepseek/deepseek-r1-0528-qwen3-8b"
-LMM_FALLBACK_ENABLED = True
-LMM_CIRCUIT_BREAKER_MAX_FAILURES = 5
-LMM_CIRCUIT_BREAKER_COOLDOWN = 60
-
-# --- Intervention Engine ---
-MIN_TIME_BETWEEN_INTERVENTIONS = 300
-DEFAULT_INTERVENTION_DURATION = 30
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-
-# --- Tiered Intervention Configurations (Legacy/Fallback) ---
-LMM_CIRCUIT_BREAKER_COOLDOWN = 60 # seconds
 
 # --- Tiered Intervention Configurations ---
 # (Used for legacy ad-hoc interventions or fallback defaults)

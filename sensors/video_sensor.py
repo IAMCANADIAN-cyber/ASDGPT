@@ -226,7 +226,16 @@ class VideoSensor:
             self._log_error(f"Error analyzing frame: {e}")
             return {}
 
+    def stop(self):
+        """Stops the video sensor. Alias for release."""
+        self.release()
+
     def release(self):
+        """Releases the video capture resources safely and idempotently."""
         if self.cap:
-            self.cap.release()
-            self.cap = None
+            try:
+                self.cap.release()
+            except Exception as e:
+                self._log_error(f"Error releasing video capture: {e}")
+            finally:
+                self.cap = None

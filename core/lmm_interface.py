@@ -193,6 +193,12 @@ class LMMInterface:
 
                 return parsed_result
 
+            except requests.exceptions.ConnectionError as e:
+                last_exception = e
+                self._log_warning(f"Connection Error (Attempt {attempt + 1}/{retries}): {e}. Is the Local LLM running at {self.llm_url}?")
+                if attempt < retries - 1:
+                    time.sleep(backoff)
+                    backoff *= 2
             except (requests.exceptions.RequestException, ValueError, KeyError) as e:
                 last_exception = e
                 self._log_warning(f"Attempt {attempt + 1}/{retries} failed: {e}")
