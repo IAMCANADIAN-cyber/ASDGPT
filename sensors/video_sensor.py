@@ -8,6 +8,8 @@ class VideoSensor:
         self.logger = data_logger
         self.cap = None
         self.last_frame = None
+        self.error_state = False
+        self.last_error_message = ""
         self._initialize_camera()
 
         # Load Haarcascade for face detection
@@ -38,25 +40,38 @@ class VideoSensor:
             self.cap = cv2.VideoCapture(self.camera_index)
             if not self.cap.isOpened():
                 self._log_warning(f"Could not open video camera {self.camera_index}.")
+                self.error_state = True
+                self.last_error_message = f"Could not open video camera {self.camera_index}."
                 self.cap = None
+            else:
+                self.error_state = False
+                self.last_error_message = ""
         except Exception as e:
             self._log_error(f"Error initializing camera: {e}")
+            self.error_state = True
+            self.last_error_message = f"Error initializing camera: {e}"
             self.cap = None
 
     def get_frame(self):
+        # Return error if persistent error state (caller should handle retry/re-init)
+        if self.error_state:
+             return None, self.last_error_message
+
         if self.cap is None or not self.cap.isOpened():
-             # Try to reconnect occasionally?
-             return None
+             return None, "Camera not initialized or closed."
 
         try:
             ret, frame = self.cap.read()
             if not ret:
                 self._log_warning("Failed to capture video frame.")
-                return None
-            return frame
+                # Don't set permanent error state for single frame drop, but return info
+                return None, "Failed to capture frame."
+            return frame, None
         except Exception as e:
              self._log_error(f"Error capturing frame: {e}")
-             return None
+             self.error_state = True
+             self.last_error_message = str(e)
+             return None, str(e)
 
     def calculate_raw_activity(self, gray_frame):
         """
@@ -114,7 +129,7 @@ class VideoSensor:
         """
         Convenience method to get frame and calculate activity.
         """
-        frame = self.get_frame()
+        frame, _ = self.get_frame()
         return self.calculate_activity(frame)
 
     def process_frame(self, frame):
@@ -227,6 +242,17 @@ class VideoSensor:
             return {}
 
     def release(self):
+        self._log_info("Releasing video camera.")
         if self.cap:
-            self.cap.release()
+            try:
+                self.cap.release()
+            except Exception as e:
+                self._log_error(f"Error releasing video camera: {e}")
             self.cap = None
+        self.error_state = False
+
+    def has_error(self):
+        return self.error_state
+
+    def get_last_error(self):
+        return self.last_error_message

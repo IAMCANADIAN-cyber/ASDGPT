@@ -458,18 +458,33 @@ class InterventionEngine:
             return False
 
         # Check for suppression
-        if intervention_type in self.suppressed_interventions:
-            expiry = self.suppressed_interventions[intervention_type]
-            if time.time() < expiry:
-                remaining_mins = int((expiry - time.time()) / 60)
-                if logger:
-                    logger.log_info(f"Intervention '{intervention_type}' skipped (suppressed for {remaining_mins} more mins).")
+        # Check both by specific ID (if available and different) and by type
+        # Ideally intervention_type IS the ID for library items, but let's be safe.
+        checks = [intervention_type]
+        if intervention_id and intervention_id != intervention_type:
+            checks.append(intervention_id)
+
+        is_suppressed = False
+        suppression_expiry = 0
+
+        for check_key in checks:
+            if check_key in self.suppressed_interventions:
+                expiry = self.suppressed_interventions[check_key]
+                if time.time() < expiry:
+                    is_suppressed = True
+                    suppression_expiry = expiry
+                    break
                 else:
-                    print(f"Intervention '{intervention_type}' skipped (suppressed for {remaining_mins} more mins).")
-                return False
+                    # Expired, remove from list
+                    del self.suppressed_interventions[check_key]
+
+        if is_suppressed:
+            remaining_mins = int((suppression_expiry - time.time()) / 60)
+            if logger:
+                logger.log_info(f"Intervention '{intervention_type}' skipped (suppressed for {remaining_mins} more mins).")
             else:
-                # Expired, remove from list
-                del self.suppressed_interventions[intervention_type]
+                print(f"Intervention '{intervention_type}' skipped (suppressed for {remaining_mins} more mins).")
+            return False
 
         # Critical: If called from within an existing sequence or thread, this check might fail.
         # But generally start_intervention is called from LogicEngine main thread.
