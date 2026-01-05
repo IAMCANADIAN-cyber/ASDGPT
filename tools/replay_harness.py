@@ -154,15 +154,15 @@ class ReplayHarness:
             actual_interventions = self.mock_intervention.interventions_triggered
 
             if expected_intervention:
-                # Check if ANY of the triggered interventions match the type
-                match = next((i for i in actual_interventions if i['type'] == expected_intervention), None)
+                # Check if ANY of the triggered interventions match the type or id
+                match = next((i for i in actual_interventions if i.get('type') == expected_intervention or i.get('id') == expected_intervention), None)
                 if match:
                     print(f"  [SUCCESS] Triggered expected intervention: {expected_intervention}")
                     results["correct_triggers"] += 1
                     results["triggered_interventions"] += 1
                 else:
                     if len(actual_interventions) > 0:
-                        got_types = [i['type'] for i in actual_interventions]
+                        got_types = [i.get('type', i.get('id')) for i in actual_interventions]
                         print(f"  [FAILURE] Expected {expected_intervention}, got {got_types}")
                         results["false_positives"] += 1 # Wrong one triggered
                     else:
@@ -173,7 +173,7 @@ class ReplayHarness:
                      print(f"  [SUCCESS] Correctly triggered NO intervention.")
                      results["correct_triggers"] += 1
                 else:
-                    got_types = [i['type'] for i in actual_interventions]
+                    got_types = [i.get('type', i.get('id')) for i in actual_interventions]
                     print(f"  [FAILURE] Expected NONE, got {got_types}")
                     results["false_positives"] += 1
                     results["triggered_interventions"] += 1
