@@ -1,0 +1,388 @@
+2026-01-05T14:06:02.172220 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:06:02.172356 [INFO] ACR Application Initializing...
+2026-01-05T14:06:02.172915 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:06:02.173027 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:06:02.173297 [INFO] InterventionEngine initialized.
+2026-01-05T14:06:02.175149 [INFO] Setting up hotkeys...
+2026-01-05T14:06:02.175712 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:06:02.175778 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:06:02.175814 [INFO] Press Esc to quit.
+2026-01-05T14:06:02.175847 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:06:02.175962 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:06:02.176452 [INFO] Video worker thread started.
+2026-01-05T14:06:02.179040 [ERROR] Exception in video worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T14:06:02.179269 [INFO] Audio worker thread started.
+2026-01-05T14:06:02.180196 [ERROR] Exception in audio worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T14:06:02.679643 [INFO] Quit signal received.
+2026-01-05T14:06:02.679853 [INFO] Application shutting down...
+2026-01-05T14:06:02.680005 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:06:03.179393 [INFO] Video worker thread stopped.
+2026-01-05T14:06:03.179827 [INFO] Waiting for audio worker thread to join...
+2026-01-05T14:06:03.180597 [INFO] Audio worker thread stopped.
+2026-01-05T14:06:03.180874 [INFO] LogicEngine shutting down...
+2026-01-05T14:06:03.180977 [INFO] InterventionEngine shutting down...
+2026-01-05T14:06:03.181024 [INFO] No active intervention to stop.
+2026-01-05T14:06:03.183413 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:06:03.183528 [INFO] Application shutdown complete.
+2026-01-05T14:06:03.184229 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:06:03.184301 [INFO] ACR Application Initializing...
+2026-01-05T14:06:03.184837 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:06:03.184936 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:06:03.185064 [INFO] InterventionEngine initialized.
+2026-01-05T14:06:03.185654 [INFO] Setting up hotkeys...
+2026-01-05T14:06:03.185855 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:06:03.185906 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:06:03.185940 [INFO] Press Esc to quit.
+2026-01-05T14:06:03.185974 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:06:03.186007 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:06:03.186338 [INFO] Video worker thread started.
+2026-01-05T14:06:03.186771 [INFO] Audio worker thread started.
+2026-01-05T14:06:03.187950 [ERROR] Exception in video worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T14:06:03.188897 [ERROR] Exception in audio worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T14:06:03.687347 [INFO] Quit signal received.
+2026-01-05T14:06:03.687585 [INFO] Application shutting down...
+2026-01-05T14:06:03.687646 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:06:04.188201 [INFO] Video worker thread stopped.
+2026-01-05T14:06:04.188600 [INFO] Waiting for audio worker thread to join...
+2026-01-05T14:06:04.189170 [INFO] Audio worker thread stopped.
+2026-01-05T14:06:04.189459 [INFO] LogicEngine shutting down...
+2026-01-05T14:06:04.189547 [INFO] InterventionEngine shutting down...
+2026-01-05T14:06:04.189590 [INFO] No active intervention to stop.
+2026-01-05T14:06:04.191079 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:06:04.191148 [INFO] Application shutdown complete.
+2026-01-05T14:06:04.191831 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:06:04.192025 [INFO] ACR Application Initializing...
+2026-01-05T14:06:04.192601 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:06:04.192714 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:06:04.192825 [INFO] InterventionEngine initialized.
+2026-01-05T14:06:04.193343 [INFO] Setting up hotkeys...
+2026-01-05T14:06:04.193580 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:06:04.193644 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:06:04.193680 [INFO] Press Esc to quit.
+2026-01-05T14:06:04.193718 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:06:04.193751 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:06:04.194064 [INFO] Video worker thread started.
+2026-01-05T14:06:04.195271 [ERROR] Exception in video worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T14:06:04.194476 [INFO] Audio worker thread started.
+2026-01-05T14:06:04.196359 [ERROR] Exception in audio worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T14:06:04.694828 [INFO] Quit signal received.
+2026-01-05T14:06:04.695004 [INFO] Application shutting down...
+2026-01-05T14:06:04.695057 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:06:05.196935 [INFO] Audio worker thread stopped.
+2026-01-05T14:06:05.196788 [INFO] Video worker thread stopped.
+2026-01-05T14:06:05.197529 [INFO] LogicEngine shutting down...
+2026-01-05T14:06:05.197627 [INFO] InterventionEngine shutting down...
+2026-01-05T14:06:05.197670 [INFO] No active intervention to stop.
+2026-01-05T14:06:05.199149 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:06:05.199221 [INFO] Application shutdown complete.
+2026-01-05T14:06:05.199974 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:06:05.200048 [INFO] ACR Application Initializing...
+2026-01-05T14:06:05.200587 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:06:05.200682 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:06:05.200793 [INFO] InterventionEngine initialized.
+2026-01-05T14:06:05.201292 [INFO] Setting up hotkeys...
+2026-01-05T14:06:05.201544 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:06:05.201600 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:06:05.201635 [INFO] Press Esc to quit.
+2026-01-05T14:06:05.201667 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:06:05.201698 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:06:05.202237 [INFO] Audio worker thread started.
+2026-01-05T14:06:05.201976 [INFO] Video worker thread started.
+2026-01-05T14:06:05.203082 [ERROR] Exception in audio worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T14:06:05.204225 [ERROR] Exception in video worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T14:06:05.702543 [INFO] Quit signal received.
+2026-01-05T14:06:05.702720 [INFO] Application shutting down...
+2026-01-05T14:06:05.702774 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:06:06.204706 [INFO] Video worker thread stopped.
+2026-01-05T14:06:06.204626 [INFO] Audio worker thread stopped.
+2026-01-05T14:06:06.205248 [INFO] LogicEngine shutting down...
+2026-01-05T14:06:06.205343 [INFO] InterventionEngine shutting down...
+2026-01-05T14:06:06.205436 [INFO] No active intervention to stop.
+2026-01-05T14:06:06.206894 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:06:06.206962 [INFO] Application shutdown complete.
+2026-01-05T14:06:06.207622 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:06:06.207692 [INFO] ACR Application Initializing...
+2026-01-05T14:06:06.208276 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:06:06.208381 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:06:06.208574 [INFO] InterventionEngine initialized.
+2026-01-05T14:06:06.209890 [INFO] Setting up hotkeys...
+2026-01-05T14:06:06.210137 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:06:06.210201 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:06:06.210237 [INFO] Press Esc to quit.
+2026-01-05T14:06:06.210269 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:06:06.210300 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:06:06.210922 [INFO] Audio worker thread started.
+2026-01-05T14:06:06.210676 [INFO] Video worker thread started.
+2026-01-05T14:06:06.212757 [ERROR] Exception in video worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T14:06:06.211841 [ERROR] Exception in audio worker: not enough values to unpack (expected 2, got 0)
+2026-01-05T14:06:06.711303 [INFO] Quit signal received.
+2026-01-05T14:06:06.711613 [INFO] Application shutting down...
+2026-01-05T14:06:06.711693 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:06:07.213424 [INFO] Video worker thread stopped.
+2026-01-05T14:06:07.213274 [INFO] Audio worker thread stopped.
+2026-01-05T14:06:07.213804 [INFO] Waiting for audio worker thread to join...
+2026-01-05T14:06:07.214098 [INFO] LogicEngine shutting down...
+2026-01-05T14:06:07.214177 [INFO] InterventionEngine shutting down...
+2026-01-05T14:06:07.214216 [INFO] No active intervention to stop.
+2026-01-05T14:06:07.215715 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:06:07.215782 [INFO] Application shutdown complete.
+2026-01-05T14:14:06.977692 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:14:06.977817 [INFO] ACR Application Initializing...
+2026-01-05T14:14:06.978029 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:14:06.978124 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:14:06.978256 [INFO] InterventionEngine initialized.
+2026-01-05T14:14:06.980486 [INFO] Setting up hotkeys...
+2026-01-05T14:14:06.981028 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:14:06.981092 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:14:06.981131 [INFO] Press Esc to quit.
+2026-01-05T14:14:06.981166 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:14:06.981199 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:14:06.983135 [INFO] Video worker thread started.
+2026-01-05T14:14:06.983665 [INFO] Audio worker thread started.
+2026-01-05T14:14:07.185601 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:07.336484 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:07.484686 [INFO] Quit signal received.
+2026-01-05T14:14:07.484871 [INFO] Application shutting down...
+2026-01-05T14:14:07.484955 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:14:07.487349 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:07.488423 [INFO] Audio worker thread stopped.
+2026-01-05T14:14:07.537756 [INFO] Video worker thread stopped.
+2026-01-05T14:14:07.538165 [INFO] LogicEngine shutting down...
+2026-01-05T14:14:07.538347 [INFO] InterventionEngine shutting down...
+2026-01-05T14:14:07.538409 [INFO] No active intervention to stop.
+2026-01-05T14:14:07.540970 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:14:07.541062 [INFO] Application shutdown complete.
+2026-01-05T14:14:07.542772 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:14:07.542851 [INFO] ACR Application Initializing...
+2026-01-05T14:14:07.543027 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:14:07.543114 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:14:07.543356 [INFO] InterventionEngine initialized.
+2026-01-05T14:14:07.543948 [INFO] Setting up hotkeys...
+2026-01-05T14:14:07.544175 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:14:07.544235 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:14:07.544316 [INFO] Press Esc to quit.
+2026-01-05T14:14:07.544359 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:14:07.544405 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:14:07.544760 [INFO] Video worker thread started.
+2026-01-05T14:14:07.545180 [INFO] Audio worker thread started.
+2026-01-05T14:14:07.746875 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:07.897724 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:08.045487 [INFO] Quit signal received.
+2026-01-05T14:14:08.045664 [INFO] Application shutting down...
+2026-01-05T14:14:08.045734 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:14:08.048627 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:08.049668 [INFO] Audio worker thread stopped.
+2026-01-05T14:14:08.099022 [INFO] Video worker thread stopped.
+2026-01-05T14:14:08.099413 [INFO] LogicEngine shutting down...
+2026-01-05T14:14:08.099528 [INFO] InterventionEngine shutting down...
+2026-01-05T14:14:08.099574 [INFO] No active intervention to stop.
+2026-01-05T14:14:08.101288 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:14:08.101371 [INFO] Application shutdown complete.
+2026-01-05T14:14:08.102994 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:14:08.103063 [INFO] ACR Application Initializing...
+2026-01-05T14:14:08.103314 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:14:08.103419 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:14:08.103533 [INFO] InterventionEngine initialized.
+2026-01-05T14:14:08.104152 [INFO] Setting up hotkeys...
+2026-01-05T14:14:08.104441 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:14:08.104508 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:14:08.104543 [INFO] Press Esc to quit.
+2026-01-05T14:14:08.104576 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:14:08.104607 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:14:08.104923 [INFO] Video worker thread started.
+2026-01-05T14:14:08.105537 [INFO] Audio worker thread started.
+2026-01-05T14:14:08.306331 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:08.457287 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:08.605812 [INFO] Quit signal received.
+2026-01-05T14:14:08.606002 [INFO] Application shutting down...
+2026-01-05T14:14:08.606057 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:14:08.608058 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:08.609390 [INFO] Audio worker thread stopped.
+2026-01-05T14:14:08.658425 [INFO] Video worker thread stopped.
+2026-01-05T14:14:08.658830 [INFO] LogicEngine shutting down...
+2026-01-05T14:14:08.658991 [INFO] InterventionEngine shutting down...
+2026-01-05T14:14:08.659065 [INFO] No active intervention to stop.
+2026-01-05T14:14:08.660979 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:14:08.661067 [INFO] Application shutdown complete.
+2026-01-05T14:14:08.662812 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:14:08.662892 [INFO] ACR Application Initializing...
+2026-01-05T14:14:08.663077 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:14:08.663160 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:14:08.663315 [INFO] InterventionEngine initialized.
+2026-01-05T14:14:08.664057 [INFO] Setting up hotkeys...
+2026-01-05T14:14:08.664346 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:14:08.664419 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:14:08.664466 [INFO] Press Esc to quit.
+2026-01-05T14:14:08.664513 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:14:08.664559 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:14:08.664890 [INFO] Video worker thread started.
+2026-01-05T14:14:08.665535 [INFO] Audio worker thread started.
+2026-01-05T14:14:08.866713 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:09.017648 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:09.166021 [INFO] Quit signal received.
+2026-01-05T14:14:09.166279 [INFO] Application shutting down...
+2026-01-05T14:14:09.166351 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:14:09.168508 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:09.169431 [INFO] Audio worker thread stopped.
+2026-01-05T14:14:09.218886 [INFO] Video worker thread stopped.
+2026-01-05T14:14:09.219332 [INFO] LogicEngine shutting down...
+2026-01-05T14:14:09.219451 [INFO] InterventionEngine shutting down...
+2026-01-05T14:14:09.219494 [INFO] No active intervention to stop.
+2026-01-05T14:14:09.221180 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:14:09.221300 [INFO] Application shutdown complete.
+2026-01-05T14:14:09.222931 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:14:09.223001 [INFO] ACR Application Initializing...
+2026-01-05T14:14:09.223177 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:14:09.223294 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:14:09.223419 [INFO] InterventionEngine initialized.
+2026-01-05T14:14:09.224717 [INFO] Setting up hotkeys...
+2026-01-05T14:14:09.225013 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:14:09.225105 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:14:09.225152 [INFO] Press Esc to quit.
+2026-01-05T14:14:09.225185 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:14:09.225217 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:14:09.225559 [INFO] Video worker thread started.
+2026-01-05T14:14:09.226145 [INFO] Audio worker thread started.
+2026-01-05T14:14:09.426815 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:09.577726 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:09.726429 [INFO] Quit signal received.
+2026-01-05T14:14:09.726612 [INFO] Application shutting down...
+2026-01-05T14:14:09.726664 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:14:09.728632 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:14:09.729889 [INFO] Audio worker thread stopped.
+2026-01-05T14:14:09.779036 [INFO] Video worker thread stopped.
+2026-01-05T14:14:09.779467 [INFO] LogicEngine shutting down...
+2026-01-05T14:14:09.779594 [INFO] InterventionEngine shutting down...
+2026-01-05T14:14:09.779639 [INFO] No active intervention to stop.
+2026-01-05T14:14:09.781443 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:14:09.781527 [INFO] Application shutdown complete.
+2026-01-05T14:17:52.995307 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:17:52.995427 [INFO] ACR Application Initializing...
+2026-01-05T14:17:52.995624 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:17:52.995725 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:17:52.995846 [INFO] InterventionEngine initialized.
+2026-01-05T14:17:52.997960 [INFO] Setting up hotkeys...
+2026-01-05T14:17:52.998490 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:17:52.998561 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:17:52.998611 [INFO] Press Esc to quit.
+2026-01-05T14:17:52.998647 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:17:52.998681 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:17:53.000472 [INFO] Video worker thread started.
+2026-01-05T14:17:53.001074 [INFO] Audio worker thread started.
+2026-01-05T14:17:53.202078 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:53.353003 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:53.501386 [INFO] Quit signal received.
+2026-01-05T14:17:53.501607 [INFO] Application shutting down...
+2026-01-05T14:17:53.501678 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:17:53.503790 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:53.504930 [INFO] Audio worker thread stopped.
+2026-01-05T14:17:53.554319 [INFO] Video worker thread stopped.
+2026-01-05T14:17:53.554741 [INFO] LogicEngine shutting down...
+2026-01-05T14:17:53.554862 [INFO] InterventionEngine shutting down...
+2026-01-05T14:17:53.554990 [INFO] No active intervention to stop.
+2026-01-05T14:17:53.557713 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:17:53.557791 [INFO] Application shutdown complete.
+2026-01-05T14:17:53.559464 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:17:53.559540 [INFO] ACR Application Initializing...
+2026-01-05T14:17:53.559720 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:17:53.559803 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:17:53.560105 [INFO] InterventionEngine initialized.
+2026-01-05T14:17:53.560649 [INFO] Setting up hotkeys...
+2026-01-05T14:17:53.560847 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:17:53.560939 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:17:53.560978 [INFO] Press Esc to quit.
+2026-01-05T14:17:53.561012 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:17:53.561043 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:17:53.561346 [INFO] Video worker thread started.
+2026-01-05T14:17:53.561741 [INFO] Audio worker thread started.
+2026-01-05T14:17:53.763254 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:53.914096 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:54.062070 [INFO] Quit signal received.
+2026-01-05T14:17:54.062263 [INFO] Application shutting down...
+2026-01-05T14:17:54.062338 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:17:54.064937 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:54.066212 [INFO] Audio worker thread stopped.
+2026-01-05T14:17:54.115302 [INFO] Video worker thread stopped.
+2026-01-05T14:17:54.115682 [INFO] LogicEngine shutting down...
+2026-01-05T14:17:54.115809 [INFO] InterventionEngine shutting down...
+2026-01-05T14:17:54.115854 [INFO] No active intervention to stop.
+2026-01-05T14:17:54.117575 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:17:54.117653 [INFO] Application shutdown complete.
+2026-01-05T14:17:54.119335 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:17:54.119401 [INFO] ACR Application Initializing...
+2026-01-05T14:17:54.119568 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:17:54.119645 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:17:54.119752 [INFO] InterventionEngine initialized.
+2026-01-05T14:17:54.120401 [INFO] Setting up hotkeys...
+2026-01-05T14:17:54.120606 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:17:54.120655 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:17:54.120689 [INFO] Press Esc to quit.
+2026-01-05T14:17:54.120720 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:17:54.120751 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:17:54.121391 [INFO] Audio worker thread started.
+2026-01-05T14:17:54.121104 [INFO] Video worker thread started.
+2026-01-05T14:17:54.323111 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:54.474292 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:54.621983 [INFO] Quit signal received.
+2026-01-05T14:17:54.622161 [INFO] Application shutting down...
+2026-01-05T14:17:54.622214 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:17:54.625140 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:54.625669 [INFO] Audio worker thread stopped.
+2026-01-05T14:17:54.675525 [INFO] Video worker thread stopped.
+2026-01-05T14:17:54.676036 [INFO] LogicEngine shutting down...
+2026-01-05T14:17:54.676158 [INFO] InterventionEngine shutting down...
+2026-01-05T14:17:54.676203 [INFO] No active intervention to stop.
+2026-01-05T14:17:54.677755 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:17:54.677825 [INFO] Application shutdown complete.
+2026-01-05T14:17:54.679480 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:17:54.679546 [INFO] ACR Application Initializing...
+2026-01-05T14:17:54.679720 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:17:54.679792 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:17:54.680028 [INFO] InterventionEngine initialized.
+2026-01-05T14:17:54.680581 [INFO] Setting up hotkeys...
+2026-01-05T14:17:54.680770 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:17:54.680815 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:17:54.680847 [INFO] Press Esc to quit.
+2026-01-05T14:17:54.680879 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:17:54.680958 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:17:54.681324 [INFO] Video worker thread started.
+2026-01-05T14:17:54.681873 [INFO] Audio worker thread started.
+2026-01-05T14:17:54.882687 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:55.033503 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:55.182202 [INFO] Quit signal received.
+2026-01-05T14:17:55.182389 [INFO] Application shutting down...
+2026-01-05T14:17:55.182440 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:17:55.184360 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:55.185731 [INFO] Audio worker thread stopped.
+2026-01-05T14:17:55.234675 [INFO] Video worker thread stopped.
+2026-01-05T14:17:55.235066 [INFO] LogicEngine shutting down...
+2026-01-05T14:17:55.235191 [INFO] InterventionEngine shutting down...
+2026-01-05T14:17:55.235234 [INFO] No active intervention to stop.
+2026-01-05T14:17:55.236880 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:17:55.237005 [INFO] Application shutdown complete.
+2026-01-05T14:17:55.238639 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_crash.log
+2026-01-05T14:17:55.238706 [INFO] ACR Application Initializing...
+2026-01-05T14:17:55.238890 [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-05T14:17:55.239016 [INFO] LogicEngine initialized. Mode: active
+2026-01-05T14:17:55.239128 [INFO] InterventionEngine initialized.
+2026-01-05T14:17:55.240431 [INFO] Setting up hotkeys...
+2026-01-05T14:17:55.240698 [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-05T14:17:55.240784 [INFO] ACR Initialized. Mode: active.
+2026-01-05T14:17:55.240819 [INFO] Press Esc to quit.
+2026-01-05T14:17:55.240863 [INFO] Hotkeys: Cycle Mode (ctrl+alt+m), Pause/Resume (ctrl+alt+p)
+2026-01-05T14:17:55.240894 [INFO] Feedback Hotkeys: Helpful (ctrl+alt+up), Unhelpful (ctrl+alt+down)
+2026-01-05T14:17:55.241295 [INFO] Video worker thread started.
+2026-01-05T14:17:55.241645 [INFO] Audio worker thread started.
+2026-01-05T14:17:55.443250 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:55.594088 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:55.741971 [INFO] Quit signal received.
+2026-01-05T14:17:55.742153 [INFO] Application shutting down...
+2026-01-05T14:17:55.742206 [INFO] Waiting for video worker thread to join...
+2026-01-05T14:17:55.744954 [DEBUG] Video queue full, frame discarded.
+2026-01-05T14:17:55.746241 [INFO] Audio worker thread stopped.
+2026-01-05T14:17:55.795306 [INFO] Video worker thread stopped.
+2026-01-05T14:17:55.795679 [INFO] LogicEngine shutting down...
+2026-01-05T14:17:55.795802 [INFO] InterventionEngine shutting down...
+2026-01-05T14:17:55.795855 [INFO] No active intervention to stop.
+2026-01-05T14:17:55.797671 [INFO] Keyboard hotkeys unhooked.
+2026-01-05T14:17:55.797750 [INFO] Application shutdown complete.
