@@ -458,8 +458,13 @@ class InterventionEngine:
             return False
 
         # Check for suppression
-        if intervention_type in self.suppressed_interventions:
-            expiry = self.suppressed_interventions[intervention_type]
+        # Check by ID (preferred) or Type
+        # Note: For library cards, 'type' in execution_details is set to 'id' above,
+        # but we check both 'id' and 'type' explicitly to be safe.
+        type_to_check = execution_details.get("id") or execution_details.get("type")
+
+        if type_to_check in self.suppressed_interventions:
+            expiry = self.suppressed_interventions[type_to_check]
             if time.time() < expiry:
                 remaining_mins = int((expiry - time.time()) / 60)
                 if logger:
@@ -469,7 +474,7 @@ class InterventionEngine:
                 return False
             else:
                 # Expired, remove from list
-                del self.suppressed_interventions[intervention_type]
+                del self.suppressed_interventions[type_to_check]
 
         # Critical: If called from within an existing sequence or thread, this check might fail.
         # But generally start_intervention is called from LogicEngine main thread.
