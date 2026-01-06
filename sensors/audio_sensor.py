@@ -252,7 +252,9 @@ class AudioSensor:
             "pitch_variance": 0.0,
             "rms_variance": 0.0,
             "activity_bursts": 0, # Legacy metric kept for backward compatibility
-            "speech_rate": 0.0
+            "speech_rate": 0.0,
+            "is_speech": False,
+            "speech_confidence": 0.0
         }
 
         if chunk is None or len(chunk) == 0:
@@ -272,7 +274,8 @@ class AudioSensor:
             metrics["rms"] = float(np.sqrt(np.mean(audio_data**2)))
 
             # Normalize for other calculations (avoid div by zero, but handle silence)
-            if metrics["rms"] < 1e-6:
+            silence_thresh = getattr(config, 'VAD_SILENCE_THRESHOLD', 0.01)
+            if metrics["rms"] < silence_thresh:
                 # Update history even for silence to reflect current state
                 self.rms_history.append(metrics["rms"])
 
@@ -291,6 +294,9 @@ class AudioSensor:
                             metrics["activity_bursts"] = int(crossings)
 
                 # Return early for silence, but update rms_history first
+                # Explicitly set low confidence for silence
+                metrics["speech_confidence"] = 0.0
+                metrics["is_speech"] = False
                 return metrics
 
             # 2. Zero Crossing Rate (ZCR) - Proxy for "noisiness" or high frequency content
@@ -320,6 +326,41 @@ class AudioSensor:
             if len(self.raw_audio_buffer) >= int(0.5 * self.sample_rate): # Need at least 0.5s for meaningful rate
                 buffered_audio = np.array(self.raw_audio_buffer)
                 metrics["speech_rate"] = self._calculate_speech_rate(buffered_audio)
+
+            # --- VAD Logic ---
+            # Heuristics for human speech:
+            # - Pitch: Typically 85-255Hz (Adult), can go up to ~600Hz (Child/Exclamation)
+            # - ZCR: Voiced speech has low ZCR (< 0.3), Unvoiced (consonants) higher but usually < noise
+            # - Spectral Centroid: Speech usually centered < 3000Hz? (Variable)
+
+            confidence = 0.0
+
+            # Factor 1: Pitch Validity
+            # Broad range 60-600Hz to catch most human vocalizations
+            has_pitch = 60 <= metrics["pitch_estimation"] <= 600
+            if has_pitch:
+                confidence += 0.5
+
+            # Factor 2: ZCR
+            # Low ZCR supports voiced speech. High ZCR often noise (or unvoiced consonants).
+            if metrics["zcr"] < 0.2:
+                confidence += 0.3 # Strong indicator of voiced speech if pitch is present
+            elif metrics["zcr"] < 0.4:
+                confidence += 0.1 # Moderate
+
+            # Factor 3: RMS Variance (Speech is bursty/variable, fan noise is constant)
+            # This requires history, so it's a "lagging" indicator but useful
+            if len(self.rms_history) > 3:
+                 # Check if variance is significant relative to mean
+                 rel_var = metrics["rms_variance"] / (np.mean(list(self.rms_history)) + 1e-6)
+                 if rel_var > 0.2: # Variable volume
+                     confidence += 0.2
+
+            metrics["speech_confidence"] = min(confidence, 1.0)
+
+            # Thresholding
+            # Default 0.5 confidence to be "speech"
+            metrics["is_speech"] = metrics["speech_confidence"] > 0.4
 
             # --- History / Time-Series Features ---
             self.rms_history.append(metrics["rms"])
