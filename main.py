@@ -186,6 +186,8 @@ class Application:
             if self.logic_engine.get_mode() == "active" and not sensor_error:
                 try:
                     frame, error = self.video_sensor.get_frame()
+                    if not self.running: break # Double check after potentially blocking call
+
                     if error:
                         self.data_logger.log_warning(f"Video sensor error in worker: {error}")
                         # We might still put an error marker or None frame in queue if needed
@@ -207,6 +209,8 @@ class Application:
                     time.sleep(0.05) # Poll at ~20 FPS max if sensor is fast
 
                 except Exception as e:
+                    # Ignore errors if we are shutting down
+                    if not self.running: break
                     self.data_logger.log_error(f"Exception in video worker: {e}")
                     time.sleep(1) # Wait a bit longer after an unexpected error
             else:
@@ -222,8 +226,12 @@ class Application:
             if self.logic_engine.get_mode() == "active" and not sensor_error:
                 try:
                     chunk, error = self.audio_sensor.get_chunk()
+                    if not self.running: break # Double check after potentially blocking call
+
                     if error:
-                        self.data_logger.log_warning(f"Audio sensor error in worker: {error}")
+                        # Log warning unless it's just a shutdown symptom
+                        if self.running:
+                            self.data_logger.log_warning(f"Audio sensor error in worker: {error}")
 
                     if chunk is not None:
                         try:
@@ -240,6 +248,7 @@ class Application:
                     time.sleep(0.05) # Poll frequently but allow other things to run
 
                 except Exception as e:
+                    if not self.running: break
                     self.data_logger.log_error(f"Exception in audio worker: {e}")
                     time.sleep(1)
             else:
@@ -319,9 +328,19 @@ class Application:
     def _shutdown(self) -> None:
         self.data_logger.log_info("Application shutting down...")
 
-        # self.running is already False by the time we are here if quit_application() was called
-        # The worker threads check self.running, so they should terminate.
+        # Ensure running is False so threads know to stop
+        self.running = False
 
+        # 1. Release sensors first to unblock any pending reads in worker threads
+        if hasattr(self, 'video_sensor') and self.video_sensor:
+            self.data_logger.log_info("Releasing video sensor...")
+            self.video_sensor.release()
+
+        if hasattr(self, 'audio_sensor') and self.audio_sensor:
+            self.data_logger.log_info("Releasing audio sensor...")
+            self.audio_sensor.release()
+
+        # 2. Join worker threads
         if self.video_thread and self.video_thread.is_alive():
             self.data_logger.log_info("Waiting for video worker thread to join...")
             self.video_thread.join(timeout=2) # Wait for 2 seconds
@@ -334,11 +353,10 @@ class Application:
             if self.audio_thread.is_alive():
                  self.data_logger.log_warning("Audio worker thread did not join in time.")
 
+        # 3. Shutdown engines
         if hasattr(self, 'logic_engine') and self.logic_engine: self.logic_engine.shutdown()
         if hasattr(self, 'intervention_engine') and self.intervention_engine: self.intervention_engine.shutdown()
 
-        if hasattr(self, 'video_sensor') and self.video_sensor: self.video_sensor.release()
-        if hasattr(self, 'audio_sensor') and self.audio_sensor: self.audio_sensor.release()
         if hasattr(self, 'tray_icon') and self.tray_icon: self.tray_icon.stop()
 
         try:
