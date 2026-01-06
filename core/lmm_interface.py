@@ -3,7 +3,6 @@ import json
 import re
 import time
 from typing import Optional, Dict, Any, List, TypedDict, Union
-from typing import Optional, Dict, Any, TypedDict, List
 import config
 from .intervention_library import InterventionLibrary
 from .prompts.v1 import SYSTEM_INSTRUCTION_V1
@@ -218,8 +217,19 @@ class LMMInterface:
 
         if user_context:
             metrics = user_context.get('sensor_metrics', {})
-            audio_level = metrics.get('audio_level', 0.0)
-            video_activity = metrics.get('video_activity', 0.0)
+            # Handle potential nested 'audio' dict or flat 'audio_level' for backward compatibility
+            audio_data = metrics.get('audio')
+            if audio_data and isinstance(audio_data, dict):
+                 audio_level = audio_data.get('rms', 0.0)
+            else:
+                 audio_level = metrics.get('audio_level', 0.0)
+
+            # Handle potential nested 'video' dict or flat 'video_activity'
+            video_data = metrics.get('video')
+            if video_data and isinstance(video_data, dict):
+                 video_activity = video_data.get('activity', 0.0)
+            else:
+                 video_activity = metrics.get('video_activity', 0.0)
 
             if audio_level > 0.5:
                 # Loud environment
@@ -285,25 +295,40 @@ class LMMInterface:
         if user_context:
             context_str += f"Current Mode: {user_context.get('current_mode', 'unknown')}\n"
             context_str += f"Trigger Reason: {user_context.get('trigger_reason', 'unknown')}\n"
+
             metrics = user_context.get('sensor_metrics', {})
-            context_str += f"Audio Level (RMS): {metrics.get('audio_level', 0.0):.4f}\n"
+            # Handle potentially different structure of sensor_metrics
+            # Sometimes it's {'audio_level': ...}, sometimes {'audio': {'rms': ...}}
+            # Let's normalize here or assume LogicEngine sends raw sensor outputs
 
-            # Add detailed audio analysis if available
-            audio_analysis = metrics.get('audio_analysis', {})
-            if audio_analysis:
-                context_str += f"Audio Pitch (est): {audio_analysis.get('pitch_estimation', 0.0):.2f} Hz\n"
-                context_str += f"Audio Pitch Variance: {audio_analysis.get('pitch_variance', 0.0):.2f}\n"
-                context_str += f"Audio ZCR: {audio_analysis.get('zcr', 0.0):.4f}\n"
-                context_str += f"Speech Rate (Burst Density): {audio_analysis.get('activity_bursts', 0)}\n"
+            audio_metrics = metrics.get('audio', {})
+            video_metrics = metrics.get('video', {})
 
-            context_str += f"Video Activity (Motion): {metrics.get('video_activity', 0.0):.2f}\n"
+            if not isinstance(audio_metrics, dict):
+                # Fallback for old structure
+                audio_rms = metrics.get('audio_level', 0.0)
+                audio_metrics = {'rms': audio_rms}
+            if not isinstance(video_metrics, dict):
+                video_activity = metrics.get('video_activity', 0.0)
+                video_metrics = {'activity': video_activity}
+
+            context_str += f"Audio Level (RMS): {audio_metrics.get('rms', 0.0):.4f}\n"
+
+            # Add detailed audio analysis
+            if 'pitch_estimation' in audio_metrics:
+                context_str += f"Audio Pitch (est): {audio_metrics.get('pitch_estimation', 0.0):.2f} Hz\n"
+            if 'pitch_variance' in audio_metrics:
+                context_str += f"Audio Pitch Variance: {audio_metrics.get('pitch_variance', 0.0):.2f}\n"
+            if 'speech_rate' in audio_metrics:
+                context_str += f"Speech Rate (Burst Density): {audio_metrics.get('speech_rate', 0)}\n"
+
+            context_str += f"Video Activity (Motion): {video_metrics.get('activity', 0.0):.2f}\n"
 
             # Add detailed video/face analysis (Posture)
-            video_analysis = metrics.get('video_analysis', {})
-            if video_analysis and video_analysis.get("face_detected"):
+            if video_metrics.get("face_detected"):
                 context_str += f"Face Detected: Yes\n"
-                context_str += f"Face Size Ratio: {video_analysis.get('face_size_ratio', 0.0):.3f} (Lean/Focus)\n"
-                context_str += f"Face Vertical Pos: {video_analysis.get('vertical_position', 0.0):.2f} (0=Top, 1=Bottom)\n"
+                context_str += f"Face Size Ratio: {video_metrics.get('face_size_ratio', 0.0):.3f} (Lean/Focus)\n"
+                context_str += f"Face Vertical Pos: {video_metrics.get('vertical_position', 0.0):.2f} (0=Top, 1=Bottom)\n"
             else:
                 context_str += f"Face Detected: No\n"
 
@@ -425,7 +450,7 @@ if __name__ == '__main__':
     requests.post = mock_post_valid
 
     print("\n--- Test 1: Valid Response (with Visual Context) ---")
-    res1 = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.1}})
+    res1 = lmm_interface.process_data(user_context={"sensor_metrics": {"audio": {"rms": 0.1, "pitch_estimation": 200, "speech_rate": 3}}})
     if res1 and res1["suggestion"] is None and "visual_context" in res1:
         print(f"PASSED: Valid response parsed. Visual Context: {res1['visual_context']}")
     else:
