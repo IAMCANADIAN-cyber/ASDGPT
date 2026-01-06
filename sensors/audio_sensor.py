@@ -239,6 +239,52 @@ class AudioSensor:
             self._log_error(f"Error calculating speech rate: {e}")
             return 0.0
 
+    def _calculate_vad(self, metrics):
+        """
+        Determines if speech is present using heuristics.
+        Returns:
+            is_speech (bool): True if speech detected.
+            confidence (float): 0.0 to 1.0 confidence score.
+        """
+        # Heuristic Thresholds
+        # 1. RMS: Must be above silence threshold
+        RMS_THRESHOLD = 0.01
+
+        # 2. ZCR: Speech is typically lower than noise (fans/hiss) but higher than pure tone
+        # Voiced speech (vowels) ~ 0.0 - 0.15
+        # Unvoiced (fricatives) can be high, but average should be moderate.
+        ZCR_MAX_NOISE = 0.4 # Above this is likely white noise/hiss
+
+        # 3. Pitch: Human voice fundamental frequency range
+        PITCH_MIN = 60  # Hz
+        PITCH_MAX = 500 # Hz (Covers most male/female/child speech)
+
+        rms = metrics.get('rms', 0)
+        zcr = metrics.get('zcr', 0)
+        pitch = metrics.get('pitch_estimation', 0)
+
+        confidence = 0.0
+
+        # Condition 1: Energy
+        if rms > RMS_THRESHOLD:
+            confidence += 0.4
+        else:
+            return False, 0.0 # Too quiet
+
+        # Condition 2: Pitch (Strong indicator of voiced speech)
+        if PITCH_MIN <= pitch <= PITCH_MAX:
+            confidence += 0.4
+        elif pitch > 0:
+            # Some pitch detected but outside range (maybe music or hum)
+            confidence += 0.1
+
+        # Condition 3: ZCR
+        if zcr < ZCR_MAX_NOISE:
+            confidence += 0.2
+
+        is_speech = confidence >= 0.6
+        return is_speech, confidence
+
     def analyze_chunk(self, chunk):
         """
         Analyzes an audio chunk to extract features.
@@ -252,7 +298,9 @@ class AudioSensor:
             "pitch_variance": 0.0,
             "rms_variance": 0.0,
             "activity_bursts": 0, # Legacy metric kept for backward compatibility
-            "speech_rate": 0.0
+            "speech_rate": 0.0,
+            "is_speech": False,
+            "speech_confidence": 0.0
         }
 
         if chunk is None or len(chunk) == 0:
@@ -343,6 +391,11 @@ class AudioSensor:
                         crossings = np.sum(np.diff(above.astype(int)) > 0)
                         metrics["activity_bursts"] = int(crossings)
 
+            # --- VAD Calculation ---
+            is_speech, confidence = self._calculate_vad(metrics)
+            metrics["is_speech"] = is_speech
+            metrics["speech_confidence"] = confidence
+
         except Exception as e:
             self._log_error(f"Error extracting audio features: {e}")
 
@@ -385,6 +438,7 @@ if __name__ == '__main__':
             # Test Analysis
             features = audio_sensor.analyze_chunk(audio_chunk)
             print(f"Analysis: RMS={features['rms']:.4f}, ZCR={features['zcr']:.4f}, Rate={features['speech_rate']:.2f}, Pitch={features['pitch_estimation']:.2f}Hz")
+            print(f"VAD: Is Speech? {features['is_speech']} (Conf: {features['speech_confidence']:.2f})")
 
             # Add some processing delay
             time.sleep(0.1)

@@ -3,25 +3,26 @@ import unittest
 import threading
 import time
 import sys
+import os
 from unittest.mock import MagicMock, patch
 
-# Mock dependencies that might not exist or require hardware
+# Add project root to path so config can be imported
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Mock sounddevice BEFORE it is imported anywhere else
+# This is crucial because sounddevice throws OSError on import if PortAudio is missing
+sys.modules['sounddevice'] = MagicMock()
 sys.modules['pystray'] = MagicMock()
-# sys.modules['keyboard'] = MagicMock() # Mocked inside main.py try-except usually, but let's be safe if we need to
-# We need to mock cv2 and sounddevice to control their blocking behavior
+sys.modules['keyboard'] = MagicMock()
+
+# Now we can import things that might use sounddevice
+# import config # This might be imported by main.py
 
 class TestShutdown(unittest.TestCase):
     def setUp(self):
         # Patch config to avoid side effects
         self.config_patcher = patch('config.LOG_FILE', 'test_crash.log')
         self.config_patcher.start()
-
-        # Patch keyboard import inside main by mocking sys.modules['keyboard'] if main imports it dynamically
-        # main.py does 'import keyboard' inside _setup_hotkeys try-except
-        # But patching main.keyboard directly fails if it hasn't been imported yet.
-        # We can mock sys.modules['keyboard'] to ensure it's available and valid.
-        sys.modules['keyboard'] = MagicMock()
-
 
     def tearDown(self):
         self.config_patcher.stop()
@@ -34,18 +35,13 @@ class TestShutdown(unittest.TestCase):
         print("\n--- Starting Shutdown Stress Test ---")
 
         # 1. Setup Blocking Mocks
-        # Event to signal when the read is called
         video_read_event = threading.Event()
         audio_read_event = threading.Event()
-
-        # Event to hold the read (simulate blocking)
         block_event = threading.Event()
 
         def blocking_video_read(*args, **kwargs):
             video_read_event.set()
-            # Wait until unblocked or timeout (timeout prevents test hanging forever on failure)
-            # The logic here is: if we wait on this event, the thread IS blocked.
-            # It will only unblock if block_event is set.
+            # Wait until unblocked or timeout
             if block_event.wait(timeout=5):
                  return True, None
             return False, None
@@ -57,99 +53,97 @@ class TestShutdown(unittest.TestCase):
             return None, True # overflow/timeout
 
         # Patch VideoSensor internals
-        # We need to patch cv2.VideoCapture to return our mock
         with patch('cv2.VideoCapture') as mock_cap_cls:
             mock_cap = MagicMock()
             mock_cap.isOpened.return_value = True
             mock_cap.read.side_effect = blocking_video_read
             mock_cap_cls.return_value = mock_cap
 
-            # Patch AudioSensor internals
-            with patch('sounddevice.InputStream') as mock_stream_cls:
-                mock_stream = MagicMock()
-                mock_stream.read.side_effect = blocking_audio_read
-                # Important: stream.active should be true? or closed false?
-                mock_stream.closed = False
-                mock_stream_cls.return_value = mock_stream
+            # NOTE: We can't use patch('sounddevice.InputStream') normally because sounddevice is ALREADY mocked in sys.modules
+            # So we just configure the mock that is already there.
 
-                # Import Application here to ensure patches apply to its sensor init
-                from main import Application
+            mock_sd = sys.modules['sounddevice']
+            mock_stream_instance = MagicMock()
+            mock_stream_instance.read.side_effect = blocking_audio_read
+            mock_stream_instance.closed = False
+            mock_sd.InputStream.return_value = mock_stream_instance
 
-                app = Application()
+            # Also mock query_devices to avoid error during AudioSensor init
+            mock_sd.query_devices.return_value = [{'name': 'Mock Mic', 'max_input_channels': 1}]
 
-                # We don't want to run the full app.run() loop because it blocks.
-                # We just want to start the worker threads.
-                # But app.run() starts them.
-                # We can manually start them for this test.
+            # Import Application here to ensure patches apply to its sensor init
+            # We need to make sure AudioSensor picks up the mocked sounddevice
+            # If AudioSensor does "import sounddevice as sd", it gets our MagicMock from sys.modules
 
-                print("Starting worker threads...")
-                app.running = True
-                app.video_thread = threading.Thread(target=app._video_worker, daemon=True)
-                app.audio_thread = threading.Thread(target=app._audio_worker, daemon=True)
-                app.video_thread.start()
-                app.audio_thread.start()
+            # However, if AudioSensor was ALREADY imported before we mocked sys.modules, we are in trouble.
+            # But we are in a fresh process (mostly), and we mocked at top of file.
 
-                # Wait for threads to hit the blocking read
-                print("Waiting for threads to enter blocking read...")
-                video_read_event.wait(timeout=2)
-                audio_read_event.wait(timeout=2)
+            from main import Application
 
-                if not video_read_event.is_set() or not audio_read_event.is_set():
-                    print("TEST SETUP FAILURE: Threads did not start reading.")
-                    app.running = False
-                    block_event.set() # Release anyway
-                    return
+            app = Application()
 
-                print("Threads are blocked. Initiating shutdown...")
-                start_time = time.time()
+            print("Starting worker threads...")
+            app.running = True
+            app.video_thread = threading.Thread(target=app._video_worker, daemon=True)
+            app.audio_thread = threading.Thread(target=app._audio_worker, daemon=True)
+            app.video_thread.start()
+            app.audio_thread.start()
 
-                # Execute Shutdown
-                # This should:
-                # 1. Set running = False (via quit_application)
-                # 2. Release sensors (which should unblock the reads!)
-                # 3. Join threads
+            # Wait for threads to hit the blocking read
+            print("Waiting for threads to enter blocking read...")
+            # We give them a moment to start and call read
+            video_read_event.wait(timeout=2)
+            audio_read_event.wait(timeout=2)
 
-                # Note: In the CURRENT broken implementation, it tries to join BEFORE releasing.
-                # Since we mocked read to wait on 'block_event', and 'block_event' is only set if we explicitly set it
-                # OR if the release method does something to unblock it.
-                # But here, our mock 'read' waits on a python Event.
-                # Real drivers unblock on release/close.
-                # To simulate real driver behavior: calling release() on the mock should set block_event!
+            if not video_read_event.is_set() or not audio_read_event.is_set():
+                print("TEST SETUP FAILURE: Threads did not start reading.")
+                if not video_read_event.is_set(): print("- Video thread failed to reach read.")
+                if not audio_read_event.is_set(): print("- Audio thread failed to reach read.")
+                app.running = False
+                block_event.set()
+                return
 
-                def side_effect_release():
-                    print("Video release called - unblocking.")
-                    block_event.set()
+            print("Threads are blocked. Initiating shutdown...")
+            start_time = time.time()
 
-                def side_effect_close():
-                    print("Audio close called - unblocking.")
-                    block_event.set()
+            # Execute Shutdown
+            # We must simulate that calling release/close unblocks the read.
+            # In a real system, the driver does this. Here we do it via side effect.
 
-                mock_cap.release.side_effect = side_effect_release
-                mock_stream.stop.side_effect = side_effect_close
-                mock_stream.close.side_effect = side_effect_close
+            def side_effect_release():
+                print("Video release called - unblocking.")
+                block_event.set()
 
-                # Run shutdown in a thread to measure time (in case it hangs)
-                shutdown_thread = threading.Thread(target=app._shutdown)
-                shutdown_thread.start()
+            def side_effect_close():
+                print("Audio close called - unblocking.")
+                block_event.set()
 
-                shutdown_thread.join(timeout=6) # Slightly longer than block timeout
-                end_time = time.time()
+            mock_cap.release.side_effect = side_effect_release
+            mock_stream_instance.stop.side_effect = side_effect_close
+            mock_stream_instance.close.side_effect = side_effect_close
 
-                if shutdown_thread.is_alive():
-                    print("FAILURE: _shutdown() hung and did not complete within 5 seconds.")
-                    block_event.set() # Unblock manually
-                    self.fail("Shutdown hung.")
+            # Run shutdown in a thread to measure time (in case it hangs)
+            shutdown_thread = threading.Thread(target=app._shutdown)
+            shutdown_thread.start()
 
-                duration = end_time - start_time
-                print(f"Shutdown completed in {duration:.4f} seconds.")
+            shutdown_thread.join(timeout=6)
+            end_time = time.time()
 
-                # Verification
-                self.assertFalse(app.video_thread.is_alive(), "Video thread should be dead")
-                self.assertFalse(app.audio_thread.is_alive(), "Audio thread should be dead")
+            if shutdown_thread.is_alive():
+                print("FAILURE: _shutdown() hung and did not complete within 5 seconds.")
+                block_event.set() # Unblock manually
+                self.fail("Shutdown hung.")
 
-                # Check if sensors were actually released
-                mock_cap.release.assert_called()
-                mock_stream.close.assert_called()
+            duration = end_time - start_time
+            print(f"Shutdown completed in {duration:.4f} seconds.")
+
+            # Verification
+            self.assertFalse(app.video_thread.is_alive(), "Video thread should be dead")
+            self.assertFalse(app.audio_thread.is_alive(), "Audio thread should be dead")
+
+            # Check if sensors were actually released
+            mock_cap.release.assert_called()
+            mock_stream_instance.close.assert_called()
 
 if __name__ == '__main__':
     unittest.main()
