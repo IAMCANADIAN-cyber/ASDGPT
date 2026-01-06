@@ -1,6 +1,7 @@
 import pystray
 from PIL import Image, ImageDraw # Pillow is needed for Image.open and potentially for creating icons on the fly
 import threading
+import time
 import config
 import os # For path joining
 

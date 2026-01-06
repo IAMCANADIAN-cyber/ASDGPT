@@ -41,6 +41,10 @@ class InterventionEngine:
         self.intervention_thread: Optional[threading.Thread] = None
         self._current_intervention_details: Dict[str, Any] = {}
 
+        # Track the current blocking subprocess (e.g. speaking) for cleanup
+        self._current_subprocess: Optional[subprocess.Popen] = None
+        self._subprocess_lock: threading.Lock = threading.Lock()
+
         self.last_feedback_eligible_intervention: Dict[str, Any] = {
             "message": None,
             "type": None,
@@ -140,9 +144,9 @@ class InterventionEngine:
     def _speak(self, text: str, blocking: bool = True) -> None:
         """
         Uses platform-specific TTS commands to speak the text.
-        Falls back to logging if the command fails.
         If blocking is True, waits for speech to finish.
         If blocking is False, runs in background.
+        Stores the process to allow interruption.
         """
         log_message = f"SPEAKING: '{text}'"
         if self.app and self.app.data_logger:
@@ -152,25 +156,65 @@ class InterventionEngine:
 
         def speak_task():
             system = platform.system()
+            command = []
+
+            if system == "Darwin":  # macOS
+                command = ["say", text]
+            elif system == "Linux":
+                # Try espeak or spd-say
+                # We need to determine which exists or just try one
+                # Note: This is simplified; robust check would verify executable existence
+                command = ["espeak", text] # Default to espeak
+                # If espeak fails, the Popen call might fail or return error, we can catch that
+            elif system == "Windows":
+                # PowerShell
+                ps_cmd = f'Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak("{text}")'
+                command = ["powershell", "-Command", ps_cmd]
+
+            if not command:
+                 return
+
             try:
-                if system == "Darwin":  # macOS
-                    subprocess.run(["say", text], check=False)
-                elif system == "Linux":
-                    # Try espeak or spd-say
-                    try:
-                        subprocess.run(["espeak", text], check=False)
-                    except FileNotFoundError:
-                        subprocess.run(["spd-say", text], check=False)
-                elif system == "Windows":
-                    # Use PowerShell for TTS
-                    command = f'Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak("{text}")'
-                    subprocess.run(["powershell", "-Command", command], check=False)
+                with self._subprocess_lock:
+                    if not self._intervention_active.is_set() and blocking:
+                        # Abort if stopped before start
+                        return
+                    # Use Popen to allow interruption
+                    self._current_subprocess = subprocess.Popen(
+                        command,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL
+                    )
+
+                if self._current_subprocess:
+                    self._current_subprocess.wait()
+
+            except FileNotFoundError:
+                # If linux default failed, try fallback
+                if system == "Linux" and command[0] == "espeak":
+                     try:
+                        command = ["spd-say", text]
+                        with self._subprocess_lock:
+                            if not self._intervention_active.is_set() and blocking: return
+                            self._current_subprocess = subprocess.Popen(
+                                command,
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL
+                            )
+                        if self._current_subprocess:
+                            self._current_subprocess.wait()
+                     except Exception as e:
+                         msg = f"TTS fallback failed: {e}"
+                         if self.app and self.app.data_logger: self.app.data_logger.log_warning(msg)
             except Exception as e:
                 msg = f"TTS failed: {e}"
                 if self.app and self.app.data_logger:
                     self.app.data_logger.log_warning(msg)
                 else:
                     print(msg)
+            finally:
+                with self._subprocess_lock:
+                    self._current_subprocess = None
 
         if blocking:
             speak_task()
@@ -208,7 +252,14 @@ class InterventionEngine:
         try:
             samplerate, data = wavfile.read(sound_file_path)
             sd.play(data, samplerate)
-            sd.wait() # Block until sound finishes (since this runs in a thread)
+
+            # Check for stop signal while waiting
+            # sd.wait() blocks completely. We can't interrupt it easily unless we call sd.stop()
+            # sd.stop() will cause wait() to return.
+            # But we need to know WHEN to stop.
+            # If shutdown() calls sd.stop(), it will unblock this wait() globally.
+            sd.wait()
+
         except Exception as e:
             msg = f"Error playing sound '{sound_file_path}': {e}"
             if self.app and self.app.data_logger:
@@ -532,6 +583,16 @@ class InterventionEngine:
             else:
                 print(f"Stopping intervention...")
             self._intervention_active.clear()
+
+            # Kill any active subprocess (TTS)
+            with self._subprocess_lock:
+                if self._current_subprocess:
+                    if logger: logger.log_info("Terminating active TTS subprocess.")
+                    try:
+                        self._current_subprocess.terminate()
+                        # self._current_subprocess.wait(timeout=1) # Don't block here, just kill
+                    except Exception as e:
+                        if logger: logger.log_warning(f"Error terminating TTS subprocess: {e}")
         else:
             if logger:
                 logger.log_info("No active intervention to stop.")
@@ -547,6 +608,15 @@ class InterventionEngine:
             print("InterventionEngine shutting down...")
 
         self.stop_intervention()
+
+        # Explicitly stop sounddevice if active, to unblock any pending play() calls
+        if sd:
+            try:
+                sd.stop()
+                if logger: logger.log_info("Stopped all sounddevice playback.")
+            except Exception as e:
+                if logger: logger.log_warning(f"Error stopping sounddevice: {e}")
+
         if self.intervention_thread and self.intervention_thread.is_alive():
             if logger:
                 logger.log_info("Waiting for intervention thread to finish...")
