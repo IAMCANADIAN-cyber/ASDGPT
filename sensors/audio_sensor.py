@@ -143,14 +143,19 @@ class AudioSensor:
 
 
     def release(self):
-        if self.stream and not self.stream.closed:
+        # Ensure release is idempotent and robust
+        if self.stream:
             self._log_info("Releasing audio stream.")
             try:
-                self.stream.stop()
-                self.stream.close()
+                if not self.stream.closed:
+                    self.stream.stop()
+                    self.stream.close()
             except Exception as e:
+                # Even if stop/close fails, we consider it released
                 self._log_error("Exception while releasing audio stream.", str(e))
-        self.stream = None
+            finally:
+                self.stream = None
+
         self.error_state = False
 
     def has_error(self):
