@@ -185,27 +185,30 @@ class Application:
                 sensor_error = self.sensor_error_active
             if self.logic_engine.get_mode() == "active" and not sensor_error:
                 try:
+                    if self.video_sensor is None:
+                        time.sleep(1)
+                        continue
+
                     frame, error = self.video_sensor.get_frame()
                     if error:
-                        self.data_logger.log_warning(f"Video sensor error in worker: {error}")
-                        # We might still put an error marker or None frame in queue if needed
-                        # For now, only put valid frames or rely on _check_sensors
+                        # Suppress spamming warnings if it's the same error
+                        # The main loop's _check_sensors handles detailed error logging/state
+                        pass
+
                     if frame is not None:
                         try:
                             self.video_queue.put((frame, error), timeout=0.1) # Short timeout
                         except queue.Full:
-                            self.data_logger.log_debug("Video queue full, frame discarded.")
                             pass # Frame discarded
-                    elif error: # If frame is None due to error
-                         # Potentially put an error marker in the queue if main loop needs to react instantly
-                         # For now, _check_sensors will handle persistent errors.
-                         pass
 
                     # Slow down polling if sensor is fine but no frame, or to control CPU.
-                    # If get_frame() is truly blocking, this sleep might be less critical
-                    # but good for when get_frame() might return quickly with None.
                     time.sleep(0.05) # Poll at ~20 FPS max if sensor is fast
 
+                except ValueError:
+                    # Handle cases where get_frame might not return a tuple (e.g., if mocked incorrectly or legacy code)
+                    # Although we updated VideoSensor, this is defensive.
+                    self.data_logger.log_error("VideoSensor.get_frame() returned unexpected value (not a tuple?).")
+                    time.sleep(1)
                 except Exception as e:
                     self.data_logger.log_error(f"Exception in video worker: {e}")
                     time.sleep(1) # Wait a bit longer after an unexpected error

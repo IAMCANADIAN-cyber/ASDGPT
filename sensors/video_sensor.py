@@ -46,17 +46,17 @@ class VideoSensor:
     def get_frame(self):
         if self.cap is None or not self.cap.isOpened():
              # Try to reconnect occasionally?
-             return None
+             return None, "Camera not open"
 
         try:
             ret, frame = self.cap.read()
             if not ret:
                 self._log_warning("Failed to capture video frame.")
-                return None
-            return frame
+                return None, "Failed to capture video frame"
+            return frame, None
         except Exception as e:
              self._log_error(f"Error capturing frame: {e}")
-             return None
+             return None, str(e)
 
     def calculate_raw_activity(self, gray_frame):
         """
