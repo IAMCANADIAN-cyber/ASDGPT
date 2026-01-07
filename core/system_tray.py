@@ -43,6 +43,7 @@ class ACRTrayIcon:
             "paused": "assets/icons/paused_icon.png",
             "snoozed": "assets/icons/snoozed_icon.png",
             "error": "assets/icons/error_icon.png",
+            "dnd": "assets/icons/snoozed_icon.png", # Use snoozed icon as fallback for DND
             "default": "assets/icons/default_icon.png"
         }
         self.icons = {name: load_image(path) for name, path in self.icon_paths.items()}
@@ -53,6 +54,7 @@ class ACRTrayIcon:
         menu = (
             pystray.MenuItem('Pause/Resume', self.on_toggle_pause_resume),
             pystray.MenuItem('Snooze for 1 Hour', self.on_snooze),
+            pystray.MenuItem('Toggle DND', self.on_toggle_dnd),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem('Last: Helpful', self.on_feedback_helpful),
             pystray.MenuItem('Last: Unhelpful', self.on_feedback_unhelpful),
@@ -95,6 +97,23 @@ class ACRTrayIcon:
                 self.update_icon_status(new_mode) # Update icon immediately
             else: # Already snoozing, maybe unsnooze it? Or just ignore. For now, ignore.
                 print("Already snoozing.")
+
+    def on_toggle_dnd(self, icon, item):
+        print("Tray: Toggle DND clicked")
+        if self.app and self.app.logic_engine:
+            current_mode = self.app.logic_engine.get_mode()
+            if current_mode == "dnd":
+                # Toggle OFF -> Active
+                self.app.logic_engine.set_mode("active")
+            else:
+                # Toggle ON -> DND
+                self.app.logic_engine.set_mode("dnd")
+
+            new_mode = self.app.logic_engine.get_mode()
+            print(f"Mode changed to {new_mode} via tray DND toggle.")
+            if hasattr(self.app, 'intervention_engine'):
+                self.app.intervention_engine.notify_mode_change(new_mode)
+            self.update_icon_status(new_mode)
 
     def on_feedback_helpful(self, icon, item):
         print("Tray: Feedback 'Helpful' clicked")
