@@ -181,6 +181,12 @@ AUDIO_THRESHOLD_HIGH = float(os.getenv("AUDIO_THRESHOLD_HIGH", "0.5"))
 VIDEO_ACTIVITY_THRESHOLD_HIGH = float(os.getenv("VIDEO_ACTIVITY_THRESHOLD_HIGH", "20.0"))
 DOOM_SCROLL_THRESHOLD = int(os.getenv("DOOM_SCROLL_THRESHOLD", "3"))
 
+# --- VAD (Voice Activity Detection) ---
+# RMS Threshold to consider "not silence"
+VAD_SILENCE_THRESHOLD = float(os.getenv("VAD_SILENCE_THRESHOLD", "0.01"))
+VAD_WEAK_THRESHOLD = float(os.getenv("VAD_WEAK_THRESHOLD", "0.4"))
+VAD_STRONG_THRESHOLD = float(os.getenv("VAD_STRONG_THRESHOLD", "0.7"))
+
 # --- Intervention Engine ---
 MIN_TIME_BETWEEN_INTERVENTIONS = 300 # seconds (5 minutes)
 DEFAULT_INTERVENTION_DURATION = 30 # seconds
