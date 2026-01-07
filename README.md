@@ -105,6 +105,14 @@ Run the test suite using `pytest`:
 pytest
 ```
 
+### Stress Testing
+
+To verify system reliability and clean shutdown behavior (e.g., preventing zombie threads), run the crash stress test:
+
+```bash
+python tools/verify_crash.py
+```
+
 ## Design & Mental Model
 
 For a deep dive into the system's core philosophy, state definitions, and intervention strategies, please refer to the [Mental Model & Design Specification](docs/MENTAL_MODEL.md). This document serves as the engineering spec for the system's logic, covering:
