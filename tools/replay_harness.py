@@ -35,7 +35,11 @@ class MockLMMInterface:
 
         if self.current_expected_outcome:
             # Apply expected state changes
-            if "state_change" in self.current_expected_outcome:
+            if "state_estimation" in self.current_expected_outcome:
+                # Direct state injection
+                analysis["state_estimation"].update(self.current_expected_outcome["state_estimation"])
+            elif "state_change" in self.current_expected_outcome:
+                # Relative/Heuristic change
                 changes = self.current_expected_outcome["state_change"]
                 # Start from baseline
                 est = analysis["state_estimation"]
@@ -155,8 +159,25 @@ class ReplayHarness:
             self.logic_engine.update()
 
             # 4. Verify Outcomes
+            # Verify State (if expected)
+            state_success = True
+            if "expected_state" in event['expected_outcome']:
+                current_state = self.logic_engine.state_engine.get_state()
+                expected_state = event['expected_outcome']['expected_state']
+                for dim, expected_val in expected_state.items():
+                    actual_val = current_state.get(dim)
+                    # Allow tolerance due to smoothing
+                    if abs(actual_val - expected_val) > 10:
+                        print(f"  [FAILURE] State {dim}: Expected ~{expected_val}, got {actual_val}")
+                        state_success = False
+                    else:
+                        print(f"  [SUCCESS] State {dim}: {actual_val} (Target {expected_val})")
+
             expected_intervention = event['expected_outcome'].get("intervention")
             actual_interventions = self.mock_intervention.interventions_triggered
+
+            if not state_success:
+                 results["false_negatives"] += 1 # Count state failure as negative result
 
             if expected_intervention:
                 # Check if ANY of the triggered interventions match the type
@@ -238,10 +259,26 @@ class ReplayHarness:
             self.logic_engine.update()
 
             # 4. Verify
+            # Verify State (if expected)
+            state_success = True
+            if "expected_state" in step['expected_outcome']:
+                current_state = self.logic_engine.state_engine.get_state()
+                expected_state = step['expected_outcome']['expected_state']
+                for dim, expected_val in expected_state.items():
+                    actual_val = current_state.get(dim)
+                    # Allow tolerance due to smoothing or exact match check if needed
+                    # For scenarios, we might want stricter checks, but smoothing makes it hard.
+                    # We'll use a tolerance of 5.
+                    if abs(actual_val - expected_val) > 5:
+                        print(f"  [FAILURE] State {dim}: Expected ~{expected_val}, got {actual_val}")
+                        state_success = False
+                    else:
+                        print(f"  [SUCCESS] State {dim}: {actual_val} (Target {expected_val})")
+
             expected_intervention = step['expected_outcome'].get("intervention")
             actual_interventions = self.mock_intervention.interventions_triggered
 
-            step_success = False
+            step_success = state_success
             if expected_intervention:
                  # LogicEngine might return full intervention object or just ID/Type.
                  # LogicEngine usually calls intervention_engine.start_intervention(suggestion)
