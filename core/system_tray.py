@@ -43,7 +43,7 @@ class ACRTrayIcon:
             "paused": "assets/icons/paused_icon.png",
             "snoozed": "assets/icons/snoozed_icon.png",
             "error": "assets/icons/error_icon.png",
-            "dnd": "assets/icons/snoozed_icon.png", # Use snoozed icon as fallback for DND
+            "dnd": "assets/icons/dnd_icon.png",
             "default": "assets/icons/default_icon.png"
         }
         self.icons = {name: load_image(path) for name, path in self.icon_paths.items()}
@@ -157,7 +157,9 @@ class ACRTrayIcon:
 
         tooltip_text = config.APP_NAME # Default
 
-        if isinstance(state_info, dict):
+        if self.current_icon_state == "dnd":
+            tooltip_text = f"{config.APP_NAME} (DND)"
+        elif isinstance(state_info, dict):
             # Format: "A: 50 | E: 80 | F: 50" (Shortened for tooltip)
             arousal = state_info.get("arousal", "?")
             energy = state_info.get("energy", "?")
