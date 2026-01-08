@@ -21,3 +21,4 @@ build/
 
 # User Data
 user_data/
+*.log
