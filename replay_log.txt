@@ -1,0 +1,17 @@
+2026-01-08T00:43:03.792820 [INFO] DataLogger initialized. Log level: INFO. Log file: replay_log.txt
+2026-01-08T00:43:03.793262 [INFO] LogicEngine initialized. Mode: active
+2026-01-08T00:43:03.795933 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 2, 'focus': 44, 'energy': 74, 'mood': 50}
+2026-01-08T00:43:03.796014 [INFO] LMM analysis complete and state updated.
+2026-01-08T00:43:03.796061 [INFO] LMM Detected Visual Context: ['phone_usage', 'looking_down']
+2026-01-08T00:43:03.796158 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 2, 'focus': 44, 'energy': 74, 'mood': 50}
+2026-01-08T00:43:03.797711 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 4, 'focus': 38, 'energy': 68, 'mood': 50}
+2026-01-08T00:43:03.797790 [INFO] LMM analysis complete and state updated.
+2026-01-08T00:43:03.797834 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-08T00:43:03.797881 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 4, 'focus': 38, 'energy': 68, 'mood': 50}
+2026-01-08T00:43:03.798537 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 6, 'focus': 32, 'energy': 62, 'mood': 50}
+2026-01-08T00:43:03.798608 [INFO] LMM analysis complete and state updated.
+2026-01-08T00:43:03.798650 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-08T00:43:03.798690 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
+2026-01-08T00:43:03.798731 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 6, 'focus': 32, 'energy': 62, 'mood': 50}
+2026-01-08T00:43:03.798823 [INFO] System Trigger overrides LMM suggestion. Triggered: doom_scroll_breaker
+2026-01-08T00:43:03.798864 [INFO] Starting intervention: {'id': 'doom_scroll_breaker'}

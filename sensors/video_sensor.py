@@ -123,6 +123,35 @@ class VideoSensor:
         frame = self.get_frame()
         return self.calculate_activity(frame)
 
+    def _calculate_posture(self, metrics):
+        """
+        Calculates posture state based on face metrics.
+        This is a heuristic estimation.
+        """
+        # Default to neutral if no face detected or calculation fails
+        metrics["posture_state"] = "neutral"
+
+        if not metrics.get("face_detected", False):
+            return
+
+        # Posture Heuristics
+        # Note: These are simple 2D estimates and require calibration for accuracy.
+        # Assumptions: Camera is roughly eye-level and centered.
+
+        # Leaning Forward: Face becomes significantly larger
+        # Thresholds should ideally be calibrated (e.g., normal ratio ~0.3-0.4)
+        if metrics.get("face_size_ratio", 0) > 0.45:
+            metrics["posture_state"] = "leaning_forward"
+        # Leaning Back: Face becomes small
+        elif metrics.get("face_size_ratio", 0) < 0.15:
+            metrics["posture_state"] = "leaning_back"
+        # Slouching: Face center moves down significantly
+        # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
+        elif metrics.get("vertical_position", 0) > 0.65:
+            metrics["posture_state"] = "slouching"
+        else:
+            metrics["posture_state"] = "neutral"
+
     def process_frame(self, frame):
         """
         Comprehensive frame processing:
@@ -180,6 +209,8 @@ class VideoSensor:
                 metrics["vertical_position"] = float(y + h/2) / img_h
                 metrics["horizontal_position"] = float(x + w/2) / img_w
 
+                self._calculate_posture(metrics)
+
         except Exception as e:
             self._log_error(f"Error processing frame: {e}")
 
@@ -226,6 +257,8 @@ class VideoSensor:
                 metrics["face_size_ratio"] = float(w) / img_w
                 metrics["vertical_position"] = float(y + h/2) / img_h
                 metrics["horizontal_position"] = float(x + w/2) / img_w
+
+                self._calculate_posture(metrics)
 
             return metrics
         except Exception as e:
