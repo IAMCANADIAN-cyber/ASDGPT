@@ -80,7 +80,7 @@ class LogicEngine:
             self._set_mode_unlocked(mode, from_snooze_expiry)
 
     def _set_mode_unlocked(self, mode: str, from_snooze_expiry: bool = False) -> None:
-        if mode not in ["active", "snoozed", "paused", "error"]:
+        if mode not in ["active", "snoozed", "paused", "error", "dnd"]:
             self.logger.log_warning(f"Attempted to set invalid mode: {mode}")
             return
 
@@ -492,6 +492,13 @@ class LogicEngine:
 
         elif current_mode == "snoozed":
             self.logger.log_debug("LogicEngine: Mode is SNOOZED. Performing light monitoring without intervention.")
+            current_time = time.time()
+            if current_time - self.last_lmm_call_time >= self.lmm_call_interval:
+                self.last_lmm_call_time = current_time
+                self._trigger_lmm_analysis(allow_intervention=False)
+
+        elif current_mode == "dnd":
+            self.logger.log_debug("LogicEngine: Mode is DND. Monitoring without intervention.")
             current_time = time.time()
             if current_time - self.last_lmm_call_time >= self.lmm_call_interval:
                 self.last_lmm_call_time = current_time
