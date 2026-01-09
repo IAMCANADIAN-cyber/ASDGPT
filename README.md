@@ -66,6 +66,7 @@ The following hotkeys are configured by default (see `config.py` to customize):
 
 *   **Active**: The application is actively monitoring sensor data and may provide interventions based on its logic and LMM suggestions.
 *   **Snoozed**: Interventions are temporarily suppressed for a configured duration (e.g., 1 hour). The application will automatically return to "Active" mode when the snooze period ends. Sensor activity might still be monitored lightly or paused depending on implementation.
+*   **Do Not Disturb (DND)**: The application continues to monitor user state but suppresses all interventions indefinitely. Useful for meetings or deep work sessions where interruptions are unwanted.
 *   **Paused**: All active monitoring and interventions are stopped. The application remains in this state until manually resumed or cycled.
 *   **Error**: If a critical sensor (or other component) error occurs, the application may enter an error state, indicated by the tray icon. Some functionalities might be limited.
 

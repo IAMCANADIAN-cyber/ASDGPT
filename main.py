@@ -286,7 +286,9 @@ class Application:
             video_data_processed = False
             audio_data_processed = False
 
-            if current_mode == "active" and not self.sensor_error_active:
+            # Process sensor data if mode allows monitoring (active, snoozed, dnd)
+            monitoring_modes = ["active", "snoozed", "dnd"]
+            if current_mode in monitoring_modes and not self.sensor_error_active:
                 # Process video queue
                 try:
                     frame, video_err = self.video_queue.get_nowait()

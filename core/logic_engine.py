@@ -115,8 +115,13 @@ class LogicEngine:
             if current_actual_mode == "active":
                 self._set_mode_unlocked("snoozed")
             elif current_actual_mode == "snoozed":
+                self._set_mode_unlocked("dnd")
+            elif current_actual_mode == "dnd":
                 self._set_mode_unlocked("paused")
             elif current_actual_mode == "paused":
+                self._set_mode_unlocked("active")
+            else:
+                # Fallback for error or other states -> active
                 self._set_mode_unlocked("active")
 
     def toggle_pause_resume(self) -> None:
