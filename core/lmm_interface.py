@@ -57,8 +57,9 @@ class LMMInterface:
         self.circuit_open_time = 0
         self.circuit_max_failures = getattr(config, 'LMM_CIRCUIT_BREAKER_MAX_FAILURES', 5)
         self.circuit_cooldown = getattr(config, 'LMM_CIRCUIT_BREAKER_COOLDOWN', 60)
+        self.request_timeout = getattr(config, 'LMM_REQUEST_TIMEOUT', 10)
 
-        self._log_info(f"LMMInterface initializing with URL: {self.llm_url}")
+        self._log_info(f"LMMInterface initializing with URL: {self.llm_url} (Timeout: {self.request_timeout}s)")
 
     def _log_info(self, message):
         if self.logger: self.logger.log_info(f"LMMInterface: {message}")
@@ -174,7 +175,8 @@ class LMMInterface:
 
         for attempt in range(retries):
             try:
-                response = requests.post(self.llm_url, json=payload, timeout=20)
+                # Use configurable timeout
+                response = requests.post(self.llm_url, json=payload, timeout=self.request_timeout)
                 response.raise_for_status()
 
                 response_json = response.json()

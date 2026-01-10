@@ -50,11 +50,15 @@ class VideoSensor:
             frame: numpy array or None
             error_message: str or None
         """
+        # Ensure we don't try to read from a closed or non-existent capture
         if self.cap is None or not self.cap.isOpened():
              # Try to reconnect occasionally?
              return None, "Camera not initialized or closed."
 
         try:
+            # We assume self.cap.read() returns relatively quickly or respecting OS timeouts.
+            # There is no easy way to enforce a timeout on cv2.VideoCapture.read() in a single thread
+            # without external monitoring.
             ret, frame = self.cap.read()
             if not ret:
                 self._log_warning("Failed to capture video frame.")
@@ -268,6 +272,8 @@ class VideoSensor:
     def release(self):
         if self.cap:
             try:
+                # Release can hang on some systems if read() is blocking.
+                # However, usually release() from another thread will interrupt read().
                 self.cap.release()
             except Exception as e:
                 self._log_error(f"Error releasing video capture: {e}")

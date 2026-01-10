@@ -2,6 +2,7 @@ import sounddevice as sd
 import numpy as np
 import time
 import collections
+import queue
 import config # Potentially for audio device settings in the future
 
 class AudioSensor:
@@ -21,6 +22,9 @@ class AudioSensor:
         # Store ~1 second of audio
         self.buffer_size = self.sample_rate * 1
         self.raw_audio_buffer = collections.deque(maxlen=self.buffer_size)
+
+        # Thread-safe queue for audio chunks from callback
+        self.internal_queue = queue.Queue(maxsize=10)
 
         self.stream = None
         self.error_state = False
@@ -47,6 +51,9 @@ class AudioSensor:
 
     def _check_devices(self):
         try:
+            if sd is None:
+                 self._log_warning("sounddevice module not available.")
+                 return
             devices = sd.query_devices()
             self._log_info(f"Available audio devices: {devices}")
             default_input = sd.query_devices(kind='input')
@@ -58,8 +65,28 @@ class AudioSensor:
         except Exception as e:
             self._log_warning(f"Could not query audio devices: {e}")
 
+    def _audio_callback(self, indata, frames, time_info, status):
+        """Callback for sounddevice stream. Runs in a separate thread."""
+        if status:
+            self._log_warning(f"Audio callback status: {status}")
+
+        if self.internal_queue.full():
+            try:
+                self.internal_queue.get_nowait() # Discard oldest
+            except queue.Empty:
+                pass
+
+        try:
+            self.internal_queue.put(indata.copy(), block=False)
+        except queue.Full:
+            pass # Should not happen due to discard logic above
 
     def _initialize_stream(self):
+        if sd is None:
+            self.error_state = True
+            self.last_error_message = "sounddevice not available"
+            return
+
         self._log_info(f"Attempting to initialize audio stream (SampleRate: {self.sample_rate}, Channels: {self.channels})...")
         try:
             self.stream = sd.InputStream(
@@ -67,7 +94,7 @@ class AudioSensor:
                 channels=self.channels,
                 blocksize=self.chunk_size, # Read in chunks of desired size
                 # device=None, # Default input device
-                callback=None # Using blocking read, so no callback
+                callback=self._audio_callback # Non-blocking callback
             )
             self.stream.start() # Start the stream
             self.error_state = False
@@ -106,10 +133,10 @@ class AudioSensor:
             return None, "Audio stream not available."
 
         try:
-            # With a blocking stream (no callback), read() will wait until it has enough data.
-            data_chunk, overflowed = self.stream.read(self.chunk_size)
-            if overflowed:
-                self._log_warning("Audio buffer overflow detected during read.")
+            # Get data from queue with timeout (slightly longer than chunk duration)
+            # This ensures we don't block indefinitely if the callback stops firing
+            timeout = self.chunk_duration * 2.0
+            data_chunk = self.internal_queue.get(timeout=timeout)
 
             if self.error_state: # Was in error, but now working
                 self._log_info("Audio sensor recovered and reading data.")
@@ -117,16 +144,19 @@ class AudioSensor:
                 self.last_error_message = ""
             return data_chunk, None # Return audio data and no error
 
-        except sd.PortAudioError as pae:
+        except queue.Empty:
+            # This indicates the callback isn't firing (hardware issue?)
             self.error_state = True
-            error_msg = f"PortAudioError while reading audio chunk: {pae}"
+            error_msg = "Audio stream timeout: No data received from callback."
             self._log_error(error_msg)
-            # Attempt to gracefully stop and close the stream on PortAudioError
+            # We don't necessarily close the stream here, but we mark error to trigger retry logic
+            # potentially in next call or via _handle_stream_error
             self._handle_stream_error()
             return None, error_msg
+
         except Exception as e:
             self.error_state = True
-            error_msg = "Generic exception while reading audio chunk."
+            error_msg = "Generic exception while getting audio chunk."
             self._log_error(error_msg, str(e))
             self._handle_stream_error()
             return None, error_msg
@@ -155,6 +185,13 @@ class AudioSensor:
                 self._log_error("Exception while releasing audio stream.", str(e))
             finally:
                 self.stream = None
+
+        # Clear queue to free memory
+        while not self.internal_queue.empty():
+            try:
+                self.internal_queue.get_nowait()
+            except queue.Empty:
+                break
 
         self.error_state = False
 
