@@ -265,6 +265,26 @@ class VideoSensor:
             self._log_error(f"Error analyzing frame: {e}")
             return {}
 
+    def save_snapshot(self, filepath: str) -> bool:
+        """
+        Captures a fresh frame (or uses current) and saves it to disk.
+        """
+        frame, err = self.get_frame()
+        if frame is None:
+            self._log_warning(f"Could not save snapshot: {err}")
+            return False
+
+        try:
+            success = cv2.imwrite(filepath, frame)
+            if success:
+                self._log_info(f"Snapshot saved to {filepath}")
+            else:
+                self._log_warning(f"Failed to save snapshot to {filepath} (cv2 error).")
+            return success
+        except Exception as e:
+            self._log_error(f"Error saving snapshot: {e}")
+            return False
+
     def release(self):
         if self.cap:
             try:

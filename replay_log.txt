@@ -15,3 +15,20 @@
 2026-01-08T00:43:03.798731 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 6, 'focus': 32, 'energy': 62, 'mood': 50}
 2026-01-08T00:43:03.798823 [INFO] System Trigger overrides LMM suggestion. Triggered: doom_scroll_breaker
 2026-01-08T00:43:03.798864 [INFO] Starting intervention: {'id': 'doom_scroll_breaker'}
+2026-01-10T09:02:34.376647 [INFO] DataLogger initialized. Log level: INFO. Log file: replay_log.txt
+2026-01-10T09:02:34.376808 [INFO] LogicEngine initialized. Mode: active
+2026-01-10T09:02:34.378067 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 2, 'focus': 44, 'energy': 74, 'mood': 50}
+2026-01-10T09:02:34.378160 [INFO] LMM analysis complete and state updated.
+2026-01-10T09:02:34.378210 [INFO] LMM Detected Visual Context: ['phone_usage', 'looking_down']
+2026-01-10T09:02:34.378262 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 2, 'focus': 44, 'energy': 74, 'mood': 50}
+2026-01-10T09:02:34.378995 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 4, 'focus': 38, 'energy': 68, 'mood': 50}
+2026-01-10T09:02:34.379070 [INFO] LMM analysis complete and state updated.
+2026-01-10T09:02:34.379124 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-10T09:02:34.379174 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 4, 'focus': 38, 'energy': 68, 'mood': 50}
+2026-01-10T09:02:34.379696 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 6, 'focus': 32, 'energy': 62, 'mood': 50}
+2026-01-10T09:02:34.379768 [INFO] LMM analysis complete and state updated.
+2026-01-10T09:02:34.379813 [INFO] LMM Detected Visual Context: ['phone_usage']
+2026-01-10T09:02:34.379896 [INFO] LogicEngine: 'Doom Scroll' persistence threshold reached!
+2026-01-10T09:02:34.379951 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 6, 'focus': 32, 'energy': 62, 'mood': 50}
+2026-01-10T09:02:34.380045 [INFO] System Trigger overrides LMM suggestion. Triggered: doom_scroll_breaker
+2026-01-10T09:02:34.380088 [INFO] Starting intervention: {'id': 'doom_scroll_breaker'}

@@ -299,13 +299,57 @@ class InterventionEngine:
              pass
 
     def _capture_image(self, details: str) -> None:
-        # Placeholder for capturing an image
+        """
+        Triggers the video sensor to save a snapshot.
+        File name is generated based on timestamp and optional details/tag.
+        """
         log_message = f"CAPTURING_IMAGE: '{details}'"
-        if self.app and self.app.data_logger:
+        if self.app and hasattr(self.app, 'data_logger'):
             self.app.data_logger.log_info(log_message)
         else:
             print(log_message)
-        # In a real implementation, this would trigger the video sensor to save a snapshot
+
+        if not self.logic_engine or not hasattr(self.logic_engine, 'video_sensor') or not self.logic_engine.video_sensor:
+            msg = "Cannot capture image: VideoSensor not available in LogicEngine."
+            if self.app and hasattr(self.app, 'data_logger'):
+                self.app.data_logger.log_warning(msg)
+            else:
+                print(msg)
+            return
+
+        # Sanitize details for filename
+        tag = "".join(c for c in details if c.isalnum() or c in ('_', '-')).strip()
+        if not tag:
+            tag = "snapshot"
+
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"{timestamp}_{tag}.jpg"
+
+        # Determine storage path
+        base_dir = config.USER_DATA_DIR if hasattr(config, 'USER_DATA_DIR') else "user_data"
+        capture_dir = os.path.join(base_dir, "captured_images")
+
+        try:
+            os.makedirs(capture_dir, exist_ok=True)
+            filepath = os.path.join(capture_dir, filename)
+
+            success = self.logic_engine.video_sensor.save_snapshot(filepath)
+
+            if success:
+                msg = f"Image captured successfully: {filepath}"
+                if self.app and hasattr(self.app, 'data_logger'):
+                    self.app.data_logger.log_info(msg)
+            else:
+                msg = "Failed to capture image (VideoSensor returned failure)."
+                if self.app and hasattr(self.app, 'data_logger'):
+                    self.app.data_logger.log_warning(msg)
+
+        except Exception as e:
+            msg = f"Error during image capture: {e}"
+            if self.app and hasattr(self.app, 'data_logger'):
+                self.app.data_logger.log_error(msg)
+            else:
+                print(msg)
 
     def _record_video(self, details: str) -> None:
         # Placeholder for recording video
