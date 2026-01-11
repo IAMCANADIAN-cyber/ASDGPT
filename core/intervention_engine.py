@@ -527,14 +527,30 @@ class InterventionEngine:
 
         # Critical: If called from within an existing sequence or thread, this check might fail.
         # But generally start_intervention is called from LogicEngine main thread.
-        # If an intervention is active, we generally want to ignore new ones unless we have a priority system (TODO).
+        # If an intervention is active, we check for priority preemption.
         if self._intervention_active.is_set():
-            # FUTURE: If new intervention has higher priority (Tier 3 vs 1), stop current and start new.
-            if logger:
-                logger.log_info(f"Intervention attempt ignored: An intervention is already active.")
+            current_tier = self._current_intervention_details.get("tier", 1)
+            new_tier = execution_details.get("tier", 1)
+
+            if new_tier > current_tier:
+                msg = f"Preempting active intervention (Tier {current_tier}) with higher priority (Tier {new_tier})."
+                if logger:
+                    logger.log_info(msg)
+                else:
+                    print(msg)
+
+                # Stop the current intervention
+                self.stop_intervention()
+
+                # Wait for the old thread to finish to avoid race conditions with the shared event
+                if self.intervention_thread and self.intervention_thread.is_alive():
+                    self.intervention_thread.join(timeout=2.0)
             else:
-                print(f"Intervention attempt ignored: An intervention is already active.")
-            return False
+                if logger:
+                    logger.log_info(f"Intervention attempt ignored: Active intervention has equal or higher priority (Tier {current_tier} >= Tier {new_tier}).")
+                else:
+                    print(f"Intervention attempt ignored: Active intervention has equal or higher priority (Tier {current_tier} >= Tier {new_tier}).")
+                return False
 
         current_app_mode = self.logic_engine.get_mode()
         if current_app_mode != "active":
