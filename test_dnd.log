@@ -1,0 +1,81 @@
+2026-01-11T05:04:58.942553 [INFO] DataLogger initialized. Log level: INFO. Log file: test_dnd.log
+2026-01-11T05:04:58.942826 [INFO] LogicEngine initialized. Mode: active
+2026-01-11T05:04:58.942909 [INFO] LogicEngine: Changing mode from active to dnd
+2026-01-11T05:04:58.942955 [INFO] LogicEngine Notification: Mode changed from active to dnd
+2026-01-11T05:04:58.943687 [INFO] Triggering LMM analysis (Reason: unknown)...
+2026-01-11T05:04:58.943885 [EVENT] Event: lmm_trigger | Payload: {'reason': 'unknown'}
+2026-01-11T05:04:58.944461 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 2, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-11T05:04:58.944679 [INFO] LMM analysis complete and state updated.
+2026-01-11T05:04:58.944744 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 2, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-11T05:04:58.944863 [INFO] Intervention suggested but suppressed due to mode: {'type': 'test_intervention', 'message': 'Test'}
+2026-01-11T05:04:58.945076 [INFO] LogicEngine shutting down...
+2026-01-11T05:04:58.946659 [INFO] DataLogger initialized. Log level: INFO. Log file: test_dnd.log
+2026-01-11T05:04:58.946779 [INFO] LogicEngine initialized. Mode: active
+2026-01-11T05:04:58.946852 [INFO] LogicEngine: Changing mode from active to dnd
+2026-01-11T05:04:58.946903 [INFO] LogicEngine Notification: Mode changed from active to dnd
+2026-01-11T05:04:58.946949 [INFO] LogicEngine: Changing mode from dnd to active
+2026-01-11T05:04:58.946988 [INFO] LogicEngine Notification: Mode changed from dnd to active
+2026-01-11T05:04:58.947049 [INFO] LogicEngine shutting down...
+2026-01-11T05:05:09.849457 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_dnd.log
+2026-01-11T05:05:09.849576 [INFO] LogicEngine initialized. Mode: active
+2026-01-11T05:05:09.849707 [INFO] LogicEngine: Changing mode from active to dnd
+2026-01-11T05:05:09.849786 [INFO] LogicEngine Notification: Mode changed from active to dnd
+2026-01-11T05:05:09.849932 [DEBUG] Processed audio chunk. Level: 0.8000
+2026-01-11T05:05:09.849999 [DEBUG] Processed video frame. Activity: 0.00, Face: False
+2026-01-11T05:05:09.850048 [DEBUG] LogicEngine: Mode is DND. Monitoring without intervention.
+2026-01-11T05:05:09.850228 [INFO] Triggering LMM analysis (Reason: unknown)...
+2026-01-11T05:05:09.850279 [EVENT] Event: lmm_trigger | Payload: {'reason': 'unknown'}
+2026-01-11T05:05:09.850638 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 2, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-11T05:05:09.850742 [INFO] LMM analysis complete and state updated.
+2026-01-11T05:05:09.850822 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 2, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-11T05:05:09.851006 [INFO] Intervention suggested but suppressed due to mode: {'type': 'test_intervention', 'message': 'Test'}
+2026-01-11T05:05:09.851186 [INFO] LogicEngine shutting down...
+2026-01-11T05:05:09.852517 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_dnd.log
+2026-01-11T05:05:09.852670 [INFO] LogicEngine initialized. Mode: active
+2026-01-11T05:05:09.852753 [INFO] LogicEngine: Changing mode from active to dnd
+2026-01-11T05:05:09.852799 [INFO] LogicEngine Notification: Mode changed from active to dnd
+2026-01-11T05:05:09.852844 [INFO] LogicEngine: Changing mode from dnd to active
+2026-01-11T05:05:09.852884 [INFO] LogicEngine Notification: Mode changed from dnd to active
+2026-01-11T05:05:09.852933 [INFO] LogicEngine shutting down...
+2026-01-11T05:06:41.176857 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_dnd.log
+2026-01-11T05:06:41.176977 [INFO] LogicEngine initialized. Mode: active
+2026-01-11T05:06:41.177039 [INFO] LogicEngine: Changing mode from active to dnd
+2026-01-11T05:06:41.177084 [INFO] LogicEngine Notification: Mode changed from active to dnd
+2026-01-11T05:06:41.177219 [DEBUG] Processed audio chunk. Level: 0.8000
+2026-01-11T05:06:41.177285 [DEBUG] Processed video frame. Activity: 0.00, Face: False
+2026-01-11T05:06:41.177333 [DEBUG] LogicEngine: Mode is DND. Monitoring without intervention.
+2026-01-11T05:06:41.177526 [INFO] Triggering LMM analysis (Reason: unknown)...
+2026-01-11T05:06:41.177578 [EVENT] Event: lmm_trigger | Payload: {'reason': 'unknown'}
+2026-01-11T05:06:41.177958 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 2, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-11T05:06:41.178054 [INFO] LMM analysis complete and state updated.
+2026-01-11T05:06:41.178136 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 2, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-11T05:06:41.178326 [INFO] Intervention suggested but suppressed due to mode: {'type': 'test_intervention', 'message': 'Test'}
+2026-01-11T05:06:41.178498 [INFO] LogicEngine shutting down...
+2026-01-11T05:06:41.179995 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_dnd.log
+2026-01-11T05:06:41.180115 [INFO] LogicEngine initialized. Mode: active
+2026-01-11T05:06:41.180185 [INFO] LogicEngine: Changing mode from active to dnd
+2026-01-11T05:06:41.180231 [INFO] LogicEngine Notification: Mode changed from active to dnd
+2026-01-11T05:06:41.180275 [INFO] LogicEngine: Changing mode from dnd to active
+2026-01-11T05:06:41.180314 [INFO] LogicEngine Notification: Mode changed from dnd to active
+2026-01-11T05:06:41.180381 [INFO] LogicEngine shutting down...
+2026-01-11T05:14:50.906037 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_dnd.log
+2026-01-11T05:14:50.906390 [INFO] LogicEngine initialized. Mode: active
+2026-01-11T05:14:50.906490 [INFO] LogicEngine: Changing mode from active to dnd
+2026-01-11T05:14:50.906551 [INFO] LogicEngine Notification: Mode changed from active to dnd
+2026-01-11T05:14:50.906726 [DEBUG] Processed audio chunk. Level: 0.8000
+2026-01-11T05:14:50.906804 [DEBUG] Processed video frame. Activity: 0.00, Face: False
+2026-01-11T05:14:50.906865 [DEBUG] LogicEngine: Mode is DND. Monitoring without intervention.
+2026-01-11T05:14:50.907059 [INFO] Triggering LMM analysis (Reason: unknown)...
+2026-01-11T05:14:50.907143 [EVENT] Event: lmm_trigger | Payload: {'reason': 'unknown'}
+2026-01-11T05:14:50.907673 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 2, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-11T05:14:50.907863 [INFO] LMM analysis complete and state updated.
+2026-01-11T05:14:50.907952 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 2, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-11T05:14:50.908141 [INFO] Intervention suggested but suppressed due to mode: {'type': 'test_intervention', 'message': 'Test'}
+2026-01-11T05:14:50.908424 [INFO] LogicEngine shutting down...
+2026-01-11T05:14:50.909863 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_dnd.log
+2026-01-11T05:14:50.909994 [INFO] LogicEngine initialized. Mode: active
+2026-01-11T05:14:50.910070 [INFO] LogicEngine: Changing mode from active to dnd
+2026-01-11T05:14:50.910118 [INFO] LogicEngine Notification: Mode changed from active to dnd
+2026-01-11T05:14:50.910232 [INFO] LogicEngine: Changing mode from dnd to active
+2026-01-11T05:14:50.910285 [INFO] LogicEngine Notification: Mode changed from dnd to active
+2026-01-11T05:14:50.910341 [INFO] LogicEngine shutting down...

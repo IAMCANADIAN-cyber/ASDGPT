@@ -51,6 +51,16 @@ def _get_conf(key: str, default: Any, cast_type: type = None) -> Any:
     # 3. Default
     return default
 
+# --- System & Logging ---
+APP_NAME = _get_conf("APP_NAME", "ACR")
+LOG_LEVEL = _get_conf("LOG_LEVEL", "INFO")
+LOG_FILE = _get_conf("LOG_FILE", "acr_app.log")
+USER_DATA_DIR = _get_conf("USER_DATA_DIR", "user_data")
+SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
+PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
+EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
+CALIBRATION_FILE = os.path.join(USER_DATA_DIR, "calibration.json")
+
 # --- Application Mode ---
 DEFAULT_MODE = _get_conf("DEFAULT_MODE", "active")
 SNOOZE_DURATION = _get_conf("SNOOZE_DURATION", 3600, int)
