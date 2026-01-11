@@ -332,13 +332,20 @@ class Application:
         self.running = False
 
         # 1. Release sensors first to unblock any pending reads in worker threads
+        # Note: AudioSensor uses a queue now, so release() is important to stop the stream callback
         if hasattr(self, 'video_sensor') and self.video_sensor:
             self.data_logger.log_info("Releasing video sensor...")
-            self.video_sensor.release()
+            try:
+                self.video_sensor.release()
+            except Exception as e:
+                self.data_logger.log_warning(f"Error releasing video sensor: {e}")
 
         if hasattr(self, 'audio_sensor') and self.audio_sensor:
             self.data_logger.log_info("Releasing audio sensor...")
-            self.audio_sensor.release()
+            try:
+                self.audio_sensor.release()
+            except Exception as e:
+                self.data_logger.log_warning(f"Error releasing audio sensor: {e}")
 
         # 2. Join worker threads
         if self.video_thread and self.video_thread.is_alive():

@@ -2,7 +2,8 @@ import sounddevice as sd
 import numpy as np
 import time
 import collections
-import config # Potentially for audio device settings in the future
+import queue
+import config
 
 class AudioSensor:
     def __init__(self, data_logger=None, sample_rate=44100, chunk_duration=1.0, channels=1, history_seconds=5):
@@ -28,6 +29,10 @@ class AudioSensor:
         self.retry_delay = 30  # seconds
         self.last_retry_time = 0
 
+        # Queue for passing audio data from callback to main logic
+        # Limit size to prevent memory explosion if consumer is slow
+        self.audio_queue = queue.Queue(maxsize=10)
+
         self._check_devices()
         self._initialize_stream()
 
@@ -47,27 +52,43 @@ class AudioSensor:
 
     def _check_devices(self):
         try:
-            devices = sd.query_devices()
-            self._log_info(f"Available audio devices: {devices}")
-            default_input = sd.query_devices(kind='input')
-            if not default_input:
-                 self._log_warning("No default input audio device found.")
-                 # This might not be an error yet if a specific device is chosen later or if it's non-critical
+            if sd:
+                devices = sd.query_devices()
+                self._log_info(f"Available audio devices: {devices}")
+                default_input = sd.query_devices(kind='input')
+                if not default_input:
+                    self._log_warning("No default input audio device found.")
+                else:
+                    self._log_info(f"Default input audio device: {default_input}")
             else:
-                self._log_info(f"Default input audio device: {default_input}")
+                self._log_warning("sounddevice module is not available.")
         except Exception as e:
             self._log_warning(f"Could not query audio devices: {e}")
 
 
+    def _audio_callback(self, indata, frames, time_info, status):
+        """Callback for sounddevice InputStream."""
+        if status:
+            self._log_warning(f"Audio callback status: {status}")
+
+        # We must copy indata because it is reused by sounddevice
+        try:
+            self.audio_queue.put(indata.copy(), timeout=0.01) # Non-blocking put with short timeout
+        except queue.Full:
+            # Drop frame if queue is full (consumer too slow)
+            pass
+
     def _initialize_stream(self):
         self._log_info(f"Attempting to initialize audio stream (SampleRate: {self.sample_rate}, Channels: {self.channels})...")
         try:
+            if sd is None:
+                raise ImportError("sounddevice library not loaded.")
+
             self.stream = sd.InputStream(
                 samplerate=self.sample_rate,
                 channels=self.channels,
-                blocksize=self.chunk_size, # Read in chunks of desired size
-                # device=None, # Default input device
-                callback=None # Using blocking read, so no callback
+                blocksize=self.chunk_size,
+                callback=self._audio_callback
             )
             self.stream.start() # Start the stream
             self.error_state = False
@@ -90,6 +111,10 @@ class AudioSensor:
         self.last_retry_time = time.time()
 
     def get_chunk(self):
+        """
+        Retrieves the next available audio chunk from the queue.
+        Returns: (chunk, error_message)
+        """
         if self.error_state:
             if time.time() - self.last_retry_time >= self.retry_delay:
                 self._log_info("Attempting to re-initialize audio stream due to previous error...")
@@ -106,27 +131,30 @@ class AudioSensor:
             return None, "Audio stream not available."
 
         try:
-            # With a blocking stream (no callback), read() will wait until it has enough data.
-            data_chunk, overflowed = self.stream.read(self.chunk_size)
-            if overflowed:
-                self._log_warning("Audio buffer overflow detected during read.")
+            # Wait for data with a timeout slightly longer than chunk duration
+            # This allows the consumer loop to check 'running' flags periodically
+            timeout = self.chunk_duration * 2
+            chunk = self.audio_queue.get(timeout=timeout)
 
             if self.error_state: # Was in error, but now working
                 self._log_info("Audio sensor recovered and reading data.")
                 self.error_state = False
                 self.last_error_message = ""
-            return data_chunk, None # Return audio data and no error
 
-        except sd.PortAudioError as pae:
-            self.error_state = True
-            error_msg = f"PortAudioError while reading audio chunk: {pae}"
-            self._log_error(error_msg)
-            # Attempt to gracefully stop and close the stream on PortAudioError
-            self._handle_stream_error()
-            return None, error_msg
+            return chunk, None
+
+        except queue.Empty:
+            # Queue empty (no data arrived in time)
+            # This might happen if callback isn't firing (silence? or stream hung?)
+            # Or just consumer is faster than producer (unlikely with this timeout)
+            # We return None, None to indicate "no data yet" but "no error"
+            # UNLESS it happens repeatedly?
+            # For now, treat as no data.
+            return None, None
+
         except Exception as e:
             self.error_state = True
-            error_msg = "Generic exception while reading audio chunk."
+            error_msg = "Generic exception while retrieving audio chunk."
             self._log_error(error_msg, str(e))
             self._handle_stream_error()
             return None, error_msg
@@ -139,22 +167,30 @@ class AudioSensor:
                 self._log_info("Audio stream stopped and closed due to error.")
             except Exception as e:
                 self._log_error("Exception during emergency closure of audio stream.", str(e))
-        self.stream = None # Ensure stream is marked as None after closure
+        self.stream = None
 
 
     def release(self):
         # Ensure release is idempotent and robust
+        self._log_info("Releasing audio stream.")
         if self.stream:
-            self._log_info("Releasing audio stream.")
             try:
-                if not self.stream.closed:
-                    self.stream.stop()
-                    self.stream.close()
+                # We do not strictly check stream.closed because sounddevice objects handle it
+                # Stop stream logic
+                self.stream.stop()
+                self.stream.close()
             except Exception as e:
                 # Even if stop/close fails, we consider it released
                 self._log_error("Exception while releasing audio stream.", str(e))
             finally:
                 self.stream = None
+
+        # Drain the queue to help GC?
+        while not self.audio_queue.empty():
+            try:
+                self.audio_queue.get_nowait()
+            except queue.Empty:
+                break
 
         self.error_state = False
 
@@ -408,7 +444,10 @@ if __name__ == '__main__':
     for i in range(5): # Try to get a few chunks
         print(f"\nAttempting to get audio chunk {i+1}...")
         # Need to wait for buffer to fill if chunk_duration is long
-        # time.sleep(audio_sensor.chunk_duration / 2) # Wait a bit for data to accumulate
+
+        # NOTE: With the queue based approach, the callback fills it in the background.
+        # We don't need to sleep manually before calling get_chunk, because get_chunk waits.
+        # But for the very first chunk, we might wait a tiny bit to let stream start.
 
         audio_chunk, error = audio_sensor.get_chunk()
 
@@ -427,12 +466,9 @@ if __name__ == '__main__':
             features = audio_sensor.analyze_chunk(audio_chunk)
             print(f"Analysis: RMS={features['rms']:.4f}, ZCR={features['zcr']:.4f}, Rate={features['speech_rate']:.2f}, Pitch={features['pitch_estimation']:.2f}Hz")
 
-            # Add some processing delay
-            time.sleep(0.1)
         else:
             # This means not enough data was available for a full chunk.
             print(f"Audio chunk {i+1} was None (not enough data or stream issue), no explicit error. Has_Error: {audio_sensor.has_error()}")
-            time.sleep(0.2) # Wait a bit longer for data to fill
 
     audio_sensor.release()
     print("--- AudioSensor test finished ---")
