@@ -58,3 +58,24 @@
 2026-01-11T05:06:41.180275 [INFO] LogicEngine: Changing mode from dnd to active
 2026-01-11T05:06:41.180314 [INFO] LogicEngine Notification: Mode changed from dnd to active
 2026-01-11T05:06:41.180381 [INFO] LogicEngine shutting down...
+2026-01-11T05:14:50.906037 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_dnd.log
+2026-01-11T05:14:50.906390 [INFO] LogicEngine initialized. Mode: active
+2026-01-11T05:14:50.906490 [INFO] LogicEngine: Changing mode from active to dnd
+2026-01-11T05:14:50.906551 [INFO] LogicEngine Notification: Mode changed from active to dnd
+2026-01-11T05:14:50.906726 [DEBUG] Processed audio chunk. Level: 0.8000
+2026-01-11T05:14:50.906804 [DEBUG] Processed video frame. Activity: 0.00, Face: False
+2026-01-11T05:14:50.906865 [DEBUG] LogicEngine: Mode is DND. Monitoring without intervention.
+2026-01-11T05:14:50.907059 [INFO] Triggering LMM analysis (Reason: unknown)...
+2026-01-11T05:14:50.907143 [EVENT] Event: lmm_trigger | Payload: {'reason': 'unknown'}
+2026-01-11T05:14:50.907673 [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 2, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-11T05:14:50.907863 [INFO] LMM analysis complete and state updated.
+2026-01-11T05:14:50.907952 [EVENT] Event: state_update | Payload: {'arousal': 50, 'overload': 2, 'focus': 50, 'energy': 74, 'mood': 50}
+2026-01-11T05:14:50.908141 [INFO] Intervention suggested but suppressed due to mode: {'type': 'test_intervention', 'message': 'Test'}
+2026-01-11T05:14:50.908424 [INFO] LogicEngine shutting down...
+2026-01-11T05:14:50.909863 [INFO] DataLogger initialized. Log level: DEBUG. Log file: test_dnd.log
+2026-01-11T05:14:50.909994 [INFO] LogicEngine initialized. Mode: active
+2026-01-11T05:14:50.910070 [INFO] LogicEngine: Changing mode from active to dnd
+2026-01-11T05:14:50.910118 [INFO] LogicEngine Notification: Mode changed from active to dnd
+2026-01-11T05:14:50.910232 [INFO] LogicEngine: Changing mode from dnd to active
+2026-01-11T05:14:50.910285 [INFO] LogicEngine Notification: Mode changed from dnd to active
+2026-01-11T05:14:50.910341 [INFO] LogicEngine shutting down...
