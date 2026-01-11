@@ -1,64 +1,73 @@
 # ASDGPT Weekly Roadmap Refresh
 
-**Date:** 2024-05-29
-**Status:** ACTIVE
+**Date:** 2024-06-05
+**Status:** STABLE
 
 ## 🗺️ Executive Summary
-The ASDGPT project has successfully implemented the core "skeleton" of the Autonomous Co-Regulator (ACR), including the 5D State Engine, Intervention Library, and a basic Feedback Loop. The focus now shifts from "building the body" to "refining the senses and reflexes." The next week is dedicated to **System Reliability**, **Signal Quality**, and **Evaluation**. We must ensure the system can run for hours without crashing and that interventions are triggered by meaningful signals, not just noise.
+The system has reached a stable "v0.5" state. The core loops (Audio/Video -> Logic -> Intervention) are functional, and the critical "Crash/Zombie Thread" issues have been resolved. The `ReplayHarness` now allows for rapid, noise-free logic testing. The next 7 days are focused on **Signal Fidelity** (making sure the sensors don't lie) and **Filling Gaps** (implementing the missing Biometric sensor and hardening the LMM connection).
 
 ## 1. Change Summary (Last 7 Days)
-*   **Merged**: `navigator-context-persistence-loop` (PR #70). This established the feedback loop where user hotkey inputs (Helpful/Unhelpful) persist to disk and influence future interventions.
-*   **State**:
-    *   `StateEngine` now tracks Arousal, Overload, Focus, Energy, Mood.
-    *   `InterventionLibrary` v1 is live with Physiology, Sensory, Cognitive, and Creative categories.
-    *   `LMMInterface` is wired to inject user context (suppressions, preferences) into prompts.
-*   **Gaps**:
-    *   `ROADMAP.md` was outdated.
-    *   No end-to-end "replay harness" to test logic without hardware.
-    *   Video/Audio features are still basic (RMS/Pixel Diff) and prone to false positives.
+*   **Merged**:
+    *   `navigator-context-persistence-loop` (PR #70): Established user feedback loop (Helpful/Unhelpful).
+    *   Reliability Fixes: `verify_crash.py` confirms 10/10 clean shutdowns (no zombie threads).
+*   **Completed**:
+    *   **Replay Harness**: `tools/replay_harness.py` is live.
+    *   **VAD v1**: `AudioSensor` now has `is_speech` logic based on Pitch/ZCR.
+    *   **DND Mode**: Tray icon supports DND, and `LogicEngine` respects it.
+*   **Gaps Identified**:
+    *   `sensors/biometric_sensor.py` is missing (though defined in Spec).
+    *   VAD thresholds are hardcoded and likely need user-specific calibration.
 
 ## 2. Top Milestones (Next 7 Days)
 
-### 🎯 Milestone 1: System Reliability & Graceful Shutdown
-*   **Goal**: Eliminate "zombie threads" and resource leaks. Ensure the app can be started and stopped repeatedly without error.
-*   **Deliverable**: robust `shutdown()` in `main.py` and `LogicEngine`, handling thread joins and sensor release (especially `sounddevice`).
-*   **Success Metric**: `verify_crash.py` (or similar stress test) passes 10/10 rapid start/stop cycles.
+### 🎯 Milestone 1: Signal Calibration & Tuning
+*   **Goal**: Reduce false positives for "Speech" (fan noise) and "Activity" (shadows).
+*   **Deliverable**:
+    1. Tuned heuristics in `AudioSensor` and `VideoSensor`.
+    2. A `tools/calibrate_sensors.py` script that measures ambient background noise/light and updates `config.json` thresholds.
+*   **Success Metric**: `calibrate_sensors.py` runs and successfully updates config; VAD does not trigger on silence/typing.
 
-### 🎯 Milestone 2: Evaluation Harness V1
-*   **Goal**: Enable "hardware-free" logic testing. We need to simulate a "Doom Scroll" scenario and verify the system triggers the correct intervention *before* we run it on a real user.
-*   **Deliverable**: `tools/replay_harness.py` capable of feeding synthetic `audio_chunk` and `video_frame` sequences to `LogicEngine`.
-*   **Success Metric**: A test case `tests/scenarios/test_doom_scroll.py` passes using the harness.
+### 🎯 Milestone 2: Scenario Coverage (Logic "Lock-In")
+*   **Goal**: Ensure core interventions trigger reliably without regression.
+*   **Deliverable**: Three robust test scenarios using `ReplayHarness`:
+    1. `test_doom_scroll.json`: Phone usage context -> Warning -> Intervention.
+    2. `test_tic_flare.json`: Repeated rapid movement/sniffing -> Breathing exercise.
+    3. `test_focus_drift.json`: Low focus state -> Gentle nudge.
+*   **Success Metric**: All 3 scenarios pass consistently in CI/Test harness.
 
-### 🎯 Milestone 3: Signal Quality - Voice Activity Detection (VAD)
-*   **Goal**: Stop treating background noise as "User Activity".
-*   **Deliverable**: Integrate a simple VAD (energy-based or webrtcvad) into `AudioSensor` to distinguish speech/action from silence/fan noise.
-*   **Success Metric**: `AudioSensor` reports `is_speech=True` only for actual speech in a test recording.
+### 🎯 Milestone 3: LMM Hardening
+*   **Goal**: Make the "Brain" resilient to internet flakiness and API errors.
+*   **Deliverable**: `LMMInterface` update with:
+    1. **Circuit Breaker**: Stop calling API after 3 failures.
+    2. **Fallback Logic**: Use local heuristic logic if LMM is down.
+    3. **Schema Enforcement**: Robust JSON parsing that handles "markdown block" wrapping from LLMs.
+*   **Success Metric**: Unit test `test_lmm_resilience.py` passes with mocked network timeouts.
 
-### 🎯 Milestone 4: UX - "Do Not Disturb" Mode
-*   **Goal**: Allow users to temporarily disable interventions without quitting the app (e.g., during meetings).
-*   **Deliverable**: "Focus Mode" / "DND" toggle in System Tray and `LogicEngine`.
-*   **Success Metric**: LogicEngine suppresses all interventions when DND is active.
+### 🎯 Milestone 4: Implement Biometric Sensor
+*   **Goal**: Connect the "Body" (Heart Rate/Steps) to the Logic Engine.
+*   **Deliverable**: `sensors/biometric_sensor.py` that watches `user_data/biometrics.json` for updates.
+*   **Success Metric**: `LogicEngine` receives "High Heart Rate" signal when the JSON file is updated.
 
 ## 3. De-risk List (Unknowns)
 
 | Unknown | Impact | Mitigation |
 | :--- | :--- | :--- |
-| **Thread Safety** | High | Review `_sensor_lock` usage in `main.py` and `InterventionEngine` to prevent race conditions. |
-| **LMM Hallucinations** | Med | Strict schema validation in `LMMInterface` (already present, need to verify robustness with fuzzing). |
-| **Sensor Locking** | High | `sounddevice` and `cv2` can lock up if not released properly. Prioritize Milestone 1. |
-| **Performance** | Med | Profiling needed. Ensure `VideoSensor` isn't eating 100% CPU on the analysis thread. |
+| **Biometric Latency** | Low | Verify file-watch polling doesn't consume CPU. Use simple `os.stat` checks. |
+| **VAD vs. Typing** | Med | Typing noise has high ZCR (like consonants). May need "Keystroke Filter" if simple VAD fails. |
+| **LMM Costs/Rate Limits** | Med | Implement the "Circuit Breaker" (Milestone 3) to prevent runaway API bills/bans. |
+| **Privacy (Biometrics)** | High | Ensure `biometrics.json` is in `.gitignore` and never logged to console. |
 
-## 4. Backlog (Selected High Priority)
+## 4. Backlog (Prioritized)
 
 | Title | Why | Acceptance Criteria | Estimate | Risk | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Implement VAD** | Reduce false positives from noise. | `AudioSensor.analyze_chunk` returns `speech_confidence`. | M | Low | Sentinel |
-| **Replay Harness** | Essential for safe iteration. | Script runs `LogicEngine` with mock data. | L | Low | Testsmith |
-| **DND Mode** | UX requirement for meetings. | Tray menu has "Toggle DND"; LogicEngine respects it. | S | Low | Navigator |
-| **Fix Thread Joins** | Prevent application hang on exit. | `main.py` exits cleanly < 2s. | S | Med | Navigator |
-| **LMM Circuit Breaker** | Prevent API spam on failure. | Stop calling LMM for 1m if 3 consecutive errors. | M | Low | Navigator |
-| **Intervention Cooldown** | Prevent nagging. | Configurable global cooldown (e.g., 15 mins). | S | Low | Navigator |
-| **Face Posture Metrics** | Better state estimation. | `VideoSensor` outputs head tilt/slouch estimate. | L | High | Calibrator |
-| **Tray Icon State** | Visibility. | Tooltip shows "Arousal: 60, Energy: 40". | S | Low | Navigator |
-| **Log Rotation** | Disk space management. | Logs don't grow indefinitely. | S | Low | Scribe |
-| **Unit Test Coverage** | Stability. | `pytest` coverage > 60% for `core/`. | M | Low | Testsmith |
+| **Create BiometricSensor** | Missing core spec component. | Class reads JSON; integrates into `LogicEngine`. | M | Low | Navigator |
+| **LMM Circuit Breaker** | Reliability/Cost safety. | Stops requests after N errors; resets after time T. | S | Low | Navigator |
+| **Calibrate Sensors Tool** | User-specific accuracy. | Script updates `config.json` with ambient baselines. | M | Low | Calibrator |
+| **Scenario: Doom Scroll** | Verify logic without hardware. | JSON dataset exists; passes `ReplayHarness`. | S | Low | Testsmith |
+| **Scenario: Tic Flare** | Verify logic without hardware. | JSON dataset exists; passes `ReplayHarness`. | S | Low | Testsmith |
+| **Refine VAD Heuristics** | Too many false positives? | Tune ZCR/Pitch thresholds based on real mic test. | M | Med | Sentinel |
+| **Log Rotation Policy** | Disk space safety. | `config.LOG_MAX_BYTES` is respected. | S | Low | Scribe |
+| **Tray Tooltip Stats** | Better UX/Debugging. | Hovering icon shows current 5D State. | S | Low | Navigator |
+| **Optimize Video Loop** | Reduce CPU usage. | Profile `VideoSensor`; ensure sleep if no change. | L | Med | Profiler |
+| **Secure API Keys** | Security. | Ensure `.env` loading is robust; warn if missing. | S | Low | Navigator |
