@@ -11,11 +11,19 @@ class VideoSensor:
         self._initialize_camera()
 
         # Load Haarcascade for face detection
-        # Ensure the path is correct or use a system path
+        # Try system path first, then fallback to assets directory
         cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         self.face_cascade = cv2.CascadeClassifier(cascade_path)
+
         if self.face_cascade.empty():
-            self._log_error("Could not load face cascade classifier.")
+            # Fallback to local assets
+            import os
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            local_cascade_path = os.path.join(base_dir, 'assets', 'haarcascades', 'haarcascade_frontalface_default.xml')
+            self.face_cascade = cv2.CascadeClassifier(local_cascade_path)
+
+            if self.face_cascade.empty():
+                self._log_error(f"Could not load face cascade classifier from system ({cascade_path}) or local ({local_cascade_path}).")
 
     def _log_info(self, message):
         if self.logger: self.logger.log_info(f"VideoSensor: {message}")

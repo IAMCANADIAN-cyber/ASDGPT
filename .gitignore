@@ -21,3 +21,5 @@ build/
 
 # User Data
 user_data/
+*.log
+replay_log.txt.*
