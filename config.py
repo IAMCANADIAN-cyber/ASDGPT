@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -75,6 +75,19 @@ HOTKEY_FEEDBACK_UNHELPFUL = _get_conf("HOTKEY_FEEDBACK_UNHELPFUL", "ctrl+alt+dow
 FEEDBACK_WINDOW_SECONDS = _get_conf("FEEDBACK_WINDOW_SECONDS", 15, int)
 FEEDBACK_SUPPRESSION_MINUTES = _get_conf("FEEDBACK_SUPPRESSION_MINUTES", 240, int)
 
+# --- System & Logging ---
+APP_NAME = _get_conf("APP_NAME", "ACR")
+LOG_LEVEL = _get_conf("LOG_LEVEL", "INFO")
+LOG_FILE = _get_conf("LOG_FILE", "acr_app.log")
+LOG_MAX_BYTES = _get_conf("LOG_MAX_BYTES", 5 * 1024 * 1024, int) # 5 MB
+LOG_BACKUP_COUNT = _get_conf("LOG_BACKUP_COUNT", 5, int)
+
+USER_DATA_DIR = _get_conf("USER_DATA_DIR", "user_data")
+SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
+PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
+EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
+CALIBRATION_FILE = os.path.join(USER_DATA_DIR, "calibration.json")
+
 # --- Sensors ---
 CAMERA_INDEX = _get_conf("CAMERA_INDEX", 0, int)
 
@@ -93,6 +106,7 @@ VIDEO_ACTIVITY_THRESHOLD_HIGH = _get_conf("VIDEO_ACTIVITY_THRESHOLD_HIGH", _cali
 DOOM_SCROLL_THRESHOLD = _get_conf("DOOM_SCROLL_THRESHOLD", 3, int)
 
 # --- VAD (Voice Activity Detection) ---
+# RMS Threshold to consider "not silence"
 VAD_SILENCE_THRESHOLD = _get_conf("VAD_SILENCE_THRESHOLD", 0.01, float)
 VAD_WEAK_THRESHOLD = _get_conf("VAD_WEAK_THRESHOLD", 0.4, float)
 VAD_STRONG_THRESHOLD = _get_conf("VAD_STRONG_THRESHOLD", 0.7, float)
@@ -120,7 +134,8 @@ LMM_FALLBACK_ENABLED = _get_conf("LMM_FALLBACK_ENABLED", True, bool)
 LMM_CIRCUIT_BREAKER_MAX_FAILURES = _get_conf("LMM_CIRCUIT_BREAKER_MAX_FAILURES", 5, int)
 LMM_CIRCUIT_BREAKER_COOLDOWN = _get_conf("LMM_CIRCUIT_BREAKER_COOLDOWN", 60, int)
 
-GOOGLE_API_KEY = _get_conf("GOOGLE_API_KEY", None)
+# --- API Keys ---
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 # --- Tiered Intervention Configurations ---
 # (Used for legacy ad-hoc interventions or fallback defaults)
