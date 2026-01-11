@@ -615,15 +615,16 @@ class InterventionEngine:
                 sd.stop()
                 if logger: logger.log_info("Stopped all sounddevice playback.")
             except Exception as e:
-                if logger: logger.log_warning(f"Error stopping sounddevice: {e}")
+                # Often 'PortAudio not initialized' if already closed, which is fine
+                if logger: logger.log_debug(f"Note stopping sounddevice: {e}")
 
         if self.intervention_thread and self.intervention_thread.is_alive():
             if logger:
                 logger.log_info("Waiting for intervention thread to finish...")
-            self.intervention_thread.join(timeout=3.0)
+            self.intervention_thread.join(timeout=2.0)
             if self.intervention_thread.is_alive():
                 if logger:
-                    logger.log_warning("Intervention thread did not finish in time.")
+                    logger.log_warning("Intervention thread did not finish in time (zombie process possible).")
 
     def notify_mode_change(self, new_mode: str, custom_message: Optional[str] = None) -> None:
         """Handles speaking notifications for mode changes. These are not subject to feedback."""

@@ -509,11 +509,13 @@ class LogicEngine:
         Gracefully shuts down the LogicEngine, ensuring background threads complete.
         """
         self.logger.log_info("LogicEngine shutting down...")
+        # Since lmm_thread is daemon and uses network calls, we can't easily interrupt it
+        # unless we add a flag to LMMInterface, but we can wait briefly.
         if self.lmm_thread and self.lmm_thread.is_alive():
             self.logger.log_info("Waiting for LMM analysis thread to finish...")
-            self.lmm_thread.join(timeout=5.0)
+            self.lmm_thread.join(timeout=2.0) # Reduced timeout for faster exit
             if self.lmm_thread.is_alive():
-                self.logger.log_warning("LMM analysis thread did not finish in time.")
+                self.logger.log_warning("LMM analysis thread did not finish in time (will be killed as daemon).")
             else:
                 self.logger.log_info("LMM analysis thread finished.")
 
