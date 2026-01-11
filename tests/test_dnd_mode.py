@@ -1,101 +1,110 @@
 import unittest
+from unittest.mock import MagicMock, patch
 import time
 import sys
 import os
-import threading
-import numpy as np
 
-# Add project root to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+# Add project root to sys.path to ensure modules can be imported
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from core.logic_engine import LogicEngine
-from core.data_logger import DataLogger
+# Mock dependencies that might require hardware or complex setup
+# We use patch.dict or module-level mocks CAREFULLY.
+# numpy is NOT mocked because LogicEngine uses it for real calculations.
+sys.modules['cv2'] = MagicMock()
+sys.modules['pystray'] = MagicMock()
+sys.modules['PIL'] = MagicMock()
+sys.modules['sounddevice'] = MagicMock()
+
+# Import the module under test
+# We need to make sure config and other core modules are importable
+import core.logic_engine as logic_engine
 import config
-
-class MockLMMInterface:
-    def __init__(self):
-        self.last_call_data = None
-        self.call_count = 0
-
-    def process_data(self, video_data=None, audio_data=None, user_context=None):
-        self.last_call_data = {
-            "user_context": user_context
-        }
-        self.call_count += 1
-        return {
-            "state_estimation": {"arousal": 50, "overload": 10, "focus": 50, "energy": 50, "mood": 50},
-            "visual_context": [],
-            "suggestion": {"type": "test_intervention", "message": "Test"}
-        }
-
-    def get_intervention_suggestion(self, analysis):
-        return analysis.get("suggestion")
-
-class MockInterventionEngine:
-    def __init__(self):
-        self.interventions_triggered = []
-
-    def start_intervention(self, suggestion):
-        self.interventions_triggered.append(suggestion)
 
 class TestDNDMode(unittest.TestCase):
     def setUp(self):
-        self.logger = DataLogger(log_file_path="test_dnd.log")
-        self.mock_lmm = MockLMMInterface()
-        self.mock_intervention = MockInterventionEngine()
-        self.logic_engine = LogicEngine(logger=self.logger, lmm_interface=self.mock_lmm)
-        self.logic_engine.set_intervention_engine(self.mock_intervention)
+        # Setup LogicEngine with mocks
+        self.mock_logger = MagicMock()
+        self.mock_lmm = MagicMock()
+        self.mock_intervention = MagicMock()
 
-        # Adjust settings for faster test
-        self.logic_engine.lmm_call_interval = 1
-        self.logic_engine.min_lmm_interval = 0
-        self.logic_engine.audio_threshold_high = 0.5
+        self.engine = logic_engine.LogicEngine(
+            logger=self.mock_logger,
+            lmm_interface=self.mock_lmm
+        )
+        self.engine.set_intervention_engine(self.mock_intervention)
 
-    def tearDown(self):
-        self.logic_engine.shutdown()
+        # Ensure we start in active mode
+        self.engine.current_mode = "active"
 
-    def test_dnd_suppresses_intervention(self):
-        """
-        Test that DND mode allows monitoring (LMM calls) but suppresses interventions.
-        """
-        # 1. Set DND mode
-        self.logic_engine.set_mode("dnd")
-        self.assertEqual(self.logic_engine.get_mode(), "dnd")
+    def test_dnd_mode_transition(self):
+        """Test transitioning to and from DND mode."""
+        self.engine.set_mode("dnd")
+        self.assertEqual(self.engine.get_mode(), "dnd")
 
-        # 2. Trigger high audio (which normally triggers intervention)
-        loud_audio = np.ones(1024) * 0.8
-        self.logic_engine.process_audio_data(loud_audio)
-        self.logic_engine.process_video_data(np.zeros((100, 100, 3), dtype=np.uint8)) # Need video data too
+        self.engine.set_mode("active")
+        self.assertEqual(self.engine.get_mode(), "active")
 
-        # Force eligibility
-        self.logic_engine.last_lmm_call_time = time.time() - 10
+    def test_dnd_suppresses_lmm_interventions(self):
+        """Test that DND mode suppresses interventions suggested by LMM."""
+        self.engine.set_mode("dnd")
 
-        # Update
-        self.logic_engine.update()
+        # Configure LMM to suggest an intervention
+        self.mock_lmm.process_data.return_value = {
+            "suggestion": {"id": "box_breathing"},
+            "state_estimation": {"arousal": 50},
+            "visual_context": []
+        }
+        self.mock_lmm.get_intervention_suggestion.return_value = {"id": "box_breathing"}
 
-        # Wait for async thread
-        if self.logic_engine.lmm_thread:
-            self.logic_engine.lmm_thread.join(timeout=2)
+        # Direct test of _run_lmm_analysis_async with allow_intervention=False
+        payload = {
+            "video_data": None,
+            "audio_data": None,
+            "user_context": {"trigger_reason": "periodic"}
+        }
+        self.engine._run_lmm_analysis_async(payload, allow_intervention=False)
 
-        # 3. Verify LMM was called (Monitoring is active)
-        self.assertIsNotNone(self.mock_lmm.last_call_data, "LMM should be called in DND mode")
-        self.assertEqual(self.mock_lmm.last_call_data['user_context']['current_mode'], "dnd")
+        # Verify intervention engine was NOT called
+        self.mock_intervention.start_intervention.assert_not_called()
+        # Verify we logged the suppression
+        self.mock_logger.log_info.assert_any_call("Intervention suggested but suppressed due to mode: {'id': 'box_breathing'}")
 
-        # 4. Verify NO intervention was triggered
-        self.assertEqual(len(self.mock_intervention.interventions_triggered), 0, "Intervention should be suppressed in DND mode")
+    def test_dnd_suppresses_reflexive_interventions(self):
+        """Test that DND mode suppresses system/reflexive triggers like doom scrolling."""
+        self.engine.set_mode("dnd")
 
-    def test_dnd_toggle_logic(self):
-        """
-        Test toggling in and out of DND mode.
-        """
-        self.logic_engine.set_mode("active")
-        self.assertEqual(self.logic_engine.get_mode(), "active")
+        # Configure LMM to return visual context that triggers doom scrolling
+        self.mock_lmm.process_data.return_value = {
+            "suggestion": None,
+            "state_estimation": {"arousal": 50},
+            "visual_context": ["phone_usage"]
+        }
 
-        self.logic_engine.set_mode("dnd")
-        self.assertEqual(self.logic_engine.get_mode(), "dnd")
+        # Set threshold low so it triggers immediately
+        self.engine.doom_scroll_trigger_threshold = 1
 
-        self.logic_engine.set_mode("active")
-        self.assertEqual(self.logic_engine.get_mode(), "active")
+        # Run analysis with allow_intervention=False
+        payload = {
+            "video_data": None,
+            "audio_data": None,
+            "user_context": {"trigger_reason": "periodic"}
+        }
+        self.engine._run_lmm_analysis_async(payload, allow_intervention=False)
+
+        # Verify logic detected the trigger
+        self.mock_intervention.start_intervention.assert_not_called()
+        self.mock_logger.log_info.assert_any_call("Intervention suggested but suppressed due to mode: {'id': 'doom_scroll_breaker'}")
+
+    def test_dnd_monitoring_continues(self):
+        """Test that DND mode still performs LMM analysis (monitoring) but just suppresses output."""
+        self.engine.set_mode("dnd")
+
+        with patch.object(self.engine, '_trigger_lmm_analysis') as mock_trigger:
+            self.engine.last_lmm_call_time = 0
+            self.engine.lmm_call_interval = 0 # Force immediate
+            self.engine.update()
+
+            mock_trigger.assert_called_with(allow_intervention=False)
 
 if __name__ == '__main__':
     unittest.main()
