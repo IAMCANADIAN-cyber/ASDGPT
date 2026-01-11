@@ -513,9 +513,9 @@ class LogicEngine:
         # unless we add a flag to LMMInterface, but we can wait briefly.
         if self.lmm_thread and self.lmm_thread.is_alive():
             self.logger.log_info("Waiting for LMM analysis thread to finish...")
-            self.lmm_thread.join(timeout=2.0) # Reduced timeout for faster exit
+            self.lmm_thread.join(timeout=5.0)
             if self.lmm_thread.is_alive():
-                self.logger.log_warning("LMM analysis thread did not finish in time (will be killed as daemon).")
+                self.logger.log_warning("LMM analysis thread did not finish in time.")
             else:
                 self.logger.log_info("LMM analysis thread finished.")
 

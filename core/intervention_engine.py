@@ -527,7 +527,7 @@ class InterventionEngine:
 
         # Critical: If called from within an existing sequence or thread, this check might fail.
         # But generally start_intervention is called from LogicEngine main thread.
-        # If an intervention is active, we generally want to ignore new ones unless we have a priority system.
+        # If an intervention is active, we generally want to ignore new ones unless we have a priority system (TODO).
         if self._intervention_active.is_set():
             # Check priority: Higher tier preempts lower tier
             current_tier = self._current_intervention_details.get("tier", 1)
@@ -634,10 +634,10 @@ class InterventionEngine:
         if self.intervention_thread and self.intervention_thread.is_alive():
             if logger:
                 logger.log_info("Waiting for intervention thread to finish...")
-            self.intervention_thread.join(timeout=2.0)
+            self.intervention_thread.join(timeout=3.0)
             if self.intervention_thread.is_alive():
                 if logger:
-                    logger.log_warning("Intervention thread did not finish in time (zombie process possible).")
+                    logger.log_warning("Intervention thread did not finish in time.")
 
     def notify_mode_change(self, new_mode: str, custom_message: Optional[str] = None) -> None:
         """Handles speaking notifications for mode changes. These are not subject to feedback."""
