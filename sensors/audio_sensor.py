@@ -2,7 +2,6 @@ import sounddevice as sd
 import numpy as np
 import time
 import collections
-import queue
 import config
 
 class AudioSensor:
@@ -28,10 +27,6 @@ class AudioSensor:
         self.last_error_message = ""
         self.retry_delay = 30  # seconds
         self.last_retry_time = 0
-
-        # Queue for passing audio data from callback to main logic
-        # Limit size to prevent memory explosion if consumer is slow
-        self.audio_queue = queue.Queue(maxsize=10)
 
         self._check_devices()
         self._initialize_stream()
@@ -66,18 +61,6 @@ class AudioSensor:
             self._log_warning(f"Could not query audio devices: {e}")
 
 
-    def _audio_callback(self, indata, frames, time_info, status):
-        """Callback for sounddevice InputStream."""
-        if status:
-            self._log_warning(f"Audio callback status: {status}")
-
-        # We must copy indata because it is reused by sounddevice
-        try:
-            self.audio_queue.put(indata.copy(), timeout=0.01) # Non-blocking put with short timeout
-        except queue.Full:
-            # Drop frame if queue is full (consumer too slow)
-            pass
-
     def _initialize_stream(self):
         self._log_info(f"Attempting to initialize audio stream (SampleRate: {self.sample_rate}, Channels: {self.channels})...")
         try:
@@ -88,7 +71,8 @@ class AudioSensor:
                 samplerate=self.sample_rate,
                 channels=self.channels,
                 blocksize=self.chunk_size,
-                callback=self._audio_callback
+                # device=None, # Default input device
+                callback=None # Using blocking read, so no callback
             )
             self.stream.start() # Start the stream
             self.error_state = False
@@ -111,10 +95,6 @@ class AudioSensor:
         self.last_retry_time = time.time()
 
     def get_chunk(self):
-        """
-        Retrieves the next available audio chunk from the queue.
-        Returns: (chunk, error_message)
-        """
         if self.error_state:
             if time.time() - self.last_retry_time >= self.retry_delay:
                 self._log_info("Attempting to re-initialize audio stream due to previous error...")
@@ -131,30 +111,27 @@ class AudioSensor:
             return None, "Audio stream not available."
 
         try:
-            # Wait for data with a timeout slightly longer than chunk duration
-            # This allows the consumer loop to check 'running' flags periodically
-            timeout = self.chunk_duration * 2
-            chunk = self.audio_queue.get(timeout=timeout)
+            # With a blocking stream (no callback), read() will wait until it has enough data.
+            data_chunk, overflowed = self.stream.read(self.chunk_size)
+            if overflowed:
+                self._log_warning("Audio buffer overflow detected during read.")
 
             if self.error_state: # Was in error, but now working
                 self._log_info("Audio sensor recovered and reading data.")
                 self.error_state = False
                 self.last_error_message = ""
+            return data_chunk, None # Return audio data and no error
 
-            return chunk, None
-
-        except queue.Empty:
-            # Queue empty (no data arrived in time)
-            # This might happen if callback isn't firing (silence? or stream hung?)
-            # Or just consumer is faster than producer (unlikely with this timeout)
-            # We return None, None to indicate "no data yet" but "no error"
-            # UNLESS it happens repeatedly?
-            # For now, treat as no data.
-            return None, None
-
+        except sd.PortAudioError as pae:
+            self.error_state = True
+            error_msg = f"PortAudioError while reading audio chunk: {pae}"
+            self._log_error(error_msg)
+            # Attempt to gracefully stop and close the stream on PortAudioError
+            self._handle_stream_error()
+            return None, error_msg
         except Exception as e:
             self.error_state = True
-            error_msg = "Generic exception while retrieving audio chunk."
+            error_msg = "Generic exception while reading audio chunk."
             self._log_error(error_msg, str(e))
             self._handle_stream_error()
             return None, error_msg
@@ -167,7 +144,7 @@ class AudioSensor:
                 self._log_info("Audio stream stopped and closed due to error.")
             except Exception as e:
                 self._log_error("Exception during emergency closure of audio stream.", str(e))
-        self.stream = None
+        self.stream = None # Ensure stream is marked as None after closure
 
 
     def release(self):
@@ -177,20 +154,14 @@ class AudioSensor:
             try:
                 # We do not strictly check stream.closed because sounddevice objects handle it
                 # Stop stream logic
-                self.stream.stop()
-                self.stream.close()
+                if not self.stream.closed:
+                    self.stream.stop()
+                    self.stream.close()
             except Exception as e:
                 # Even if stop/close fails, we consider it released
                 self._log_error("Exception while releasing audio stream.", str(e))
             finally:
                 self.stream = None
-
-        # Drain the queue to help GC?
-        while not self.audio_queue.empty():
-            try:
-                self.audio_queue.get_nowait()
-            except queue.Empty:
-                break
 
         self.error_state = False
 
@@ -363,6 +334,26 @@ class AudioSensor:
                 buffered_audio = np.array(self.raw_audio_buffer)
                 metrics["speech_rate"] = self._calculate_speech_rate(buffered_audio)
 
+            # --- Update History & Calculate Variances ---
+            self.rms_history.append(metrics["rms"])
+            if metrics["pitch_estimation"] > 0:
+                self.pitch_history.append(metrics["pitch_estimation"])
+
+            if len(self.pitch_history) > 2:
+                metrics["pitch_variance"] = float(np.std(list(self.pitch_history)))
+
+            if len(self.rms_history) > 2:
+                rms_arr = np.array(self.rms_history)
+                metrics["rms_variance"] = float(np.std(rms_arr))
+
+                # Activity Bursts
+                threshold = np.mean(rms_arr) * 0.8
+                if len(rms_arr) > 1 and threshold > 1e-6:
+                    above = rms_arr > threshold
+                    if len(above) > 1:
+                        crossings = np.sum(np.diff(above.astype(int)) > 0)
+                        metrics["activity_bursts"] = int(crossings)
+
             # --- VAD Logic ---
             # Heuristics for human speech:
             # - Pitch: Typically 85-255Hz (Adult), can go up to ~600Hz (Child/Exclamation)
@@ -385,40 +376,21 @@ class AudioSensor:
                 confidence += 0.1 # Moderate
 
             # Factor 3: RMS Variance (Speech is bursty/variable, fan noise is constant)
-            # This requires history, so it's a "lagging" indicator but useful
             if len(self.rms_history) > 3:
-                 # Check if variance is significant relative to mean
-                 rel_var = metrics["rms_variance"] / (np.mean(list(self.rms_history)) + 1e-6)
-                 if rel_var > 0.2: # Variable volume
-                     confidence += 0.2
+                 mean_rms = np.mean(list(self.rms_history))
+                 rel_var = metrics["rms_variance"] / (mean_rms + 1e-6)
 
-            metrics["speech_confidence"] = min(confidence, 1.0)
+                 if rel_var > 0.2: # Variable volume (speech-like)
+                     confidence += 0.2
+                 elif rel_var < 0.05 and mean_rms > 0.01:
+                     # VERY stable volume + significant energy = likely machine noise (fan/hum)
+                     confidence -= 0.4
+
+            metrics["speech_confidence"] = max(0.0, min(confidence, 1.0))
 
             # Thresholding
             # Default 0.5 confidence to be "speech"
             metrics["is_speech"] = metrics["speech_confidence"] > 0.4
-
-            # --- History / Time-Series Features ---
-            self.rms_history.append(metrics["rms"])
-            if metrics["pitch_estimation"] > 0:
-                self.pitch_history.append(metrics["pitch_estimation"])
-
-            # Pitch Variance (Intonation/Stress)
-            if len(self.pitch_history) > 2:
-                metrics["pitch_variance"] = float(np.std(list(self.pitch_history)))
-
-            # RMS Variance
-            if len(self.rms_history) > 2:
-                rms_arr = np.array(self.rms_history)
-                metrics["rms_variance"] = float(np.std(rms_arr))
-
-                # Restore Activity Bursts
-                threshold = np.mean(rms_arr) * 0.8
-                if len(rms_arr) > 1 and threshold > 1e-6:
-                    above = rms_arr > threshold
-                    if len(above) > 1:
-                        crossings = np.sum(np.diff(above.astype(int)) > 0)
-                        metrics["activity_bursts"] = int(crossings)
 
         except Exception as e:
             self._log_error(f"Error extracting audio features: {e}")
@@ -444,10 +416,7 @@ if __name__ == '__main__':
     for i in range(5): # Try to get a few chunks
         print(f"\nAttempting to get audio chunk {i+1}...")
         # Need to wait for buffer to fill if chunk_duration is long
-
-        # NOTE: With the queue based approach, the callback fills it in the background.
-        # We don't need to sleep manually before calling get_chunk, because get_chunk waits.
-        # But for the very first chunk, we might wait a tiny bit to let stream start.
+        # time.sleep(audio_sensor.chunk_duration / 2) # Wait a bit for data to accumulate
 
         audio_chunk, error = audio_sensor.get_chunk()
 
@@ -466,9 +435,12 @@ if __name__ == '__main__':
             features = audio_sensor.analyze_chunk(audio_chunk)
             print(f"Analysis: RMS={features['rms']:.4f}, ZCR={features['zcr']:.4f}, Rate={features['speech_rate']:.2f}, Pitch={features['pitch_estimation']:.2f}Hz")
 
+            # Add some processing delay
+            time.sleep(0.1)
         else:
             # This means not enough data was available for a full chunk.
             print(f"Audio chunk {i+1} was None (not enough data or stream issue), no explicit error. Has_Error: {audio_sensor.has_error()}")
+            time.sleep(0.2) # Wait a bit longer for data to fill
 
     audio_sensor.release()
     print("--- AudioSensor test finished ---")
