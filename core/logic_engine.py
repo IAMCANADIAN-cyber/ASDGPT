@@ -430,19 +430,33 @@ class LogicEngine:
             with self._lock:
                 current_audio_level = self.audio_level
                 current_video_activity = self.video_activity
+                # Get more detailed analysis for filtering triggers
+                is_speech = self.audio_analysis.get("is_speech", False)
+                # Face detection is key for "user activity" vs "shadows"
+                face_detected = self.face_metrics.get("face_detected", False)
+                face_count = self.face_metrics.get("face_count", 0)
 
             # 2. Check for Event-based Triggers
-            # Check for sudden loud noise
+            # Check for sudden loud noise AND it is speech-like
+            # If it's just a loud bang (high RMS, no speech confidence), we ignore it to prevent false positives.
             if current_audio_level > self.audio_threshold_high:
-                if current_time - self.last_lmm_call_time >= self.min_lmm_interval:
-                    trigger_lmm = True
-                    trigger_reason = "high_audio_level"
+                if is_speech:
+                    if current_time - self.last_lmm_call_time >= self.min_lmm_interval:
+                        trigger_lmm = True
+                        trigger_reason = "high_audio_level"
+                else:
+                    self.logger.log_debug(f"High audio level ({current_audio_level:.2f}) ignored: Not speech.")
 
-            # Check for high activity (or sudden movement)
+            # Check for high activity (or sudden movement) AND user is present
             elif current_video_activity > self.video_activity_threshold_high:
-                if current_time - self.last_lmm_call_time >= self.min_lmm_interval:
-                    trigger_lmm = True
-                    trigger_reason = "high_video_activity"
+                # Only trigger if we see a face (user is present)
+                # This prevents triggering on cats, shadows, or empty chairs.
+                if face_detected or face_count > 0:
+                    if current_time - self.last_lmm_call_time >= self.min_lmm_interval:
+                        trigger_lmm = True
+                        trigger_reason = "high_video_activity"
+                else:
+                    self.logger.log_debug(f"High video activity ({current_video_activity:.2f}) ignored: No face detected.")
 
             # 3. Periodic Check (Heartbeat)
             # If no event triggered, check if it's time for a routine check
