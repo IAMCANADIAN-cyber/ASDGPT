@@ -55,6 +55,13 @@ class TestStressShutdown(unittest.TestCase):
                 return True, MagicMock() # ret, frame
             mock_cap.read.side_effect = slow_read
 
+            # Configure CV2 CascadeClassifier mock to NOT be empty
+            # Use `return_value` on the Class Mock so instantiation returns this instance
+            mock_cascade = MagicMock()
+            mock_cascade.empty.return_value = False
+            # We must configure the *return value* of the class constructor
+            sys.modules['cv2'].CascadeClassifier.return_value = mock_cascade
+
             # Mock Audio Stream
             mock_stream = MagicMock()
             mock_stream.closed = False
