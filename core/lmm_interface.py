@@ -294,7 +294,13 @@ class LMMInterface:
                 context_str += f"Audio Pitch (est): {audio_analysis.get('pitch_estimation', 0.0):.2f} Hz\n"
                 context_str += f"Audio Pitch Variance: {audio_analysis.get('pitch_variance', 0.0):.2f}\n"
                 context_str += f"Audio ZCR: {audio_analysis.get('zcr', 0.0):.4f}\n"
-                context_str += f"Speech Rate (Burst Density): {audio_analysis.get('activity_bursts', 0)}\n"
+
+                speech_rate = audio_analysis.get('speech_rate', 0.0)
+                context_str += f"Speech Rate: {speech_rate:.2f} syllables/sec\n"
+
+                is_speech = audio_analysis.get('is_speech', False)
+                speech_conf = audio_analysis.get('speech_confidence', 0.0)
+                context_str += f"Voice Activity: {'Yes' if is_speech else 'No'} (Conf: {speech_conf:.2f})\n"
 
             context_str += f"Video Activity (Motion): {metrics.get('video_activity', 0.0):.2f}\n"
 
