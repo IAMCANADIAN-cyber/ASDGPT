@@ -412,10 +412,10 @@ class LogicEngine:
         current_mode = self.get_mode()
         # self.logger.log_debug(f"LogicEngine update. Current mode: {current_mode}")
 
-        if current_mode == "active":
+        if current_mode in ["active", "dnd"]:
             current_time = time.time()
 
-            # Check probation
+            # Check probation (only relevant if recovering to active, but harmless to check)
             if self.recovery_probation_end_time > 0 and current_time > self.recovery_probation_end_time:
                 self.logger.log_info("Error recovery probation passed. Resetting error counters.")
                 self.error_recovery_attempts = 0
@@ -468,7 +468,9 @@ class LogicEngine:
             # 4. Trigger LMM if warranted
             if trigger_lmm:
                 self.last_lmm_call_time = current_time
-                self._trigger_lmm_analysis(reason=trigger_reason)
+                # Intervention only allowed in 'active' mode
+                should_intervene = (current_mode == "active")
+                self._trigger_lmm_analysis(reason=trigger_reason, allow_intervention=should_intervene)
 
             # 5. Potentially change mode (e.g. error)
             # (Note: Main application handles sensor hardware errors.
@@ -506,13 +508,6 @@ class LogicEngine:
 
         elif current_mode == "snoozed":
             self.logger.log_debug("LogicEngine: Mode is SNOOZED. Performing light monitoring without intervention.")
-            current_time = time.time()
-            if current_time - self.last_lmm_call_time >= self.lmm_call_interval:
-                self.last_lmm_call_time = current_time
-                self._trigger_lmm_analysis(allow_intervention=False)
-
-        elif current_mode == "dnd":
-            self.logger.log_debug("LogicEngine: Mode is DND. Monitoring without intervention.")
             current_time = time.time()
             if current_time - self.last_lmm_call_time >= self.lmm_call_interval:
                 self.last_lmm_call_time = current_time
