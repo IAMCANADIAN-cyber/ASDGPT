@@ -12,6 +12,7 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 *   **Completed**: **DND Mode** (Milestone 4) is fully implemented and tested.
 *   **Merged**: VAD integration into `AudioSensor`, providing `speech_rate` and `speech_confidence` metrics.
 *   **Improved**: LMM Context now utilizes real VAD metrics (Syllables/sec, Voice Activity) instead of legacy approximations.
+*   **Completed**: Added `tests/scenarios/test_panic_attack.py` to verify critical intervention logic.
 
 ## 2. Top Milestones (Next 7 Days)
 
@@ -20,8 +21,8 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 *   **Next Steps**: Monitor for long-term stability in `custom_logs/`.
 
 ### 🎯 Milestone 2: Evaluation Harness V1
-*   **Status**: ✅ COMPLETED (Verified by `test_doom_scroll.py`)
-*   **Next Steps**: Add more scenarios (e.g., "Flow State", "Panic Attack").
+*   **Status**: ✅ COMPLETED (Verified by `test_doom_scroll.py`, `test_panic_attack.py`)
+*   **Next Steps**: Add more scenarios (e.g., "Flow State").
 
 ### 🎯 Milestone 3: Signal Quality - Voice Activity Detection (VAD)
 *   **Status**: 🟡 IN VALIDATION
@@ -49,4 +50,4 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 | **Tray Icon State** | Visibility. | Tooltip shows "Arousal: 60, Energy: 40" (Already implemented?). | S | Low | Navigator |
 | **Log Rotation** | Disk space management. | Logs don't grow indefinitely. | S | Low | Scribe |
 | **Unit Test Coverage** | Stability. | `pytest` coverage > 80% for `core/`. | M | Low | Testsmith |
-| **Scenario Expansion** | Better eval. | Add `test_panic_attack.py` and `test_flow_state.py`. | M | Low | Testsmith |
+| **Scenario Expansion** | Better eval. | Add `test_flow_state.py`. | M | Low | Testsmith |
