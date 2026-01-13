@@ -160,11 +160,33 @@ class ACRTrayIcon:
         if self.current_icon_state == "dnd":
             tooltip_text = f"{config.APP_NAME} (DND)"
         elif isinstance(state_info, dict):
-            # Format: "A: 50 | E: 80 | F: 50" (Shortened for tooltip)
-            arousal = state_info.get("arousal", "?")
-            energy = state_info.get("energy", "?")
-            focus = state_info.get("focus", "?")
-            tooltip_text = f"{config.APP_NAME}\nA: {arousal} | E: {energy} | F: {focus}"
+            if not state_info:
+                tooltip_text = f"{config.APP_NAME}\nInitializing..."
+            else:
+                # Format: "A: 50 | E: 80 | F: 50" (Shortened for tooltip)
+                # We try to fit all 5 dimensions if available
+                # A=Arousal, O=Overload, F=Focus, E=Energy, M=Mood
+
+                parts = []
+
+                # Line 1: Arousal, Overload, Focus
+                line1 = []
+                if "arousal" in state_info: line1.append(f"A:{state_info['arousal']}")
+                if "overload" in state_info: line1.append(f"O:{state_info['overload']}")
+                if "focus" in state_info: line1.append(f"F:{state_info['focus']}")
+
+                # Line 2: Energy, Mood
+                line2 = []
+                if "energy" in state_info: line2.append(f"E:{state_info['energy']}")
+                if "mood" in state_info: line2.append(f"M:{state_info['mood']}")
+
+                if line1: parts.append(" ".join(line1))
+                if line2: parts.append(" ".join(line2))
+
+                if parts:
+                    tooltip_text = f"{config.APP_NAME}\n" + "\n".join(parts)
+                else:
+                     tooltip_text = f"{config.APP_NAME}\nNo State Data"
         elif isinstance(state_info, str):
             tooltip_text = f"{config.APP_NAME}\n{state_info}"
 
