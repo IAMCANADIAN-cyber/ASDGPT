@@ -75,6 +75,26 @@ class MockInterventionEngine:
     def start_intervention(self, suggestion):
         self.interventions_triggered.append(suggestion)
 
+class MockAudioSensor:
+    def __init__(self):
+        self.analysis_result = {}
+
+    def analyze_chunk(self, chunk):
+        if not self.analysis_result:
+            # Fallback to simple RMS if no analysis injected
+            rms = np.sqrt(np.mean(chunk**2)) if len(chunk) > 0 else 0.0
+            return {"rms": rms}
+        return self.analysis_result
+
+class MockVideoSensor:
+    def __init__(self):
+        self.analysis_result = {}
+
+    def process_frame(self, frame):
+        if not self.analysis_result:
+            return {"video_activity": 0.0, "face_detected": False}
+        return self.analysis_result
+
 class SynchronousLogicEngine(LogicEngine):
     """
     A subclass of LogicEngine that runs LMM analysis synchronously for testing.
@@ -97,9 +117,16 @@ class ReplayHarness:
         self.logger = DataLogger(log_file_path="replay_log.txt")
         self.mock_lmm = MockLMMInterface()
         self.mock_intervention = MockInterventionEngine()
+        self.mock_audio_sensor = MockAudioSensor()
+        self.mock_video_sensor = MockVideoSensor()
 
         # Initialize LogicEngine with mocks using the synchronous subclass
-        self.logic_engine = SynchronousLogicEngine(logger=self.logger, lmm_interface=self.mock_lmm)
+        self.logic_engine = SynchronousLogicEngine(
+            logger=self.logger,
+            lmm_interface=self.mock_lmm,
+            audio_sensor=self.mock_audio_sensor,
+            video_sensor=self.mock_video_sensor
+        )
         self.logic_engine.set_intervention_engine(self.mock_intervention)
 
         # Adjust settings for faster replay
@@ -133,6 +160,15 @@ class ReplayHarness:
             # 1. Setup the mocks
             self.mock_lmm.set_expectation(event['expected_outcome'])
             self.mock_intervention.interventions_triggered = []
+
+            # Reset mocks
+            self.mock_audio_sensor.analysis_result = {}
+            self.mock_video_sensor.analysis_result = {}
+            if 'input_analysis' in event:
+                if 'audio' in event['input_analysis']:
+                    self.mock_audio_sensor.analysis_result = event['input_analysis']['audio']
+                if 'video' in event['input_analysis']:
+                    self.mock_video_sensor.analysis_result = event['input_analysis']['video']
 
             # Reset LogicEngine state slightly to ensure clean slate for event
             self.logic_engine.last_lmm_call_time = 0 # Force eligible for periodic check if needed
@@ -231,7 +267,15 @@ class ReplayHarness:
             # 1. Setup Expectation for this step
             self.mock_lmm.set_expectation(step['expected_outcome'])
             self.mock_intervention.interventions_triggered = [] # Reset triggered list for this step check?
-            # Or should we accumulate? For now, let's reset to see what triggered THIS step.
+
+            # Setup sensor mocks
+            self.mock_audio_sensor.analysis_result = {}
+            self.mock_video_sensor.analysis_result = {}
+            if 'input_analysis' in step:
+                if 'audio' in step['input_analysis']:
+                    self.mock_audio_sensor.analysis_result = step['input_analysis']['audio']
+                if 'video' in step['input_analysis']:
+                    self.mock_video_sensor.analysis_result = step['input_analysis']['video']
 
             # 2. Inject Data
             target_audio = step['input']['audio_level']
@@ -290,6 +334,7 @@ class ReplayHarness:
                  else:
                      got_types = [i.get('type') or i.get('id') for i in actual_interventions]
                      print(f"  [FAILURE] Expected {expected_intervention}, got {got_types}")
+                     step_success = False
             else:
                 if len(actual_interventions) == 0:
                     print(f"  [SUCCESS] Correctly triggered NO intervention.")
@@ -297,6 +342,7 @@ class ReplayHarness:
                 else:
                     got_types = [i.get('type') or i.get('id') for i in actual_interventions]
                     print(f"  [FAILURE] Expected NONE, got {got_types}")
+                    step_success = False
 
             results["step_results"].append({
                 "step": i,
