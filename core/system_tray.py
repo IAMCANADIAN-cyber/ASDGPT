@@ -160,11 +160,18 @@ class ACRTrayIcon:
         if self.current_icon_state == "dnd":
             tooltip_text = f"{config.APP_NAME} (DND)"
         elif isinstance(state_info, dict):
-            # Format: "A: 50 | E: 80 | F: 50" (Shortened for tooltip)
+            # Format: "A: 50 | O: 20 | F: 50 | E: 80 | M: 50" (Shortened for tooltip)
             arousal = state_info.get("arousal", "?")
-            energy = state_info.get("energy", "?")
+            overload = state_info.get("overload", "?")
             focus = state_info.get("focus", "?")
-            tooltip_text = f"{config.APP_NAME}\nA: {arousal} | E: {energy} | F: {focus}"
+            energy = state_info.get("energy", "?")
+            mood = state_info.get("mood", "?")
+
+            # Use concise single-letter keys for the 5 dimensions
+            tooltip_text = (
+                f"{config.APP_NAME}\n"
+                f"A: {arousal} | O: {overload} | F: {focus} | E: {energy} | M: {mood}"
+            )
         elif isinstance(state_info, str):
             tooltip_text = f"{config.APP_NAME}\n{state_info}"
 
