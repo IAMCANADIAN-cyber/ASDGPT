@@ -171,14 +171,14 @@ class ACRTrayIcon:
 
                 # Line 1: Arousal, Overload, Focus
                 line1 = []
-                if "arousal" in state_info: line1.append(f"A:{state_info['arousal']}")
-                if "overload" in state_info: line1.append(f"O:{state_info['overload']}")
-                if "focus" in state_info: line1.append(f"F:{state_info['focus']}")
+                line1.append(f"A: {state_info.get('arousal', '?')}")
+                line1.append(f"O: {state_info.get('overload', '?')}")
+                line1.append(f"F: {state_info.get('focus', '?')}")
 
                 # Line 2: Energy, Mood
                 line2 = []
-                if "energy" in state_info: line2.append(f"E:{state_info['energy']}")
-                if "mood" in state_info: line2.append(f"M:{state_info['mood']}")
+                line2.append(f"E: {state_info.get('energy', '?')}")
+                line2.append(f"M: {state_info.get('mood', '?')}")
 
                 if line1: parts.append(" ".join(line1))
                 if line2: parts.append(" ".join(line2))

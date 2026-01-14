@@ -269,17 +269,20 @@ class LogicEngine:
                 # If analysis has _meta.is_fallback, it means LMM failed.
 
                 is_fallback = analysis.get("_meta", {}).get("is_fallback", False)
-                if is_fallback:
-                    self.lmm_consecutive_failures += 1
-                    self.logger.log_warning(f"LMM returned fallback response. Consecutive failures: {self.lmm_consecutive_failures}")
 
-                    if self.lmm_consecutive_failures >= config.LMM_CIRCUIT_BREAKER_MAX_FAILURES:
-                         self.lmm_circuit_breaker_open_until = time.time() + config.LMM_CIRCUIT_BREAKER_COOLDOWN
-                         self.logger.log_error(f"LMM Circuit Breaker OPENED. Pausing LMM calls for {config.LMM_CIRCUIT_BREAKER_COOLDOWN}s.")
-                else:
-                    if self.lmm_consecutive_failures > 0:
-                        self.logger.log_info("LMM recovered. Resetting failure count.")
-                    self.lmm_consecutive_failures = 0
+                with self._lock:
+                    if is_fallback:
+                        self.lmm_consecutive_failures += 1
+                        self.logger.log_warning(f"LMM returned fallback response. Consecutive failures: {self.lmm_consecutive_failures}")
+
+                        if self.lmm_consecutive_failures >= config.LMM_CIRCUIT_BREAKER_MAX_FAILURES:
+                             self.lmm_circuit_breaker_open_until = time.time() + config.LMM_CIRCUIT_BREAKER_COOLDOWN
+                             self.logger.log_error(f"LMM Circuit Breaker OPENED. Pausing LMM calls for {config.LMM_CIRCUIT_BREAKER_COOLDOWN}s.")
+                    else:
+                        if self.lmm_consecutive_failures > 0:
+                            self.logger.log_info("LMM recovered. Resetting failure count.")
+                        self.lmm_consecutive_failures = 0
+
                 # Check if it was a fallback response
                 if analysis.get("fallback"):
                      self.logger.log_warning("LMM analysis used fallback mechanism.")
@@ -307,10 +310,11 @@ class LogicEngine:
             else:
                  # LogicEngine received None (hard failure in interface even after retries and no fallback?)
                  # This usually means no fallback was enabled or interface crashed.
-                 self.lmm_consecutive_failures += 1
-                 if self.lmm_consecutive_failures >= config.LMM_CIRCUIT_BREAKER_MAX_FAILURES:
-                     self.lmm_circuit_breaker_open_until = time.time() + config.LMM_CIRCUIT_BREAKER_COOLDOWN
-                     self.logger.log_error(f"LMM Circuit Breaker OPENED (No Response). Pausing LMM calls for {config.LMM_CIRCUIT_BREAKER_COOLDOWN}s.")
+                 with self._lock:
+                     self.lmm_consecutive_failures += 1
+                     if self.lmm_consecutive_failures >= config.LMM_CIRCUIT_BREAKER_MAX_FAILURES:
+                         self.lmm_circuit_breaker_open_until = time.time() + config.LMM_CIRCUIT_BREAKER_COOLDOWN
+                         self.logger.log_error(f"LMM Circuit Breaker OPENED (No Response). Pausing LMM calls for {config.LMM_CIRCUIT_BREAKER_COOLDOWN}s.")
                  triggered_intervention_id = None # Ensure defined in this scope
 
 
@@ -342,7 +346,8 @@ class LogicEngine:
                         self.logger.log_info(f"Intervention suggested but suppressed due to mode: {final_intervention}")
         except Exception as e:
             self.logger.log_error(f"Error in async LMM analysis: {e}")
-            self.lmm_consecutive_failures += 1
+            with self._lock:
+                self.lmm_consecutive_failures += 1
 
     def _process_visual_context_triggers(self, visual_context: list) -> Optional[str]:
         """
@@ -372,9 +377,10 @@ class LogicEngine:
             return
 
         # Check Circuit Breaker
-        if time.time() < self.lmm_circuit_breaker_open_until:
-             self.logger.log_debug(f"Skipping LMM trigger ({reason}): Circuit breaker is OPEN.")
-             return
+        with self._lock:
+            if time.time() < self.lmm_circuit_breaker_open_until:
+                 self.logger.log_debug(f"Skipping LMM trigger ({reason}): Circuit breaker is OPEN.")
+                 return
 
         # Check if previous analysis is still running
         if self.lmm_thread and self.lmm_thread.is_alive():
@@ -535,6 +541,17 @@ if __name__ == '__main__':
         def __init__(self, name="mock"):
             self.name = name
 
+        def analyze_chunk(self, chunk):
+            rms = np.sqrt(np.mean(chunk**2))
+            return {"rms": rms, "is_speech": True} # Mock that it IS speech for testing
+
+        def process_frame(self, frame):
+            # Mock activity based on frame brightness for test simplicity
+            activity = 0.0
+            if np.mean(frame) > 100:
+                activity = 50.0
+            return {"video_activity": activity, "face_detected": True, "face_count": 1}
+
     class MockLMMInterface:
         def __init__(self):
             self.last_call_data = None
@@ -565,7 +582,8 @@ if __name__ == '__main__':
     if not hasattr(config, 'LOG_LEVEL'): config.LOG_LEVEL = "DEBUG"
     logger = DataLogger(log_file_path=config.LOG_FILE)
 
-    engine = LogicEngine(logger=logger, lmm_interface=mock_lmm)
+    mock_sensor = MockSensor()
+    engine = LogicEngine(audio_sensor=mock_sensor, video_sensor=mock_sensor, logger=logger, lmm_interface=mock_lmm)
     engine.set_intervention_engine(mock_intervention)
 
     # Adjust thresholds for testing

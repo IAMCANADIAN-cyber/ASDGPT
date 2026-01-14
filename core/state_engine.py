@@ -1,4 +1,5 @@
 import json
+import threading
 from typing import Dict, Any, Optional
 from collections import deque
 import config
@@ -16,6 +17,7 @@ class StateEngine:
     def __init__(self, logger=None, history_size: int = 5):
         self.logger = logger
         self.history_size = history_size
+        self._lock = threading.Lock()
 
         # Initialize state to neutral/baseline values from config
         default_baseline = {
@@ -42,7 +44,8 @@ class StateEngine:
 
     def get_state(self) -> Dict[str, int]:
         """Returns the current state."""
-        return self.state.copy()
+        with self._lock:
+            return self.state.copy()
 
     def update(self, lmm_analysis: Optional[Dict[str, Any]]) -> None:
         """
@@ -58,26 +61,27 @@ class StateEngine:
                 self.logger.log_debug("StateEngine: No 'state_estimation' found in LMM analysis.")
             return
 
-        # Update state with validation and smoothing
-        for dim in self.state.keys():
-            if dim in new_state_est:
-                raw_val = new_state_est[dim]
-                # Ensure value is int and within bounds 0-100
-                try:
-                    val = int(raw_val)
-                    val = max(0, min(100, val))
+        with self._lock:
+            # Update state with validation and smoothing
+            for dim in self.state.keys():
+                if dim in new_state_est:
+                    raw_val = new_state_est[dim]
+                    # Ensure value is int and within bounds 0-100
+                    try:
+                        val = int(raw_val)
+                        val = max(0, min(100, val))
 
-                    # Add to history
-                    self.history[dim].append(val)
+                        # Add to history
+                        self.history[dim].append(val)
 
-                    # Calculate smoothed value (simple moving average)
-                    smoothed_val = int(sum(self.history[dim]) / len(self.history[dim]))
-                    self.state[dim] = smoothed_val
+                        # Calculate smoothed value (simple moving average)
+                        smoothed_val = int(sum(self.history[dim]) / len(self.history[dim]))
+                        self.state[dim] = smoothed_val
 
-                except (ValueError, TypeError):
-                    if self.logger:
-                        self.logger.log_warning(f"StateEngine: Invalid value for {dim}: {new_state_est[dim]}")
+                    except (ValueError, TypeError):
+                        if self.logger:
+                            self.logger.log_warning(f"StateEngine: Invalid value for {dim}: {new_state_est[dim]}")
 
-        if self.logger:
-            self.logger.log_info(f"StateEngine: Updated state to {self.state}")
+            if self.logger:
+                self.logger.log_info(f"StateEngine: Updated state to {self.state}")
 

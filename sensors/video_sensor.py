@@ -9,6 +9,13 @@ class VideoSensor:
         self.logger = data_logger
         self.cap = None
         self.last_frame = None
+
+        # Error handling / Recovery state
+        self.error_state = False
+        self.last_error_message = ""
+        self.retry_delay = 30  # seconds
+        self.last_retry_time = 0
+
         self._initialize_camera()
 
         # Load Haarcascade for face detection
@@ -49,13 +56,25 @@ class VideoSensor:
                 # Mock or testing mode, do not open actual camera
                 return
 
+            self._log_info(f"Initializing video camera {self.camera_index}...")
             self.cap = cv2.VideoCapture(self.camera_index)
             if not self.cap.isOpened():
                 self._log_warning(f"Could not open video camera {self.camera_index}.")
                 self.cap = None
+                self.error_state = True
+                self.last_error_message = "Camera failed to open."
+            else:
+                self._log_info("Video camera initialized successfully.")
+                self.error_state = False
+                self.last_error_message = ""
+
         except Exception as e:
             self._log_error(f"Error initializing camera: {e}")
             self.cap = None
+            self.error_state = True
+            self.last_error_message = str(e)
+
+        self.last_retry_time = time.time()
 
     def get_frame(self):
         """
@@ -64,19 +83,50 @@ class VideoSensor:
             frame: numpy array or None
             error_message: str or None
         """
+        # Attempt recovery if in error state
+        if self.error_state:
+            if time.time() - self.last_retry_time >= self.retry_delay:
+                self._log_info("Attempting to re-initialize video camera...")
+                self.release()
+                self._initialize_camera()
+
+            if self.error_state:
+                return None, self.last_error_message
+
         if self.cap is None or not self.cap.isOpened():
-             # Try to reconnect occasionally?
-             return None, "Camera not initialized or closed."
+             if not self.error_state:
+                 self.error_state = True
+                 self.last_error_message = "Camera not initialized or closed."
+                 self.last_retry_time = time.time()
+             return None, self.last_error_message
 
         try:
             ret, frame = self.cap.read()
             if not ret:
-                self._log_warning("Failed to capture video frame.")
+                self._log_warning("Failed to capture video frame (read returned False).")
+                self.error_state = True
+                self.last_error_message = "Failed to capture video frame."
+                self.last_retry_time = time.time()
                 return None, "Failed to capture video frame."
+
+            # If we succeed, ensure error state is clear
+            if self.error_state:
+                self.error_state = False
+                self.last_error_message = ""
+
             return frame, None
         except Exception as e:
              self._log_error(f"Error capturing frame: {e}")
+             self.error_state = True
+             self.last_error_message = str(e)
+             self.last_retry_time = time.time()
              return None, str(e)
+
+    def has_error(self):
+        return self.error_state
+
+    def get_last_error(self):
+        return self.last_error_message
 
     def calculate_raw_activity(self, gray_frame):
         """
