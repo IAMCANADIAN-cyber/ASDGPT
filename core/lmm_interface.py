@@ -143,13 +143,20 @@ class LMMInterface:
 
             # Validate suggestion type if library is available
             s_type = suggestion.get("type")
-            if s_type and self.intervention_library:
-                # We can't strictly validate ID because LMM might suggest ad-hoc or fallback types
-                # But we can check if it looks sane.
-                # For now, just ensure 'type' is a string if present
+            if s_type is not None:
                 if not isinstance(s_type, str):
                     self._log_warning(f"Validation Error: 'suggestion.type' is not a string.")
                     return False
+
+                # Check message presence if type implies it (generic 'text')
+                if s_type == "text" and not suggestion.get("message"):
+                     self._log_warning(f"Validation Error: 'suggestion' of type 'text' missing 'message'.")
+                     return False
+
+            # If suggestion object is present, it should ideally have 'type' or 'id'
+            if not s_type and not suggestion.get("id"):
+                self._log_warning(f"Validation Error: 'suggestion' missing both 'id' and 'type'.")
+                return False
 
 
         return True
