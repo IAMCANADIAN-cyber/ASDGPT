@@ -50,10 +50,19 @@ class ACRTrayIcon:
 
         self.current_icon_state = "default" # e.g., "active", "paused"
 
+        # Calculate snooze label
+        snooze_minutes = config.SNOOZE_DURATION // 60
+        if snooze_minutes == 60:
+            snooze_label = 'Snooze for 1 Hour'
+        elif snooze_minutes > 60 and snooze_minutes % 60 == 0:
+            snooze_label = f'Snooze for {snooze_minutes // 60} Hours'
+        else:
+            snooze_label = f'Snooze for {snooze_minutes} Minutes'
+
         # Menu items
         menu = (
             pystray.MenuItem('Pause/Resume', self.on_toggle_pause_resume),
-            pystray.MenuItem('Snooze for 1 Hour', self.on_snooze),
+            pystray.MenuItem(snooze_label, self.on_snooze),
             pystray.MenuItem('Toggle DND', self.on_toggle_dnd),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem('Last: Helpful', self.on_feedback_helpful),
