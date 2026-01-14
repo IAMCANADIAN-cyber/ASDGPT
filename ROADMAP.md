@@ -50,4 +50,4 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 | **Tray Icon State** | Visibility. | Tooltip shows "Arousal: 60, Energy: 40" (Already implemented?). | S | Low | Navigator |
 | **Log Rotation** | Disk space management. | Logs don't grow indefinitely. | S | Low | Scribe |
 | **Unit Test Coverage** | Stability. | `pytest` coverage > 80% for `core/`. | M | Low | Testsmith |
-| **Scenario Expansion** | Better eval. | Add `test_flow_state.py`. | M | Low | Testsmith |
+| Scenario Expansion | Better eval. | Add `test_flow_state.py`. | M | Low | Navigator (Completed) |

@@ -330,7 +330,8 @@ class ReplayHarness:
                  match = next((i for i in actual_interventions if i.get('type') == expected_intervention or i.get('id') == expected_intervention), None)
                  if match:
                      print(f"  [SUCCESS] Triggered expected intervention: {expected_intervention}")
-                     step_success = True
+                     # Keep step_success as True only if state_success was also True
+                     step_success = step_success and True
                  else:
                      got_types = [i.get('type') or i.get('id') for i in actual_interventions]
                      print(f"  [FAILURE] Expected {expected_intervention}, got {got_types}")
@@ -338,7 +339,8 @@ class ReplayHarness:
             else:
                 if len(actual_interventions) == 0:
                     print(f"  [SUCCESS] Correctly triggered NO intervention.")
-                    step_success = True
+                    # Keep step_success as True only if state_success was also True
+                    step_success = step_success and True
                 else:
                     got_types = [i.get('type') or i.get('id') for i in actual_interventions]
                     print(f"  [FAILURE] Expected NONE, got {got_types}")

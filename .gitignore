@@ -25,3 +25,5 @@ user_data/
 # Logs
 *.log
 custom_logs/
+replay_log.txt
+replay_log.txt.*
