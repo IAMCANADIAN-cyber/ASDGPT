@@ -36,14 +36,19 @@ Output a valid JSON object with the following structure:
 - "dark_room": Lighting is dim.
 - "person_standing": User is standing up.
 - "person_sitting": User is sitting.
+- "lying_down": User is lying down.
 - "eating": User is eating.
 - "drinking": User is drinking.
+- "camera_interaction": User is talking to or interacting with the camera/recording equipment.
+- "studio_lighting": Lighting appears professional or arranged for content creation.
 
 State Estimation Guidance:
 - High Arousal + High Overload + High Speech Rate -> Anxiety/Panic.
 - Low Energy + Low Pitch Variance + Phone Usage -> Doom Scrolling/Dissociation.
 - High Focus + High Video Activity + High Arousal -> Flow State/Excitement (Positive).
 - High Focus + Low Video Activity + Leaning In -> Deep Work.
+- High Energy + High Mood + Camera Interaction -> Content Creation Mode.
+- Low Speech Rate + Low Pitch Variance + (Low Light or Lying Down) -> Intimacy/Relaxation.
 
 If no intervention is needed, set "suggestion" to null.
 

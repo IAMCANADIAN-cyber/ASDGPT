@@ -10,6 +10,11 @@ from typing import Optional, Any, Dict, List
 
 # Conditional imports for optional dependencies
 try:
+    import cv2
+except ImportError:
+    cv2 = None
+
+try:
     import numpy as np
 except ImportError:
     np = None
@@ -299,21 +304,127 @@ class InterventionEngine:
              pass
 
     def _capture_image(self, details: str) -> None:
-        # Placeholder for capturing an image
         log_message = f"CAPTURING_IMAGE: '{details}'"
         if self.app and self.app.data_logger:
             self.app.data_logger.log_info(log_message)
         else:
             print(log_message)
-        # In a real implementation, this would trigger the video sensor to save a snapshot
+
+        if not self.logic_engine or not hasattr(self.logic_engine, 'last_video_frame') or self.logic_engine.last_video_frame is None:
+            msg = "Cannot capture image: No video frame available in LogicEngine."
+            if self.app and self.app.data_logger:
+                 self.app.data_logger.log_warning(msg)
+            else:
+                 print(msg)
+            return
+
+        if cv2 is None:
+             msg = "Cannot capture image: OpenCV (cv2) not available."
+             if self.app and self.app.data_logger:
+                self.app.data_logger.log_warning(msg)
+             else:
+                print(msg)
+             return
+
+        try:
+            captures_dir = "captures"
+            if not os.path.exists(captures_dir):
+                os.makedirs(captures_dir)
+
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            # Sanitize details for filename
+            safe_details = "".join([c if c.isalnum() else "_" for c in details])
+            filename = f"{captures_dir}/capture_{timestamp}_{safe_details}.jpg"
+
+            cv2.imwrite(filename, self.logic_engine.last_video_frame)
+
+            msg = f"Image saved to {filename}"
+            if self.app and self.app.data_logger:
+                self.app.data_logger.log_info(msg)
+            else:
+                print(msg)
+
+        except Exception as e:
+            msg = f"Error saving captured image: {e}"
+            if self.app and self.app.data_logger:
+                self.app.data_logger.log_error(msg)
+            else:
+                print(msg)
 
     def _record_video(self, details: str) -> None:
-        # Placeholder for recording video
         log_message = f"RECORDING_VIDEO: '{details}'"
         if self.app and self.app.data_logger:
             self.app.data_logger.log_info(log_message)
         else:
             print(log_message)
+
+        if not self.logic_engine or not hasattr(self.logic_engine, 'last_video_frame'):
+            msg = "Cannot record video: No video frame available in LogicEngine."
+            if self.app and self.app.data_logger:
+                 self.app.data_logger.log_warning(msg)
+            else:
+                 print(msg)
+            return
+
+        if cv2 is None:
+             msg = "Cannot record video: OpenCV (cv2) not available."
+             if self.app and self.app.data_logger:
+                self.app.data_logger.log_warning(msg)
+             else:
+                print(msg)
+             return
+
+        try:
+            captures_dir = "captures"
+            if not os.path.exists(captures_dir):
+                os.makedirs(captures_dir)
+
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_details = "".join([c if c.isalnum() else "_" for c in details])
+            filename = f"{captures_dir}/video_{timestamp}_{safe_details}.avi"
+
+            # Get dimensions from current frame
+            first_frame = self.logic_engine.last_video_frame
+            if first_frame is None:
+                msg = "Cannot record video: Signal lost."
+                if self.app and self.app.data_logger: self.app.data_logger.log_warning(msg)
+                return
+
+            height, width, _ = first_frame.shape
+            size = (width, height)
+            fps = 10.0
+            duration = 5.0
+
+            out = cv2.VideoWriter(filename, cv2.VideoWriter_fourcc(*'MJPG'), fps, size)
+
+            start_time = time.time()
+            frame_count = 0
+            while time.time() - start_time < duration:
+                # Check cancellation
+                if not self._intervention_active.is_set():
+                    break
+
+                frame = self.logic_engine.last_video_frame
+                if frame is not None and frame.shape == first_frame.shape:
+                    out.write(frame)
+                    frame_count += 1
+
+                time.sleep(1.0/fps)
+
+            out.release()
+
+            msg = f"Video saved to {filename} ({frame_count} frames)"
+            if self.app and self.app.data_logger:
+                self.app.data_logger.log_info(msg)
+            else:
+                print(msg)
+
+        except Exception as e:
+            msg = f"Error recording video: {e}"
+            if self.app and self.app.data_logger:
+                self.app.data_logger.log_error(msg)
+            else:
+                print(msg)
 
     def _wait(self, duration: float) -> None:
         """Waits for a specified duration, respecting the stop signal."""
