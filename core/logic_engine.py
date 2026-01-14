@@ -153,7 +153,14 @@ class LogicEngine:
 
                 # Filter out non-face metrics for face_metrics dict
                 self.face_metrics = {k: v for k, v in metrics.items() if k.startswith("face_")}
-                self.video_analysis = self.face_metrics # Reuse for analysis context
+
+                # Prepare video analysis context for LMM
+                # We want face metrics plus other relevant high-level signals
+                self.video_analysis = self.face_metrics.copy()
+                additional_keys = ["posture_state", "vertical_position", "horizontal_position", "normalized_activity"]
+                for k in additional_keys:
+                    if k in metrics:
+                        self.video_analysis[k] = metrics[k]
 
             else:
                 # Fallback to legacy calculation (if sensor doesn't have process_frame or is missing)
