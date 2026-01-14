@@ -1,6 +1,6 @@
 # ASDGPT Weekly Roadmap Refresh
 
-**Date:** 2024-06-05
+**Date:** 2026-01-12
 **Status:** ACTIVE
 
 ## 🗺️ Executive Summary
