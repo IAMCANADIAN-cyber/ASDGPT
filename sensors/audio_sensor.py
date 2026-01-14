@@ -179,8 +179,8 @@ class AudioSensor:
         try:
             # 1. Calculate Amplitude Envelope
             # Simple rectification + smoothing (low-pass filter)
-            # Smoothing window: ~50ms to smooth out individual vibrations but keep syllable envelope
-            window_size = int(0.05 * self.sample_rate)
+            # Smoothing window: ~80ms to smooth out individual vibrations but keep syllable envelope
+            window_size = int(0.08 * self.sample_rate)
             if len(audio_data) < window_size:
                 return 0.0
 
@@ -191,15 +191,24 @@ class AudioSensor:
             kernel = np.ones(window_size) / window_size
             envelope = np.convolve(np.abs(audio_data), kernel, mode='same')
 
+            # Check for flatness (Steady Hum / Tone rejection)
+            # If the envelope has very low variance relative to its mean, it's a steady tone, not speech.
+            env_mean = np.mean(envelope)
+            env_std = np.std(envelope)
+            if env_mean > 0 and (env_std / env_mean) < 0.3:
+                 # Coefficient of variation < 0.3 implies fairly steady signal
+                 return 0.0
+
             # 2. Find Peaks (Syllables) - Simple Numpy Implementation
             # Height: must be significant (e.g. > 1.5x mean RMS or a fixed silence threshold)
             # Distance: syllables are typically > 100-150ms apart.
 
-            min_distance = int(0.15 * self.sample_rate)
+            min_distance = int(0.2 * self.sample_rate)
 
             # Threshold: dynamic based on chunk RMS to handle varying volumes
+            # Raise threshold to be stricter
             rms = np.sqrt(np.mean(audio_data**2))
-            height_threshold = max(rms * 0.5, 0.02)
+            height_threshold = max(rms * 0.6, 0.02)
 
             # Find local maxima above threshold
             # 1. Identify candidates above threshold

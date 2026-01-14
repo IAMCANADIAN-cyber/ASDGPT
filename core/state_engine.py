@@ -84,4 +84,3 @@ class StateEngine:
 
             if self.logger:
                 self.logger.log_info(f"StateEngine: Updated state to {self.state}")
-
