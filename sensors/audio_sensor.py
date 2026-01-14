@@ -334,6 +334,26 @@ class AudioSensor:
                 buffered_audio = np.array(self.raw_audio_buffer)
                 metrics["speech_rate"] = self._calculate_speech_rate(buffered_audio)
 
+            # --- Update History & Calculate Variances ---
+            self.rms_history.append(metrics["rms"])
+            if metrics["pitch_estimation"] > 0:
+                self.pitch_history.append(metrics["pitch_estimation"])
+
+            if len(self.pitch_history) > 2:
+                metrics["pitch_variance"] = float(np.std(list(self.pitch_history)))
+
+            if len(self.rms_history) > 2:
+                rms_arr = np.array(self.rms_history)
+                metrics["rms_variance"] = float(np.std(rms_arr))
+
+                # Activity Bursts
+                threshold = np.mean(rms_arr) * 0.8
+                if len(rms_arr) > 1 and threshold > 1e-6:
+                    above = rms_arr > threshold
+                    if len(above) > 1:
+                        crossings = np.sum(np.diff(above.astype(int)) > 0)
+                        metrics["activity_bursts"] = int(crossings)
+
             # --- VAD Logic ---
             # Heuristics for human speech:
             # - Pitch: Typically 85-255Hz (Adult), can go up to ~600Hz (Child/Exclamation)
@@ -356,40 +376,21 @@ class AudioSensor:
                 confidence += 0.1 # Moderate
 
             # Factor 3: RMS Variance (Speech is bursty/variable, fan noise is constant)
-            # This requires history, so it's a "lagging" indicator but useful
             if len(self.rms_history) > 3:
-                 # Check if variance is significant relative to mean
-                 rel_var = metrics["rms_variance"] / (np.mean(list(self.rms_history)) + 1e-6)
-                 if rel_var > 0.2: # Variable volume
-                     confidence += 0.2
+                 mean_rms = np.mean(list(self.rms_history))
+                 rel_var = metrics["rms_variance"] / (mean_rms + 1e-6)
 
-            metrics["speech_confidence"] = min(confidence, 1.0)
+                 if rel_var > 0.2: # Variable volume (speech-like)
+                     confidence += 0.2
+                 elif rel_var < 0.05 and mean_rms > 0.01:
+                     # VERY stable volume + significant energy = likely machine noise (fan/hum)
+                     confidence -= 0.4
+
+            metrics["speech_confidence"] = max(0.0, min(confidence, 1.0))
 
             # Thresholding
             # Default 0.5 confidence to be "speech"
             metrics["is_speech"] = metrics["speech_confidence"] > 0.4
-
-            # --- History / Time-Series Features ---
-            self.rms_history.append(metrics["rms"])
-            if metrics["pitch_estimation"] > 0:
-                self.pitch_history.append(metrics["pitch_estimation"])
-
-            # Pitch Variance (Intonation/Stress)
-            if len(self.pitch_history) > 2:
-                metrics["pitch_variance"] = float(np.std(list(self.pitch_history)))
-
-            # RMS Variance
-            if len(self.rms_history) > 2:
-                rms_arr = np.array(self.rms_history)
-                metrics["rms_variance"] = float(np.std(rms_arr))
-
-                # Restore Activity Bursts
-                threshold = np.mean(rms_arr) * 0.8
-                if len(rms_arr) > 1 and threshold > 1e-6:
-                    above = rms_arr > threshold
-                    if len(above) > 1:
-                        crossings = np.sum(np.diff(above.astype(int)) > 0)
-                        metrics["activity_bursts"] = int(crossings)
 
         except Exception as e:
             self._log_error(f"Error extracting audio features: {e}")
