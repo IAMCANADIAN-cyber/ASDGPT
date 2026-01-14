@@ -2,6 +2,7 @@ import cv2
 import time
 import os
 import numpy as np
+import math
 
 class VideoSensor:
     def __init__(self, camera_index=0, data_logger=None):
@@ -38,6 +39,18 @@ class VideoSensor:
              else:
                  self._log_info(f"Loaded face cascade from system path: {system_path}")
 
+        # Load Haarcascade for eye detection
+        self.eye_cascade = None
+        try:
+             eye_cascade_path = os.path.join(cv2.data.haarcascades, 'haarcascade_eye.xml')
+             if os.path.exists(eye_cascade_path):
+                 self.eye_cascade = cv2.CascadeClassifier(eye_cascade_path)
+                 if not self.eye_cascade.empty():
+                     self._log_info(f"Loaded eye cascade from system path: {eye_cascade_path}")
+                 else:
+                     self._log_warning("Failed to load eye cascade.")
+        except Exception as e:
+            self._log_warning(f"Error loading eye cascade: {e}")
         # Load Eye Cascade for head tilt estimation
         eye_cascade_filename = 'haarcascade_eye.xml'
         system_eye_path = cv2.data.haarcascades + eye_cascade_filename
@@ -211,9 +224,15 @@ class VideoSensor:
         # Note: These are simple 2D estimates and require calibration for accuracy.
         # Assumptions: Camera is roughly eye-level and centered.
 
+        # Head Tilt
+        if abs(metrics.get("face_roll_angle", 0)) > 20:
+             if metrics["face_roll_angle"] > 0:
+                 metrics["posture_state"] = "tilted_right"
+             else:
+                 metrics["posture_state"] = "tilted_left"
         # Leaning Forward: Face becomes significantly larger
         # Thresholds should ideally be calibrated (e.g., normal ratio ~0.3-0.4)
-        if metrics.get("face_size_ratio", 0) > 0.45:
+        elif metrics.get("face_size_ratio", 0) > 0.45:
             metrics["posture_state"] = "leaning_forward"
         # Leaning Back: Face becomes small
         elif metrics.get("face_size_ratio", 0) < 0.15:
@@ -274,6 +293,7 @@ class VideoSensor:
             "face_size_ratio": 0.0,
             "vertical_position": 0.0,
             "horizontal_position": 0.0,
+            "face_roll_angle": 0.0,
             "timestamp": time.time()
         }
 
@@ -314,6 +334,33 @@ class VideoSensor:
                 metrics["vertical_position"] = float(y + h/2) / img_h
                 metrics["horizontal_position"] = float(x + w/2) / img_w
 
+                # Eye Detection and Head Tilt
+                if self.eye_cascade:
+                    roi_gray = gray[y:y+h, x:x+w]
+                    # Detect eyes
+                    eyes = self.eye_cascade.detectMultiScale(
+                        roi_gray,
+                        scaleFactor=1.1,
+                        minNeighbors=5,
+                        minSize=(15, 15)
+                    )
+                    # We need exactly 2 eyes (or more) to calculate tilt
+                    if len(eyes) >= 2:
+                        # Sort by x position to distinguish left/right (in image coords)
+                        eyes_sorted = sorted(eyes, key=lambda e: e[0])
+                        # Take the two outermost eyes
+                        eye_left = eyes_sorted[0]
+                        eye_right = eyes_sorted[-1]
+
+                        # Center of eyes relative to ROI
+                        left_center = (eye_left[0] + eye_left[2]//2, eye_left[1] + eye_left[3]//2)
+                        right_center = (eye_right[0] + eye_right[2]//2, eye_right[1] + eye_right[3]//2)
+
+                        # Calculate angle
+                        dy = right_center[1] - left_center[1]
+                        dx = right_center[0] - left_center[0]
+                        angle = math.degrees(math.atan2(dy, dx))
+                        metrics["face_roll_angle"] = angle
                 # Head Tilt Estimation
                 face_roi_gray = gray[y:y+h, x:x+w]
                 metrics["head_tilt"] = self._calculate_head_tilt(face_roi_gray, w, h)
