@@ -319,6 +319,15 @@ class LMMInterface:
                 context_str += f"Face Detected: Yes\n"
                 context_str += f"Face Size Ratio: {video_analysis.get('face_size_ratio', 0.0):.3f} (Lean/Focus)\n"
                 context_str += f"Face Vertical Pos: {video_analysis.get('vertical_position', 0.0):.2f} (0=Top, 1=Bottom)\n"
+
+                # Add Head Tilt and Posture State if significant
+                face_roll = video_analysis.get('face_roll_angle', 0.0)
+                if abs(face_roll) > 15:
+                    context_str += f"Head Tilt: {face_roll:.1f} degrees\n"
+
+                posture = video_analysis.get('posture_state', 'neutral')
+                if posture != 'neutral':
+                    context_str += f"Posture: {posture}\n"
             else:
                 context_str += f"Face Detected: No\n"
 

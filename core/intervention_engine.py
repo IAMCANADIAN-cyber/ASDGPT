@@ -610,7 +610,8 @@ class InterventionEngine:
             execution_details = {
                 "type": intervention_type,
                 "message": custom_message,
-                "tier": intervention_details.get("tier", 1)
+                "tier": intervention_details.get("tier", 1),
+                "sequence": intervention_details.get("sequence")
             }
         else:
             if logger:
@@ -638,26 +639,30 @@ class InterventionEngine:
 
         # Critical: If called from within an existing sequence or thread, this check might fail.
         # But generally start_intervention is called from LogicEngine main thread.
-        # If an intervention is active, we generally want to ignore new ones unless we have a priority system (TODO).
+        # If an intervention is active, we generally want to ignore new ones unless we have a priority system.
+        # IMPLEMENTED: Priority system (tiers)
         if self._intervention_active.is_set():
             # Check priority: Higher tier preempts lower tier
             current_tier = self._current_intervention_details.get("tier", 1)
             new_tier = execution_details.get("tier", 1)
 
             if new_tier > current_tier:
+                msg = f"Preempting active intervention (Tier {current_tier}) with higher priority intervention '{check_type}' (Tier {new_tier})."
                 if logger:
-                    logger.log_info(f"Preempting active intervention (Tier {current_tier}) with higher priority intervention '{check_type}' (Tier {new_tier}).")
+                    logger.log_info(msg)
                 else:
-                    print(f"Preempting active intervention (Tier {current_tier}) with higher priority intervention '{check_type}' (Tier {new_tier}).")
+                    print(msg)
+
                 self.stop_intervention()
                 # Wait briefly for thread to clear
                 if self.intervention_thread and self.intervention_thread.is_alive():
                     self.intervention_thread.join(timeout=2.0)
             else:
+                msg = f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_tier}, New Tier: {new_tier})."
                 if logger:
-                    logger.log_info(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_tier}, New Tier: {new_tier}).")
+                    logger.log_info(msg)
                 else:
-                    print(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_tier}, New Tier: {new_tier}).")
+                    print(msg)
                 return False
 
         current_app_mode = self.logic_engine.get_mode()

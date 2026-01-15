@@ -49,16 +49,11 @@ class VideoSensor:
                      self._log_info(f"Loaded eye cascade from system path: {eye_cascade_path}")
                  else:
                      self._log_warning("Failed to load eye cascade.")
+             else:
+                 # Fallback to direct path or error
+                 self._log_warning(f"Eye cascade not found at {eye_cascade_path}")
         except Exception as e:
             self._log_warning(f"Error loading eye cascade: {e}")
-        # Load Eye Cascade for head tilt estimation
-        eye_cascade_filename = 'haarcascade_eye.xml'
-        system_eye_path = cv2.data.haarcascades + eye_cascade_filename
-        self.eye_cascade = cv2.CascadeClassifier(system_eye_path)
-        if self.eye_cascade.empty():
-            self._log_warning(f"Could not load eye cascade from {system_eye_path}. Head tilt estimation will be disabled.")
-        else:
-            self._log_info(f"Loaded eye cascade from {system_eye_path}")
 
     def _log_info(self, message):
         if self.logger: self.logger.log_info(f"VideoSensor: {message}")
@@ -241,40 +236,42 @@ class VideoSensor:
         # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
         elif metrics.get("vertical_position", 0) > 0.65:
             metrics["posture_state"] = "slouching"
-        # Head Tilt (Roll): Significant angle
-        elif abs(metrics.get("head_tilt", 0)) > 20:
-             metrics["posture_state"] = "tilted"
         else:
             metrics["posture_state"] = "neutral"
 
-    def _calculate_head_tilt(self, face_gray, face_w, face_h):
+    def _calculate_face_roll(self, face_gray):
         """
-        Estimates head tilt (roll) in degrees based on eye positions.
+        Estimates face roll (head tilt) in degrees based on eye positions.
         Returns: float (degrees, positive = right tilt, negative = left tilt)
         """
-        if self.eye_cascade.empty():
+        if self.eye_cascade is None or self.eye_cascade.empty():
             return 0.0
 
-        eyes = self.eye_cascade.detectMultiScale(face_gray)
-        if len(eyes) != 2:
+        # Detect eyes
+        eyes = self.eye_cascade.detectMultiScale(
+            face_gray,
+            scaleFactor=1.1,
+            minNeighbors=5,
+            minSize=(15, 15)
+        )
+
+        # We need at least 2 eyes
+        if len(eyes) < 2:
             return 0.0
 
-        # Sort eyes by x-coordinate (left eye on screen is first)
-        eyes = sorted(eyes, key=lambda e: e[0])
-        (ex1, ey1, ew1, eh1) = eyes[0]
-        (ex2, ey2, ew2, eh2) = eyes[1]
+        # Sort by x position
+        eyes_sorted = sorted(eyes, key=lambda e: e[0])
+        eye_left = eyes_sorted[0]
+        eye_right = eyes_sorted[-1]
 
         # Centers
-        p1 = (ex1 + ew1 // 2, ey1 + eh1 // 2)
-        p2 = (ex2 + ew2 // 2, ey2 + eh2 // 2)
+        left_center = (eye_left[0] + eye_left[2]//2, eye_left[1] + eye_left[3]//2)
+        right_center = (eye_right[0] + eye_right[2]//2, eye_right[1] + eye_right[3]//2)
 
-        # Delta
-        dx = p2[0] - p1[0]
-        dy = p2[1] - p1[1]
-
-        # Angle in degrees
-        angle = np.degrees(np.arctan2(dy, dx))
-        return angle
+        # Calculate angle
+        dy = right_center[1] - left_center[1]
+        dx = right_center[0] - left_center[0]
+        return math.degrees(math.atan2(dy, dx))
 
     def process_frame(self, frame):
         """
@@ -334,36 +331,9 @@ class VideoSensor:
                 metrics["vertical_position"] = float(y + h/2) / img_h
                 metrics["horizontal_position"] = float(x + w/2) / img_w
 
-                # Eye Detection and Head Tilt
-                if self.eye_cascade:
-                    roi_gray = gray[y:y+h, x:x+w]
-                    # Detect eyes
-                    eyes = self.eye_cascade.detectMultiScale(
-                        roi_gray,
-                        scaleFactor=1.1,
-                        minNeighbors=5,
-                        minSize=(15, 15)
-                    )
-                    # We need exactly 2 eyes (or more) to calculate tilt
-                    if len(eyes) >= 2:
-                        # Sort by x position to distinguish left/right (in image coords)
-                        eyes_sorted = sorted(eyes, key=lambda e: e[0])
-                        # Take the two outermost eyes
-                        eye_left = eyes_sorted[0]
-                        eye_right = eyes_sorted[-1]
-
-                        # Center of eyes relative to ROI
-                        left_center = (eye_left[0] + eye_left[2]//2, eye_left[1] + eye_left[3]//2)
-                        right_center = (eye_right[0] + eye_right[2]//2, eye_right[1] + eye_right[3]//2)
-
-                        # Calculate angle
-                        dy = right_center[1] - left_center[1]
-                        dx = right_center[0] - left_center[0]
-                        angle = math.degrees(math.atan2(dy, dx))
-                        metrics["face_roll_angle"] = angle
-                # Head Tilt Estimation
+                # Eye Detection and Head Tilt (Face Roll)
                 face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["head_tilt"] = self._calculate_head_tilt(face_roi_gray, w, h)
+                metrics["face_roll_angle"] = self._calculate_face_roll(face_roi_gray)
 
                 self._calculate_posture(metrics)
 
@@ -416,7 +386,7 @@ class VideoSensor:
 
                 # Head Tilt Estimation
                 face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["head_tilt"] = self._calculate_head_tilt(face_roi_gray, w, h)
+                metrics["face_roll_angle"] = self._calculate_face_roll(face_roi_gray)
 
                 self._calculate_posture(metrics)
 

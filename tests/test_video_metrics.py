@@ -19,6 +19,9 @@ class TestVideoMetrics(unittest.TestCase):
         # Mock cv2.CascadeClassifier before VideoSensor init
         with patch('cv2.CascadeClassifier') as MockCascade:
             self.mock_cascade = MockCascade.return_value
+            # IMPORTANT: mock_cascade.empty() must return False to simulate loaded cascade
+            self.mock_cascade.empty.return_value = False
+
             self.video_sensor = VideoSensor(camera_index=None, data_logger=self.logger)
             # Ensure eye_cascade is also a mock (it's loaded inside init if found)
             # If it wasn't found (no file), it might be None. We force it to be our mock.

@@ -55,7 +55,9 @@ class TestInterventionEngineLogic(unittest.TestCase):
         self.assertTrue(result)
         self.assertTrue(self.intervention_engine._intervention_active.is_set())
         self.mock_run_thread.assert_called_once()
-        self.assertEqual(self.intervention_engine._current_intervention_details, details)
+        expected = details.copy()
+        expected['sequence'] = None
+        self.assertEqual(self.intervention_engine._current_intervention_details, expected)
 
     def test_cooldown_blocks_intervention(self):
         """Test that intervention is blocked if called too soon."""
@@ -101,7 +103,10 @@ class TestInterventionEngineLogic(unittest.TestCase):
             # Note: start_intervention starts a NEW thread after stopping old.
             # In our mock setup, we just verify the call.
             self.assertTrue(self.intervention_engine._intervention_active.is_set())
-            self.assertEqual(self.intervention_engine._current_intervention_details, new_details)
+        # Expect sequence: None to be added
+        expected = new_details.copy()
+        expected['sequence'] = None
+        self.assertEqual(self.intervention_engine._current_intervention_details, expected)
 
     def test_preemption_rejection_lower_tier(self):
         """Test that a lower tier intervention is rejected if higher tier is active."""
