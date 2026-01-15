@@ -322,7 +322,8 @@ class ReplayHarness:
             expected_intervention = step['expected_outcome'].get("intervention")
             actual_interventions = self.mock_intervention.interventions_triggered
 
-            step_success = state_success
+            # Determine intervention success
+            intervention_success = False
             if expected_intervention:
                  # LogicEngine might return full intervention object or just ID/Type.
                  # LogicEngine usually calls intervention_engine.start_intervention(suggestion)
@@ -330,19 +331,21 @@ class ReplayHarness:
                  match = next((i for i in actual_interventions if i.get('type') == expected_intervention or i.get('id') == expected_intervention), None)
                  if match:
                      print(f"  [SUCCESS] Triggered expected intervention: {expected_intervention}")
-                     step_success = True
+                     intervention_success = True
                  else:
                      got_types = [i.get('type') or i.get('id') for i in actual_interventions]
                      print(f"  [FAILURE] Expected {expected_intervention}, got {got_types}")
-                     step_success = False
+                     intervention_success = False
             else:
                 if len(actual_interventions) == 0:
                     print(f"  [SUCCESS] Correctly triggered NO intervention.")
-                    step_success = True
+                    intervention_success = True
                 else:
                     got_types = [i.get('type') or i.get('id') for i in actual_interventions]
                     print(f"  [FAILURE] Expected NONE, got {got_types}")
-                    step_success = False
+                    intervention_success = False
+
+            step_success = state_success and intervention_success
 
             results["step_results"].append({
                 "step": i,

@@ -25,6 +25,7 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 ### 🎯 Milestone 2: Evaluation Harness V1
 *   **Status**: ✅ COMPLETED (Verified by `test_doom_scroll.py`, `test_panic_attack.py`, `test_flow_state.py`)
 *   **Next Steps**: Add more scenarios.
+*   **Next Steps**: Add more scenarios (e.g., "Flow State" - Completed).
 
 ### 🎯 Milestone 3: Signal Quality - Voice Activity Detection (VAD)
 *   **Status**: ✅ COMPLETED

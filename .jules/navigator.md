@@ -9,3 +9,7 @@
 **Learning:** `ReplayHarness` is a powerful tool for simulating complex state trajectories without real-time sensor input. However, using it requires careful setup of the `expected_outcome` dictionary to match the `LogicEngine`'s expectations.
 **Action:** Implemented `tests/scenarios/test_panic_attack.py` to verify the 'meltdown_prevention' intervention trigger during a simulated panic attack (Escalating -> Critical).
 **Pitfall:** `pytest` was not installed in the environment despite being a standard tool. Added explicit installation step.
+
+## 2026-01-15 - [Flow State Verification]
+**Learning:** `ReplayHarness` had a critical bug where `step_success` was overwritten by intervention verification results, masking state verification failures. Also, `StateEngine` applies smoothing (SMA over 5 frames), so test expectations must strictly account for this lag.
+**Action:** Fixed `tools/replay_harness.py` to correctly aggregate success flags. Updated `tests/scenarios/test_flow_state.py` to include and verify `expected_state` with mathematically correct smoothed values.

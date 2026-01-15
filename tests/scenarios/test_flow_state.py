@@ -16,6 +16,8 @@ class TestFlowStateScenario(unittest.TestCase):
 
         Verifies that even with high video/audio activity, if the LMM interprets it as
         'High Focus/Flow', no intervention is triggered.
+
+        Also verifies correct state updates including smoothing logic.
         """
 
         scenario = [
@@ -36,7 +38,13 @@ class TestFlowStateScenario(unittest.TestCase):
                     "video": {"video_activity": 15.0, "face_detected": True, "face_count": 1}
                 },
                 "expected_outcome": {
+                    # The LMM suggests this:
                     "state_estimation": {"focus": 70, "arousal": 40, "overload": 10},
+                    # We expect the StateEngine to smooth it (SMA over 5 steps from baseline 50/50/0):
+                    # Focus: (50*4 + 70)/5 = 54
+                    # Arousal: (50*4 + 40)/5 = 48
+                    # Overload: (0*4 + 10)/5 = 2
+                    "expected_state": {"focus": 54, "arousal": 48, "overload": 2},
                     "intervention": None
                 }
             },
@@ -60,6 +68,11 @@ class TestFlowStateScenario(unittest.TestCase):
                 },
                 "expected_outcome": {
                     "state_estimation": {"focus": 90, "arousal": 60, "overload": 20}, # High arousal but manageable
+                    # Previous Hist (approx): [50, 50, 50, 50, 70]
+                    # New Hist: [50, 50, 50, 70, 90] -> Avg Focus: 310/5 = 62
+                    # Arousal: [50, 50, 50, 40, 60] -> Avg: 250/5 = 50
+                    # Overload: [0, 0, 0, 10, 20] -> Avg: 30/5 = 6
+                    "expected_state": {"focus": 62, "arousal": 50, "overload": 6},
                     "intervention": None
                 }
             },
@@ -81,6 +94,11 @@ class TestFlowStateScenario(unittest.TestCase):
                 },
                 "expected_outcome": {
                     "state_estimation": {"focus": 95, "arousal": 65, "overload": 25},
+                    # Previous Hist: [50, 50, 50, 70, 90]
+                    # New Hist: [50, 50, 70, 90, 95] -> Avg Focus: 355/5 = 71
+                    # Arousal: [50, 50, 40, 60, 65] -> Avg: 265/5 = 53
+                    # Overload: [0, 0, 10, 20, 25] -> Avg: 55/5 = 11
+                    "expected_state": {"focus": 71, "arousal": 53, "overload": 11},
                     "intervention": None
                 }
             }
