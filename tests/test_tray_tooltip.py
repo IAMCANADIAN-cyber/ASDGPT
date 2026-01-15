@@ -8,10 +8,12 @@ sys.modules["PIL"] = MagicMock()
 sys.modules["PIL.Image"] = MagicMock()
 sys.modules["PIL.ImageDraw"] = MagicMock()
 
-# Mock config
-sys.modules["config"] = MagicMock()
-sys.modules["config"].APP_NAME = "ASDGPT"
-sys.modules["config"].SNOOZE_DURATION = 3600  # Default value needed for init
+# Import real config instead of mocking the whole module to avoid breaking other tests
+import config
+if not hasattr(config, "APP_NAME"):
+    config.APP_NAME = "ASDGPT"
+if not hasattr(config, "SNOOZE_DURATION"):
+    config.SNOOZE_DURATION = 3600
 
 from core.system_tray import ACRTrayIcon
 
@@ -25,8 +27,11 @@ class TestTrayTooltip(unittest.TestCase):
     def test_tooltip_dnd_mode(self):
         self.tray.current_icon_state = "dnd"
         self.tray.update_tooltip({})
-        # Expect "ASDGPT (DND)"
-        self.assertEqual(self.tray.tray_icon.title, "ASDGPT (DND)")
+        # Expect "ACR (DND)" because defaults in config.py say APP_NAME = "ACR"
+        # and we are now using the real config.
+        # However, for consistency with the test environment, we should verify against config.APP_NAME
+        expected_title = f"{config.APP_NAME} (DND)"
+        self.assertEqual(self.tray.tray_icon.title, expected_title)
 
     def test_tooltip_full_5d_state(self):
         self.tray.current_icon_state = "active"
