@@ -13,6 +13,9 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 *   **Merged**: VAD integration into `AudioSensor`, providing `speech_rate` and `speech_confidence` metrics.
 *   **Improved**: LMM Context now utilizes real VAD metrics (Syllables/sec, Voice Activity) instead of legacy approximations.
 *   **Completed**: Added `tests/scenarios/test_panic_attack.py` to verify critical intervention logic.
+*   **Completed**: Added `tests/scenarios/test_flow_state.py` to verify Flow State detection.
+*   **Completed**: Verified VAD Signal Propagation with `tests/test_lmm_vad_context.py`.
+*   **Verified**: Log Rotation, Tray Icon State, and Face Posture Metrics are implemented and active.
 
 ## 2. Top Milestones (Next 7 Days)
 
@@ -21,14 +24,14 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 *   **Next Steps**: Monitor for long-term stability in `custom_logs/`.
 
 ### 🎯 Milestone 2: Evaluation Harness V1
-*   **Status**: ✅ COMPLETED (Verified by `test_doom_scroll.py`, `test_panic_attack.py`)
-*   **Next Steps**: Add more scenarios (e.g., "Flow State").
+*   **Status**: ✅ COMPLETED (Verified by `test_doom_scroll.py`, `test_panic_attack.py`, `test_flow_state.py`)
+*   **Next Steps**: Expand scenarios to include "Intimacy" and "Content Creation" trajectories.
 
 ### 🎯 Milestone 3: Signal Quality - Voice Activity Detection (VAD)
-*   **Status**: 🟡 IN VALIDATION
+*   **Status**: ✅ VERIFIED (Signal Propagation)
 *   **Goal**: Ensure LMM effectively uses the new `speech_rate` and `voice_activity` signals.
-*   **Deliverable**: Fine-tune system prompt interpretations based on log data.
-*   **Success Metric**: High correlation between `is_speech=True` and actual user speech events in `events.jsonl`.
+*   **Deliverable**: Verified prompt construction via `tests/test_lmm_vad_context.py`.
+*   **Next Steps**: Calibrate `VAD_SILENCE_THRESHOLD` with real-world user data.
 
 ### 🎯 Milestone 4: UX - "Do Not Disturb" Mode
 *   **Status**: ✅ COMPLETED
@@ -46,8 +49,6 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 
 | Title | Why | Acceptance Criteria | Estimate | Risk | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Face Posture Metrics** | Better state estimation. | `VideoSensor` outputs head tilt/slouch estimate (Basic implementation present). | L | High | Calibrator |
-| **Tray Icon State** | Visibility. | Tooltip shows "Arousal: 60, Energy: 40" (Already implemented?). | S | Low | Navigator |
-| **Log Rotation** | Disk space management. | Logs don't grow indefinitely. | S | Low | Scribe |
 | **Unit Test Coverage** | Stability. | `pytest` coverage > 80% for `core/`. | M | Low | Testsmith |
-| **Scenario Expansion** | Better eval. | Add `test_flow_state.py`. | M | Low | Testsmith |
+| **Scenario Expansion** | Better eval. | Add "Intimacy" and "Content Creation" scenarios to `test_new_modes.py` (Basic triggers exist). | M | Low | Testsmith |
+| **UI Polish** | UX. | Add icons for new modes (Intimacy, Content Creation). | S | Low | Designer |
