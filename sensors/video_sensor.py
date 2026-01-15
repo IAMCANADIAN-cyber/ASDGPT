@@ -241,9 +241,6 @@ class VideoSensor:
         # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
         elif metrics.get("vertical_position", 0) > 0.65:
             metrics["posture_state"] = "slouching"
-        # Head Tilt (Roll): Significant angle
-        elif abs(metrics.get("head_tilt", 0)) > 20:
-             metrics["posture_state"] = "tilted"
         else:
             metrics["posture_state"] = "neutral"
 
@@ -334,36 +331,9 @@ class VideoSensor:
                 metrics["vertical_position"] = float(y + h/2) / img_h
                 metrics["horizontal_position"] = float(x + w/2) / img_w
 
-                # Eye Detection and Head Tilt
-                if self.eye_cascade:
-                    roi_gray = gray[y:y+h, x:x+w]
-                    # Detect eyes
-                    eyes = self.eye_cascade.detectMultiScale(
-                        roi_gray,
-                        scaleFactor=1.1,
-                        minNeighbors=5,
-                        minSize=(15, 15)
-                    )
-                    # We need exactly 2 eyes (or more) to calculate tilt
-                    if len(eyes) >= 2:
-                        # Sort by x position to distinguish left/right (in image coords)
-                        eyes_sorted = sorted(eyes, key=lambda e: e[0])
-                        # Take the two outermost eyes
-                        eye_left = eyes_sorted[0]
-                        eye_right = eyes_sorted[-1]
-
-                        # Center of eyes relative to ROI
-                        left_center = (eye_left[0] + eye_left[2]//2, eye_left[1] + eye_left[3]//2)
-                        right_center = (eye_right[0] + eye_right[2]//2, eye_right[1] + eye_right[3]//2)
-
-                        # Calculate angle
-                        dy = right_center[1] - left_center[1]
-                        dx = right_center[0] - left_center[0]
-                        angle = math.degrees(math.atan2(dy, dx))
-                        metrics["face_roll_angle"] = angle
-                # Head Tilt Estimation
+                # Head Tilt Estimation (Face Roll)
                 face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["head_tilt"] = self._calculate_head_tilt(face_roi_gray, w, h)
+                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
 
                 self._calculate_posture(metrics)
 
@@ -416,7 +386,7 @@ class VideoSensor:
 
                 # Head Tilt Estimation
                 face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["head_tilt"] = self._calculate_head_tilt(face_roi_gray, w, h)
+                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
 
                 self._calculate_posture(metrics)
 
