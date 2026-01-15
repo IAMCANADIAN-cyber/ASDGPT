@@ -23,6 +23,9 @@ class TestVADRefinement(unittest.TestCase):
         """
         Test if a constant frequency hum (fan noise) is suppressed.
         It should have low RMS variance and thus be penalized.
+
+        This verifies that steady-state noise sources (like HVAC or computer fans)
+        do not trigger VAD, improving overall system accuracy.
         """
         print("\n--- Test: Constant Hum (Fan) ---")
         t = np.linspace(0, self.sensor.chunk_duration, self.sensor.chunk_size, endpoint=False)
