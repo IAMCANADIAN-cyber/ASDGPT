@@ -118,6 +118,8 @@ class TestFlowStateScenario(unittest.TestCase):
         # Verify all steps succeeded (meaning no unexpected interventions occurred)
         for i, step_result in enumerate(results['step_results']):
             self.assertTrue(step_result['success'], f"Step {i+1} failed. {step_result}")
+            # Explicitly verify no intervention was triggered
+            self.assertIsNone(step_result.get('intervention'), f"Unexpected intervention in Step {i+1}: {step_result.get('intervention')}")
 
 if __name__ == '__main__':
     unittest.main()

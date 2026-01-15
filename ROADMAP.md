@@ -1,6 +1,6 @@
 # ASDGPT Weekly Roadmap Refresh
 
-**Date:** 2024-06-05
+**Date:** 2024-06-05 (Updated)
 **Status:** ACTIVE
 
 ## 🗺️ Executive Summary
@@ -13,6 +13,8 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 *   **Merged**: VAD integration into `AudioSensor`, providing `speech_rate` and `speech_confidence` metrics.
 *   **Improved**: LMM Context now utilizes real VAD metrics (Syllables/sec, Voice Activity) instead of legacy approximations.
 *   **Completed**: Added `tests/scenarios/test_panic_attack.py` to verify critical intervention logic.
+*   **Completed**: Added `tests/scenarios/test_flow_state.py` to verify Flow State non-intervention logic.
+*   **Completed**: VAD Refinement validation (`tests/test_vad_refinement.py`) passes, confirming suppression of fan noise and typing sounds.
 
 ## 2. Top Milestones (Next 7 Days)
 
@@ -22,10 +24,11 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 
 ### 🎯 Milestone 2: Evaluation Harness V1
 *   **Status**: ✅ COMPLETED (Verified by `test_doom_scroll.py`, `test_panic_attack.py`, `test_flow_state.py`)
+*   **Next Steps**: Add more scenarios.
 *   **Next Steps**: Add more scenarios (e.g., "Flow State" - Completed).
 
 ### 🎯 Milestone 3: Signal Quality - Voice Activity Detection (VAD)
-*   **Status**: 🟡 IN VALIDATION
+*   **Status**: ✅ COMPLETED
 *   **Goal**: Ensure LMM effectively uses the new `speech_rate` and `voice_activity` signals.
 *   **Deliverable**: Fine-tune system prompt interpretations based on log data.
 *   **Success Metric**: High correlation between `is_speech=True` and actual user speech events in `events.jsonl`.
@@ -50,4 +53,3 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 | **Tray Icon State** | Visibility. | Tooltip shows "Arousal: 60, Energy: 40" (Already implemented?). | S | Low | Navigator |
 | **Log Rotation** | Disk space management. | Logs don't grow indefinitely. | S | Low | Scribe |
 | **Unit Test Coverage** | Stability. | `pytest` coverage > 80% for `core/`. | M | Low | Testsmith |
-| **Scenario Expansion** | Better eval. | Add `test_flow_state.py`. | M | Low | Testsmith |
