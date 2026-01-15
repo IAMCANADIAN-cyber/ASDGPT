@@ -13,3 +13,7 @@
 ## 2026-01-15 - [Flow State Verification]
 **Learning:** `ReplayHarness` had a critical bug where `step_success` was overwritten by intervention verification results, masking state verification failures. Also, `StateEngine` applies smoothing (SMA over 5 frames), so test expectations must strictly account for this lag.
 **Action:** Fixed `tools/replay_harness.py` to correctly aggregate success flags. Updated `tests/scenarios/test_flow_state.py` to include and verify `expected_state` with mathematically correct smoothed values.
+
+## 2026-01-15 - [Posture Correction Scenario]
+**Learning:** Verified that `VideoSensor` posture metrics (slouching, head tilt) were implemented but unverified in scenarios. Using `ReplayHarness`, I confirmed that `LogicEngine` correctly propagates these metrics to the LMM and that the system triggers `posture_water_reset` when slouching persists.
+**Action:** Created `tests/scenarios/test_posture_correction.py` and updated `ROADMAP.md` to move Face Posture Metrics to completed.
