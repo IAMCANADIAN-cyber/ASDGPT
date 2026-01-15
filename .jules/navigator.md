@@ -13,3 +13,7 @@
 ## 2026-01-15 - [Flow State Verification]
 **Learning:** `ReplayHarness` had a critical bug where `step_success` was overwritten by intervention verification results, masking state verification failures. Also, `StateEngine` applies smoothing (SMA over 5 frames), so test expectations must strictly account for this lag.
 **Action:** Fixed `tools/replay_harness.py` to correctly aggregate success flags. Updated `tests/scenarios/test_flow_state.py` to include and verify `expected_state` with mathematically correct smoothed values.
+
+## 2026-01-15 - [Roadmap Sync & Finalization]
+**Learning:** Significant "Roadmap Drift" occurred where features like Face Posture Metrics, Tray Icon State, and Log Rotation were implemented and tested but remained in the "Backlog".
+**Action:** Synchronized `ROADMAP.md` with the codebase state, moving completed items out of backlog. Verified that unit tests for these features (`tests/test_video_metrics.py`, `tests/test_tray_tooltip.py`, `tests/test_log_rotation.py`) are passing.
