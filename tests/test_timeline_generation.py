@@ -4,71 +4,90 @@ import unittest
 import tempfile
 import datetime
 import shutil
-from tools.generate_timeline import parse_log_line, generate_markdown_report
+import json
+
+# Ensure tools can be imported
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools.generate_timeline import parse_events, generate_markdown
 
 class TestTimelineGeneration(unittest.TestCase):
     def setUp(self):
-        # Create a temporary log file
+        # Create a temporary directory
         self.test_dir = tempfile.mkdtemp()
-        self.log_file = os.path.join(self.test_dir, "test_acr.log")
+        self.events_file = os.path.join(self.test_dir, "test_events.jsonl")
         self.output_file = os.path.join(self.test_dir, "timeline.md")
 
-        # Generate sample logs
-        self.logs = [
-            f"{datetime.datetime.now().isoformat()} [INFO] Triggering LMM analysis (Reason: high_audio_level)...",
-            f"{datetime.datetime.now().isoformat()} [INFO] LMM suggested intervention: {{'id': 'box_breathing'}}",
-            f"{datetime.datetime.now().isoformat()} [INFO] StateEngine: Updated state to {{'arousal': 60, 'overload': 10, 'focus': 40, 'energy': 70, 'mood': 50}}",
-            f"{datetime.datetime.now().isoformat()} [INFO] Intervention 'box_breathing' (Tier 2) initiated.",
-            f"{datetime.datetime.now().isoformat()} [EVENT] Event: user_feedback | Payload: {{'intervention_type': 'box_breathing', 'feedback_value': 'helpful'}}"
+        # Generate sample events
+        self.sample_events = [
+            {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "event_type": "lmm_trigger",
+                "payload": {"reason": "high_audio_level"}
+            },
+            {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "event_type": "state_update",
+                "payload": {"arousal": 60, "overload": 10, "focus": 40}
+            },
+            {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "event_type": "intervention_start",
+                "payload": {"type": "breathing", "id": "box_breathing"}
+            },
+            {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "event_type": "user_feedback",
+                "payload": {"intervention_type": "box_breathing", "feedback_value": "helpful"}
+            }
         ]
 
-        with open(self.log_file, "w") as f:
-            for line in self.logs:
-                f.write(line + "\n")
+        with open(self.events_file, "w", encoding='utf-8') as f:
+            for event in self.sample_events:
+                f.write(json.dumps(event) + "\n")
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
-    def test_parse_log_line(self):
-        # Test Trigger
-        line1 = self.logs[0]
-        parsed1 = parse_log_line(line1)
-        self.assertEqual(parsed1["type"], "LMM_TRIGGER")
-        self.assertEqual(parsed1["details"]["reason"], "high_audio_level")
-
-        # Test State Update
-        line3 = self.logs[2]
-        parsed3 = parse_log_line(line3)
-        self.assertEqual(parsed3["type"], "STATE_UPDATE")
-        self.assertEqual(parsed3["details"]["state"]["arousal"], 60)
-
-        # Test Intervention
-        line4 = self.logs[3]
-        parsed4 = parse_log_line(line4)
-        self.assertEqual(parsed4["type"], "INTERVENTION")
-        self.assertEqual(parsed4["details"]["intervention_id"], "box_breathing")
+    def test_parse_events(self):
+        events = parse_events(self.events_file)
+        self.assertEqual(len(events), 4)
+        self.assertEqual(events[0]["event_type"], "lmm_trigger")
+        self.assertEqual(events[1]["payload"]["arousal"], 60)
 
     def test_report_generation(self):
         # Run the generator function
-        events = []
-        with open(self.log_file, 'r') as f:
-            for line in f:
-                parsed = parse_log_line(line.strip())
-                if parsed:
-                    events.append(parsed)
-
-        generate_markdown_report(events, self.output_file)
+        events = parse_events(self.events_file)
+        generate_markdown(events, self.output_file)
 
         # Verify output file exists
         self.assertTrue(os.path.exists(self.output_file))
 
         # Verify content
-        with open(self.output_file, 'r') as f:
+        with open(self.output_file, 'r', encoding='utf-8') as f:
             content = f.read()
             self.assertIn("# ACR Timeline Report", content)
-            self.assertIn("Arousal:60", content)
-            self.assertIn("**box_breathing**", content)
-            self.assertIn("User rated 'box_breathing': **HELPFUL**", content)
+            self.assertIn("**Arousal**: 60", content)
+            self.assertIn("**Type**: breathing", content)
+            self.assertIn("**Rating**: HELPFUL", content)
+
+    def test_empty_file(self):
+        empty_file = os.path.join(self.test_dir, "empty.jsonl")
+        with open(empty_file, 'w', encoding='utf-8') as f:
+            pass
+        events = parse_events(empty_file)
+        self.assertEqual(len(events), 0)
+
+    def test_malformed_json(self):
+        bad_file = os.path.join(self.test_dir, "bad.jsonl")
+        with open(bad_file, 'w', encoding='utf-8') as f:
+            f.write("{broken_json\n")
+            f.write(json.dumps(self.sample_events[0]) + "\n")
+
+        events = parse_events(bad_file)
+        # Should skip the bad line and read the good one
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["event_type"], "lmm_trigger")
 
 if __name__ == "__main__":
     unittest.main()
