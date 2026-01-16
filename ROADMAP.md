@@ -15,7 +15,7 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 *   **Completed**: Added `tests/scenarios/test_panic_attack.py` to verify critical intervention logic.
 *   **Completed**: Added `tests/scenarios/test_flow_state.py` to verify Flow State non-intervention logic.
 *   **Completed**: VAD Refinement validation (`tests/test_vad_refinement.py`) passes, confirming suppression of fan noise and typing sounds.
-*   **Completed**: Verified **Face Posture Metrics** implementation (`tests/test_video_metrics.py`) and added end-to-end scenario test (`tests/scenarios/test_posture_correction.py`).
+*   **Completed**: Verified **Face Posture Metrics** implementation (`tests/test_video_metrics.py`) and verified end-to-end scenario (`tests/scenarios/test_posture_correction.py`).
 *   **Verified**: **Tray Icon State** tooltip correctly displays internal state (Arousal, Energy, etc.).
 *   **Completed**: **Face Posture Metrics**: `VideoSensor` outputs head tilt and slouch estimates (`face_roll_angle`, `posture_state`).
 *   **Completed**: **Tray Icon State**: Tooltip now shows dynamic 5-dimension state ("A: 60 O: 0...").
@@ -29,8 +29,6 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 
 ### 🎯 Milestone 2: Evaluation Harness V1
 *   **Status**: ✅ COMPLETED (Verified by `test_doom_scroll.py`, `test_panic_attack.py`, `test_flow_state.py`, `test_posture_correction.py`)
-*   **Next Steps**: Add more scenarios.
-*   **Status**: ✅ COMPLETED (Verified by `test_doom_scroll.py`, `test_panic_attack.py`, `test_flow_state.py`)
 *   **Next Steps**: Add more complex scenarios as needed.
 
 ### 🎯 Milestone 3: Signal Quality - Voice Activity Detection (VAD)
@@ -55,5 +53,5 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 
 | Title | Why | Acceptance Criteria | Estimate | Risk | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Log Rotation** | Disk space management. | Logs don't grow indefinitely. | S | Low | Scribe |
-| **Unit Test Coverage** | Stability. | `pytest` coverage > 80% for `core/`. | M | Low | Testsmith |
+| **Personalized Baselines** | Improve accuracy. | `StateEngine` loads baseline from user profile. | M | Low | Architect |
+| **Web Dashboard** | Visualization. | Simple local web UI for `events.jsonl`. | L | Med | UI/UX |
