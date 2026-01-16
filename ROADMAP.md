@@ -55,5 +55,4 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 
 | Title | Why | Acceptance Criteria | Estimate | Risk | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Log Rotation** | Disk space management. | Logs don't grow indefinitely. | S | Low | Scribe |
 | **Unit Test Coverage** | Stability. | `pytest` coverage > 80% for `core/`. | M | Low | Testsmith |
