@@ -17,3 +17,6 @@
 ## 2026-01-15 - [Posture Correction Scenario]
 **Learning:** Verified that `VideoSensor` posture metrics (slouching, head tilt) were implemented but unverified in scenarios. Using `ReplayHarness`, I confirmed that `LogicEngine` correctly propagates these metrics to the LMM and that the system triggers `posture_water_reset` when slouching persists.
 **Action:** Created `tests/scenarios/test_posture_correction.py` and updated `ROADMAP.md` to move Face Posture Metrics to completed.
+## 2026-01-15 - [Roadmap Sync & Finalization]
+**Learning:** Significant "Roadmap Drift" occurred where features like Face Posture Metrics, Tray Icon State, and Log Rotation were implemented and tested but remained in the "Backlog".
+**Action:** Synchronized `ROADMAP.md` with the codebase state, moving completed items out of backlog. Verified that unit tests for these features (`tests/test_video_metrics.py`, `tests/test_tray_tooltip.py`, `tests/test_log_rotation.py`) are passing.
