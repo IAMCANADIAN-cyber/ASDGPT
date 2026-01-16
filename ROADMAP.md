@@ -20,6 +20,7 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 *   **Completed**: **Face Posture Metrics**: `VideoSensor` outputs head tilt and slouch estimates (`face_roll_angle`, `posture_state`).
 *   **Completed**: **Tray Icon State**: Tooltip now shows dynamic 5-dimension state ("A: 60 O: 0...").
 *   **Completed**: **Log Rotation**: `DataLogger` uses `RotatingFileHandler` to prevent indefinite log growth.
+*   **Completed**: **LMM Latency Monitoring**: `LMMInterface` now logs request latency and includes it in response metadata.
 
 ## 2. Top Milestones (Next 7 Days)
 
@@ -29,8 +30,6 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 
 ### 🎯 Milestone 2: Evaluation Harness V1
 *   **Status**: ✅ COMPLETED (Verified by `test_doom_scroll.py`, `test_panic_attack.py`, `test_flow_state.py`, `test_posture_correction.py`)
-*   **Next Steps**: Add more scenarios.
-*   **Status**: ✅ COMPLETED (Verified by `test_doom_scroll.py`, `test_panic_attack.py`, `test_flow_state.py`)
 *   **Next Steps**: Add more complex scenarios as needed.
 
 ### 🎯 Milestone 3: Signal Quality - Voice Activity Detection (VAD)
@@ -47,7 +46,7 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 
 | Unknown | Impact | Mitigation |
 | :--- | :--- | :--- |
-| **LMM Latency** | Med | Monitor `LMMInterface` response times. Consider smaller local models if >5s. |
+| **LMM Latency** | Med | ✅ Monitored in `LMMInterface`. Check logs for latency > 5s. |
 | **VAD False Positives** | Med | Calibrate `AudioSensor` thresholds (`VAD_SILENCE_THRESHOLD`) in real-world usage. |
 | **Performance** | Low | Profiling needed for `VideoSensor` on lower-end hardware. |
 
@@ -55,5 +54,4 @@ The ASDGPT project has achieved significant milestones in **System Reliability**
 
 | Title | Why | Acceptance Criteria | Estimate | Risk | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Log Rotation** | Disk space management. | Logs don't grow indefinitely. | S | Low | Scribe |
 | **Unit Test Coverage** | Stability. | `pytest` coverage > 80% for `core/`. | M | Low | Testsmith |
