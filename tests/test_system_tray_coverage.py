@@ -4,37 +4,74 @@ import sys
 import threading
 import time
 
-# Mock dependencies before import
-sys.modules["pystray"] = MagicMock()
-sys.modules["PIL"] = MagicMock()
-sys.modules["PIL.Image"] = MagicMock()
-sys.modules["PIL.ImageDraw"] = MagicMock()
-sys.modules["config"] = MagicMock()
-sys.modules["config"].APP_NAME = "ASDGPT"
-sys.modules["config"].SNOOZE_DURATION = 3600
-
-from core.system_tray import ACRTrayIcon
-
 class TestSystemTrayCoverage(unittest.TestCase):
     def setUp(self):
+        # Create a dictionary of modules to patch
+        self.modules_to_patch = {
+            "pystray": MagicMock(),
+            "PIL": MagicMock(),
+            "PIL.Image": MagicMock(),
+            "PIL.ImageDraw": MagicMock(),
+            "config": MagicMock(),
+        }
+
+        # Start the patcher
+        self.patcher = patch.dict(sys.modules, self.modules_to_patch)
+        self.patcher.start()
+
+        # Configure the mock config
+        sys.modules["config"].APP_NAME = "ASDGPT"
+        sys.modules["config"].SNOOZE_DURATION = 3600
+
+        # Import the module under test inside setUp to ensure it uses the patched modules
+        # We remove it from sys.modules first to force re-import with patched dependencies
+        if 'core.system_tray' in sys.modules:
+            del sys.modules['core.system_tray']
+
+        from core.system_tray import ACRTrayIcon
+        self.ACRTrayIcon = ACRTrayIcon
+
+        # Setup the rest of the test
         self.mock_app = MagicMock()
         self.mock_app.logic_engine = MagicMock()
         self.mock_app.logic_engine.get_mode.return_value = "active"
         self.mock_app.intervention_engine = MagicMock()
 
-        self.tray = ACRTrayIcon(self.mock_app)
+        self.tray = self.ACRTrayIcon(self.mock_app)
         self.tray.tray_icon = MagicMock()
+
+    def tearDown(self):
+        self.patcher.stop()
+        # Clean up core.system_tray so other tests import the real one if needed
+        if 'core.system_tray' in sys.modules:
+            del sys.modules['core.system_tray']
 
     def test_init_load_image_fallback(self):
         """Test image loading fallback mechanism."""
         # Unmock PIL temporarily for this test or mock side_effect to raise Error
-        with patch('core.system_tray.Image.open', side_effect=Exception("File not found")):
-            # It should catch exception and return a fallback image
-            with patch('core.system_tray.Image.new') as mock_new:
-                from core.system_tray import load_image
-                img = load_image("non_existent.png")
-                mock_new.assert_called()
-                self.assertIsNotNone(img)
+        # Since we mocked PIL globally in setUp via sys.modules, we need to adjust that mock
+        # But 'from core.system_tray import load_image' might bind the mock.
+
+        # We need to re-import or access the function from the module we imported
+        from core.system_tray import load_image
+
+        # The module uses Image.open. sys.modules["PIL.Image"] is our mock.
+        # But core.system_tray imports Image from PIL.
+        # So core.system_tray.Image is our mock.
+
+        # We can configure the mock on the fly
+        import core.system_tray
+
+        original_open = core.system_tray.Image.open
+        core.system_tray.Image.open.side_effect = Exception("File not found")
+
+        try:
+            img = load_image("non_existent.png")
+            # It calls Image.new as fallback
+            core.system_tray.Image.new.assert_called()
+            self.assertIsNotNone(img)
+        finally:
+            core.system_tray.Image.open.side_effect = None
 
     def test_run_threaded(self):
         """Test that run_threaded starts a thread."""

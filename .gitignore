@@ -28,6 +28,6 @@ custom_logs/
 replay_log.txt*
 *.log.*
 
-# Coverage
+# Test Artifacts
 .coverage
 htmlcov/
