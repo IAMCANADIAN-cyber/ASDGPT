@@ -3,6 +3,7 @@ import time
 import os
 import numpy as np
 import math
+import threading
 
 class VideoSensor:
     def __init__(self, camera_index=0, data_logger=None):
@@ -10,6 +11,7 @@ class VideoSensor:
         self.logger = data_logger
         self.cap = None
         self.last_frame = None
+        self._lock = threading.RLock()
 
         # Error handling / Recovery state
         self.error_state = False
@@ -73,30 +75,31 @@ class VideoSensor:
         else: print(f"VideoSensor [ERROR]: {message}")
 
     def _initialize_camera(self):
-        try:
-            if self.camera_index is None:
-                # Mock or testing mode, do not open actual camera
-                return
+        with self._lock:
+            try:
+                if self.camera_index is None:
+                    # Mock or testing mode, do not open actual camera
+                    return
 
-            self._log_info(f"Initializing video camera {self.camera_index}...")
-            self.cap = cv2.VideoCapture(self.camera_index)
-            if not self.cap.isOpened():
-                self._log_warning(f"Could not open video camera {self.camera_index}.")
+                self._log_info(f"Initializing video camera {self.camera_index}...")
+                self.cap = cv2.VideoCapture(self.camera_index)
+                if not self.cap.isOpened():
+                    self._log_warning(f"Could not open video camera {self.camera_index}.")
+                    self.cap = None
+                    self.error_state = True
+                    self.last_error_message = "Camera failed to open."
+                else:
+                    self._log_info("Video camera initialized successfully.")
+                    self.error_state = False
+                    self.last_error_message = ""
+
+            except Exception as e:
+                self._log_error(f"Error initializing camera: {e}")
                 self.cap = None
                 self.error_state = True
-                self.last_error_message = "Camera failed to open."
-            else:
-                self._log_info("Video camera initialized successfully.")
-                self.error_state = False
-                self.last_error_message = ""
+                self.last_error_message = str(e)
 
-        except Exception as e:
-            self._log_error(f"Error initializing camera: {e}")
-            self.cap = None
-            self.error_state = True
-            self.last_error_message = str(e)
-
-        self.last_retry_time = time.time()
+            self.last_retry_time = time.time()
 
     def get_frame(self):
         """
@@ -115,34 +118,35 @@ class VideoSensor:
             if self.error_state:
                 return None, self.last_error_message
 
-        if self.cap is None or not self.cap.isOpened():
-             if not self.error_state:
+        with self._lock:
+            if self.cap is None or not self.cap.isOpened():
+                 if not self.error_state:
+                     self.error_state = True
+                     self.last_error_message = "Camera not initialized or closed."
+                     self.last_retry_time = time.time()
+                 return None, self.last_error_message
+
+            try:
+                ret, frame = self.cap.read()
+                if not ret:
+                    self._log_warning("Failed to capture video frame (read returned False).")
+                    self.error_state = True
+                    self.last_error_message = "Failed to capture video frame."
+                    self.last_retry_time = time.time()
+                    return None, "Failed to capture video frame."
+
+                # If we succeed, ensure error state is clear
+                if self.error_state:
+                    self.error_state = False
+                    self.last_error_message = ""
+
+                return frame, None
+            except Exception as e:
+                 self._log_error(f"Error capturing frame: {e}")
                  self.error_state = True
-                 self.last_error_message = "Camera not initialized or closed."
+                 self.last_error_message = str(e)
                  self.last_retry_time = time.time()
-             return None, self.last_error_message
-
-        try:
-            ret, frame = self.cap.read()
-            if not ret:
-                self._log_warning("Failed to capture video frame (read returned False).")
-                self.error_state = True
-                self.last_error_message = "Failed to capture video frame."
-                self.last_retry_time = time.time()
-                return None, "Failed to capture video frame."
-
-            # If we succeed, ensure error state is clear
-            if self.error_state:
-                self.error_state = False
-                self.last_error_message = ""
-
-            return frame, None
-        except Exception as e:
-             self._log_error(f"Error capturing frame: {e}")
-             self.error_state = True
-             self.last_error_message = str(e)
-             self.last_retry_time = time.time()
-             return None, str(e)
+                 return None, str(e)
 
     def has_error(self):
         return self.error_state
@@ -396,10 +400,11 @@ class VideoSensor:
             return {}
 
     def release(self):
-        if self.cap:
-            try:
-                self.cap.release()
-            except Exception as e:
-                self._log_error(f"Error releasing video capture: {e}")
-            finally:
-                self.cap = None
+        with self._lock:
+            if self.cap:
+                try:
+                    self.cap.release()
+                except Exception as e:
+                    self._log_error(f"Error releasing video capture: {e}")
+                finally:
+                    self.cap = None
