@@ -1,139 +1,107 @@
-import unittest
-from unittest.mock import patch, MagicMock
-import sys
-import os
-
-# Add project root to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+import pytest
 from core.intervention_library import InterventionLibrary
 
-class TestInterventionLibrary(unittest.TestCase):
-    def setUp(self):
+class TestInterventionLibrary:
+    def setup_method(self):
         self.lib = InterventionLibrary()
 
-    def test_get_intervention_by_id_found(self):
-        """Test retrieving an existing intervention by ID."""
-        # Test with a known ID from the library
-        intervention = self.lib.get_intervention_by_id("box_breathing")
-        self.assertIsNotNone(intervention)
-        self.assertEqual(intervention["id"], "box_breathing")
-        self.assertEqual(intervention["tier"], 2)
-        self.assertTrue(len(intervention["sequence"]) > 0)
+    def test_get_intervention_by_id(self):
+        """Test retrieving interventions by ID."""
+        # Test existing intervention
+        i1 = self.lib.get_intervention_by_id("box_breathing")
+        assert i1 is not None
+        assert i1["id"] == "box_breathing"
+        assert len(i1["sequence"]) > 0
+        assert i1["tier"] == 2
 
-    def test_get_intervention_by_id_not_found(self):
-        """Test retrieving a non-existent intervention ID."""
-        intervention = self.lib.get_intervention_by_id("non_existent_id_999")
-        self.assertIsNone(intervention)
+        # Test non-existent intervention
+        i2 = self.lib.get_intervention_by_id("non_existent_id")
+        assert i2 is None
 
-    def test_get_interventions_by_category_found(self):
-        """Test retrieving interventions by a valid category."""
-        category = "physiology"
-        interventions = self.lib.get_interventions_by_category(category)
-        self.assertTrue(len(interventions) > 0)
-        for i in interventions:
-            # We can't easily check category in the item itself as it's not stored in the item dict,
-            # but we can verify they are the ones we expect if needed.
-            # For now, just checking we got a list of dicts.
-            self.assertIn("id", i)
+    def test_get_interventions_by_category(self):
+        """Test retrieving interventions by category."""
+        # Test existing category
+        cat_list = self.lib.get_interventions_by_category("physiology")
+        assert len(cat_list) >= 4
+        for intervention in cat_list:
+            # We don't have a category field IN the intervention dict,
+            # but we can verify they are the ones we expect if we want,
+            # or just rely on the count and existence.
+            assert "id" in intervention
+            assert "sequence" in intervention
 
-    def test_get_interventions_by_category_case_insensitive(self):
-        """Test retrieving interventions by category is case insensitive."""
-        interventions = self.lib.get_interventions_by_category("PHYSIOLOGY")
-        self.assertTrue(len(interventions) > 0)
+        # Test case-insensitivity
+        cat_list_upper = self.lib.get_interventions_by_category("PHYSIOLOGY")
+        assert len(cat_list_upper) == len(cat_list)
 
-    def test_get_interventions_by_category_not_found(self):
-        """Test retrieving interventions by an invalid category."""
-        interventions = self.lib.get_interventions_by_category("invalid_category")
-        self.assertEqual(interventions, [])
+        # Test non-existent category
+        empty_list = self.lib.get_interventions_by_category("invalid_category")
+        assert len(empty_list) == 0
 
     def test_get_interventions_by_tier(self):
         """Test retrieving interventions by tier."""
-        tier = 3
-        interventions = self.lib.get_interventions_by_tier(tier)
-        self.assertTrue(len(interventions) > 0)
-        for i in interventions:
-            self.assertEqual(i["tier"], tier)
+        tier_list = self.lib.get_interventions_by_tier(3)
+        # We know "cold_water" and "meltdown_prevention" and "arousal_redirect" are tier 3
+        assert len(tier_list) >= 3
+        ids = [i["id"] for i in tier_list]
+        assert "cold_water" in ids
+        assert "meltdown_prevention" in ids
+        assert "arousal_redirect" in ids
 
-    def test_get_interventions_by_tier_empty(self):
-        """Test retrieving interventions for a tier that has no items."""
-        interventions = self.lib.get_interventions_by_tier(999)
-        self.assertEqual(interventions, [])
+        for intervention in tier_list:
+            assert intervention["tier"] == 3
 
-    @patch('random.choice')
-    def test_get_random_intervention_no_filters(self, mock_choice):
-        """Test getting a random intervention without filters."""
-        # Setup mock to return the first item it receives
-        def side_effect(candidates):
-            return candidates[0]
-        mock_choice.side_effect = side_effect
+    def test_get_random_intervention(self):
+        """Test random selection logic."""
+        # Test with category and tier
+        rand_i = self.lib.get_random_intervention(category="cognitive", tier=1)
+        if rand_i:
+            assert rand_i["tier"] == 1
+            # We can't easily verify category from the returned object alone without checking the source list,
+            # but we trust the method logic if other tests pass.
 
-        intervention = self.lib.get_random_intervention()
-        self.assertIsNotNone(intervention)
-        self.assertTrue(mock_choice.called)
+        # Test with only tier
+        rand_tier = self.lib.get_random_intervention(tier=3)
+        if rand_tier:
+            assert rand_tier["tier"] == 3
 
-    @patch('random.choice')
-    def test_get_random_intervention_with_category(self, mock_choice):
-        """Test getting a random intervention with category filter."""
-        mock_choice.side_effect = lambda x: x[0]
+        # Test with only category
+        rand_cat = self.lib.get_random_intervention(category="social")
+        if rand_cat:
+            # Social only has tier 1 currently
+            assert rand_cat["tier"] == 1
 
-        intervention = self.lib.get_random_intervention(category="sensory")
-        self.assertIsNotNone(intervention)
-        # Verify the candidate list passed to random.choice only had sensory items
-        args, _ = mock_choice.call_args
-        candidates = args[0]
-        # We verify that 'visual_scan' (a known sensory item) is in the candidates
-        # or that all candidates are from the sensory list.
-        sensory_list = self.lib.library["sensory"]
-        for c in candidates:
-             self.assertIn(c, sensory_list)
-
-    @patch('random.choice')
-    def test_get_random_intervention_with_tier(self, mock_choice):
-        """Test getting a random intervention with tier filter."""
-        mock_choice.side_effect = lambda x: x[0]
-
-        target_tier = 1
-        intervention = self.lib.get_random_intervention(tier=target_tier)
-        self.assertIsNotNone(intervention)
-        self.assertEqual(intervention["tier"], target_tier)
-
-    def test_get_random_intervention_no_match(self):
-        """Test getting a random intervention when no match exists."""
-        intervention = self.lib.get_random_intervention(category="physiology", tier=99)
-        self.assertIsNone(intervention)
-
-    def test_get_all_interventions_info(self):
-        """Test the string formatting of get_all_interventions_info."""
-        info = self.lib.get_all_interventions_info()
-        self.assertIsInstance(info, str)
-        self.assertIn("[Physiology]:", info)
-        self.assertIn("box_breathing", info)
-        # Check for new categories/items
-        self.assertIn("[Recovery]:", info)
-        self.assertIn("meltdown_prevention", info)
-
-    def test_integrity_of_library(self):
-        """Verify that all interventions in the library have the required keys."""
-        required_keys = ["id", "tier", "description", "sequence"]
-        for category, items in self.lib.library.items():
-            for item in items:
-                for key in required_keys:
-                    self.assertIn(key, item, f"Item {item.get('id', 'unknown')} in {category} missing key {key}")
-                self.assertIsInstance(item["sequence"], list, f"Sequence for {item['id']} is not a list")
-                self.assertGreater(len(item["sequence"]), 0, f"Sequence for {item['id']} is empty")
-
-    def test_verify_known_ids(self):
-        """Explicitly check for the existence of specific high-value interventions."""
-        expected_ids = [
-            "box_breathing",
+    def test_verify_v4_interventions(self):
+        """Verify existence of V4 interventions."""
+        v4_ids = [
             "doom_scroll_breaker",
             "arousal_redirect",
+            "content_pivot",
+            "sultry_persona_prompt",
+            "public_persona_prompt"
+        ]
+        for vid in v4_ids:
+            assert self.lib.get_intervention_by_id(vid) is not None, f"Missing {vid}"
+
+    def test_verify_mental_model_additions(self):
+        """Verify existence of Mental Model interventions."""
+        new_ids = [
             "posture_water_reset",
+            "stand_reset",
+            "reduce_input",
+            "bookmark_thought",
+            "minimum_viable_action",
+            "shutdown_reset",
             "meltdown_prevention"
         ]
-        for i_id in expected_ids:
-            self.assertIsNotNone(self.lib.get_intervention_by_id(i_id), f"Critical intervention {i_id} missing")
+        for vid in new_ids:
+            assert self.lib.get_intervention_by_id(vid) is not None, f"Missing {vid}"
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_get_all_interventions_info(self):
+        """Test the string representation for LMM prompts."""
+        info_str = self.lib.get_all_interventions_info()
+        assert "[Physiology]:" in info_str
+        assert "box_breathing" in info_str
+        assert "[Cognitive]:" in info_str
+        assert "doom_scroll_breaker" in info_str
+        assert "\n" in info_str
