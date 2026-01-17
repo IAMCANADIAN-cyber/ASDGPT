@@ -25,7 +25,7 @@ class LMMResponse(TypedDict):
     state_estimation: StateEstimation
     visual_context: Optional[List[str]]
     suggestion: Optional[Suggestion]
-    _meta: Optional[Dict[str, Any]] # For internal flags like is_fallback
+    _meta: Optional[Dict[str, Any]] # For internal flags like is_fallback, latency_ms
 
 class LMMInterface:
     BASE_SYSTEM_INSTRUCTION = SYSTEM_INSTRUCTION_V1
@@ -371,8 +371,16 @@ class LMMInterface:
         }
 
         try:
+            start_time = time.time()
             result = self._send_request_with_retry(payload)
-            self._log_info(f"Received valid JSON from LMM.")
+            latency_ms = (time.time() - start_time) * 1000
+
+            # Inject latency into _meta
+            if "_meta" not in result or result["_meta"] is None:
+                result["_meta"] = {}
+            result["_meta"]["latency_ms"] = latency_ms
+
+            self._log_info(f"Received valid JSON from LMM. Latency: {latency_ms:.2f}ms")
             self._log_debug(f"LMM Response: {result}")
             # Reset circuit breaker on success
             self.circuit_failures = 0
