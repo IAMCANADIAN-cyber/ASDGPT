@@ -331,8 +331,20 @@ class Application:
         # Ensure running is False so threads know to stop
         self.running = False
 
-        # 1. Release sensors first to unblock any pending reads in worker threads
-        # Note: AudioSensor uses a queue now, so release() is important to stop the stream callback
+        # 1. Join worker threads first (let them finish current read naturally)
+        if self.video_thread and self.video_thread.is_alive():
+            self.data_logger.log_info("Waiting for video worker thread to join...")
+            self.video_thread.join(timeout=2) # Wait for 2 seconds
+            if self.video_thread.is_alive():
+                 self.data_logger.log_warning("Video worker thread did not join in time.")
+
+        if self.audio_thread and self.audio_thread.is_alive():
+            self.data_logger.log_info("Waiting for audio worker thread to join...")
+            self.audio_thread.join(timeout=2)
+            if self.audio_thread.is_alive():
+                 self.data_logger.log_warning("Audio worker thread did not join in time.")
+
+        # 2. Release sensors (now safe as threads are joined or timed out)
         if hasattr(self, 'video_sensor') and self.video_sensor:
             self.data_logger.log_info("Releasing video sensor...")
             try:
@@ -346,19 +358,6 @@ class Application:
                 self.audio_sensor.release()
             except Exception as e:
                 self.data_logger.log_warning(f"Error releasing audio sensor: {e}")
-
-        # 2. Join worker threads
-        if self.video_thread and self.video_thread.is_alive():
-            self.data_logger.log_info("Waiting for video worker thread to join...")
-            self.video_thread.join(timeout=2) # Wait for 2 seconds
-            if self.video_thread.is_alive():
-                 self.data_logger.log_warning("Video worker thread did not join in time.")
-
-        if self.audio_thread and self.audio_thread.is_alive():
-            self.data_logger.log_info("Waiting for audio worker thread to join...")
-            self.audio_thread.join(timeout=2)
-            if self.audio_thread.is_alive():
-                 self.data_logger.log_warning("Audio worker thread did not join in time.")
 
         # 3. Shutdown engines
         if hasattr(self, 'logic_engine') and self.logic_engine: self.logic_engine.shutdown()
