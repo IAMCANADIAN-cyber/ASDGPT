@@ -56,8 +56,16 @@ def test_feedback_unhelpful_suppression(setup_test_env):
     engine.start_intervention(details)
 
     # Mock that it finished immediately so we can provide feedback
-    time.sleep(0.1) # Wait for thread to start and store intervention
+    time.sleep(0.1) # Wait for thread to start
     engine.stop_intervention() # Stop it
+
+    # Wait for the intervention thread to cleanup and store the intervention
+    # stop_intervention kills the subprocess, but the thread needs to finish execution
+    max_retries = 10
+    for _ in range(max_retries):
+        if engine.last_feedback_eligible_intervention["type"] == "posture_alert":
+            break
+        time.sleep(0.1)
 
     assert engine.last_feedback_eligible_intervention["type"] == "posture_alert"
 
@@ -94,6 +102,13 @@ def test_feedback_helpful_preference(setup_test_env):
     time.sleep(0.1)
     engine.stop_intervention()
 
+    # Wait for state update
+    max_retries = 10
+    for _ in range(max_retries):
+        if engine.last_feedback_eligible_intervention["type"] == "deep_breath":
+            break
+        time.sleep(0.1)
+
     engine.register_feedback("helpful")
 
     assert "deep_breath" in engine.preferred_interventions
@@ -108,6 +123,13 @@ def test_feedback_helpful_preference(setup_test_env):
     engine.start_intervention(details)
     time.sleep(0.1)
     engine.stop_intervention()
+
+    # Wait for state update
+    for _ in range(max_retries):
+        if engine.last_feedback_eligible_intervention["type"] == "deep_breath":
+            break
+        time.sleep(0.1)
+
     engine.register_feedback("helpful")
 
     assert engine.preferred_interventions["deep_breath"]["count"] == 2
@@ -123,6 +145,13 @@ def test_feedback_window_expiry(setup_test_env):
     engine.start_intervention(details)
     time.sleep(0.1)
     engine.stop_intervention()
+
+    # Wait for state update
+    max_retries = 10
+    for _ in range(max_retries):
+        if engine.last_feedback_eligible_intervention["type"] == "test_expiry":
+            break
+        time.sleep(0.1)
 
     # Manually tamper with the timestamp to make it old
     engine.last_feedback_eligible_intervention["timestamp"] = time.time() - 100
