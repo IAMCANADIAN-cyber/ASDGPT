@@ -111,7 +111,7 @@ class LogicEngine:
 
     def cycle_mode(self) -> None:
         with self._lock:
-            current_actual_mode = self.get_mode()
+            current_actual_mode = self.current_mode
             if current_actual_mode == "active":
                 self._set_mode_unlocked("snoozed")
             elif current_actual_mode == "snoozed":
@@ -121,7 +121,7 @@ class LogicEngine:
 
     def toggle_pause_resume(self) -> None:
         with self._lock:
-            current_actual_mode = self.get_mode()
+            current_actual_mode = self.current_mode
             if current_actual_mode == "paused":
                 if self.previous_mode_before_pause == "snoozed" and \
                    self.snooze_end_time != 0 and time.time() >= self.snooze_end_time:
