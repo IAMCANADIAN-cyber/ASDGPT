@@ -90,6 +90,24 @@ class TestLMMInterface(unittest.TestCase):
         # Since fallback is enabled by default in config:
         self.assertTrue(result.get('_meta', {}).get('is_fallback'))
 
+    def test_validate_response_schema_visual_context(self):
+        """Test validation of visual_context type."""
+        # Valid case
+        valid_data = {
+            "state_estimation": {"arousal": 50, "overload": 10, "focus": 80, "energy": 70, "mood": 60},
+            "visual_context": ["calm", "reading"],
+            "suggestion": None
+        }
+        self.assertTrue(self.lmm._validate_response_schema(valid_data))
+
+        # Invalid type (string instead of list)
+        invalid_data = {
+            "state_estimation": {"arousal": 50, "overload": 10, "focus": 80, "energy": 70, "mood": 60},
+            "visual_context": "this should be a list",
+            "suggestion": None
+        }
+        self.assertFalse(self.lmm._validate_response_schema(invalid_data))
+
     def test_clean_json_string(self):
         # Test markdown removal
         dirty_json = "```json\n{\"key\": \"value\"}\n```"
