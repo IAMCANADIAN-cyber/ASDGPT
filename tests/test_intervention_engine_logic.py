@@ -200,12 +200,16 @@ class TestInterventionEngineLogic(unittest.TestCase):
 
     @patch('core.intervention_engine.cv2')
     @patch('core.intervention_engine.os.makedirs')
+    @patch('core.intervention_engine.os.path.exists')
     @patch('core.intervention_engine.datetime')
-    def test_capture_image_execution(self, mock_datetime, mock_makedirs, mock_cv2):
+    def test_capture_image_execution(self, mock_datetime, mock_exists, mock_makedirs, mock_cv2):
         """Test the _capture_image method logic directly."""
         # Setup prerequisites
         self.intervention_engine.logic_engine.last_video_frame = MagicMock()
         mock_datetime.datetime.now.return_value.strftime.return_value = "20240101_120000"
+
+        # Force exists to False so makedirs is called
+        mock_exists.return_value = False
 
         # Call method directly
         self.intervention_engine._capture_image("test_capture")
