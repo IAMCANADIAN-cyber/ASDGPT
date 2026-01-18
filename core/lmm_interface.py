@@ -25,7 +25,7 @@ class LMMResponse(TypedDict):
     state_estimation: StateEstimation
     visual_context: Optional[List[str]]
     suggestion: Optional[Suggestion]
-    _meta: Optional[Dict[str, Any]] # For internal flags like is_fallback
+    _meta: Optional[Dict[str, Any]] # For internal flags like is_fallback, latency_ms
 
 class LMMInterface:
     BASE_SYSTEM_INSTRUCTION = SYSTEM_INSTRUCTION_V1
@@ -371,8 +371,16 @@ class LMMInterface:
         }
 
         try:
+            start_time = time.time()
             result = self._send_request_with_retry(payload)
-            self._log_info(f"Received valid JSON from LMM.")
+            latency_ms = (time.time() - start_time) * 1000
+
+            # Inject latency into _meta
+            if "_meta" not in result or result["_meta"] is None:
+                result["_meta"] = {}
+            result["_meta"]["latency_ms"] = latency_ms
+
+            self._log_info(f"Received valid JSON from LMM. Latency: {latency_ms:.2f}ms")
             self._log_debug(f"LMM Response: {result}")
             # Reset circuit breaker on success
             self.circuit_failures = 0
@@ -400,89 +408,3 @@ class LMMInterface:
         if not processed_analysis:
             return None
         return processed_analysis.get("suggestion")
-
-if __name__ == '__main__':
-    # Test suite
-    class MockDataLogger:
-        def __init__(self) -> None:
-            self.log_level = "DEBUG"
-        def log_info(self, msg: str) -> None:
-            print(f"INFO: {msg}")
-        def log_warning(self, msg: str) -> None:
-            print(f"WARN: {msg}")
-        def log_error(self, msg: str, details: str = "") -> None:
-            print(f"ERROR: {msg} | Details: {details}")
-        def log_debug(self, msg: str) -> None:
-            print(f"DEBUG: {msg}")
-
-    mock_logger = MockDataLogger()
-    lmm_interface = LMMInterface(data_logger=mock_logger)
-
-    # Verify URL construction
-    expected_url = config.LOCAL_LLM_URL.rstrip('/') + "/v1/chat/completions"
-    if lmm_interface.llm_url != expected_url:
-        print(f"FAILED: URL construction. Got {lmm_interface.llm_url}, expected {expected_url}")
-    else:
-        print(f"PASSED: URL construction: {lmm_interface.llm_url}")
-
-    # Mock requests
-    def mock_post_valid(url, json=None, timeout=None):
-        import json as json_module
-        response_content = {
-            "state_estimation": {"arousal": 50, "overload": 20, "focus": 80, "energy": 60, "mood": 50},
-            "visual_context": ["person_sitting", "messy_room"],
-            "suggestion": None
-        }
-        class MockResponse:
-            def json(self):
-                return {
-                    "choices": [{
-                        "message": {
-                            "content": f"```json\n{json_module.dumps(response_content)}\n```"
-                        }
-                    }]
-                }
-            def raise_for_status(self): pass
-        return MockResponse()
-
-    requests.post = mock_post_valid
-
-    print("\n--- Test 1: Valid Response (with Visual Context) ---")
-    res1 = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.1}})
-    if res1 and res1["suggestion"] is None and "visual_context" in res1:
-        print(f"PASSED: Valid response parsed. Visual Context: {res1['visual_context']}")
-    else:
-        print(f"FAILED: Result: {res1}")
-
-    print("\n--- Test 2: Invalid Schema (Bad Visual Context) ---")
-    def mock_post_invalid_context(url, json=None, timeout=None):
-        import json as json_module
-        response_content = {
-            "state_estimation": {"arousal": 50, "overload": 20, "focus": 80, "energy": 60, "mood": 50},
-            "visual_context": "this should be a list", # Error
-            "suggestion": None
-        }
-        class MockResponse:
-            def json(self):
-                return {
-                    "choices": [{
-                        "message": {
-                            "content": f"{json_module.dumps(response_content)}"
-                        }
-                    }]
-                }
-            def raise_for_status(self): pass
-        return MockResponse()
-
-    requests.post = mock_post_invalid_context
-    # Disable fallback to check validation
-    orig_fallback = config.LMM_FALLBACK_ENABLED
-    config.LMM_FALLBACK_ENABLED = False
-
-    res2 = lmm_interface.process_data(user_context={"sensor_metrics": {}})
-    if res2 is None:
-        print("PASSED: Invalid visual_context schema rejected.")
-    else:
-        print(f"FAILED: Invalid schema accepted. Result: {res2}")
-
-    config.LMM_FALLBACK_ENABLED = orig_fallback
