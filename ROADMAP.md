@@ -1,56 +1,87 @@
-# ASDGPT 30-Day Roadmap
+# ASDGPT Weekly Roadmap Refresh
 
-**Date:** 2024-05-22
-**Status:** DRAFT
+**Date:** 2026-01-22
+**Status:** ACTIVE
 
 ## 🗺️ Executive Summary
-ASDGPT aims to be a sophisticated autonomous co-regulator (ACR). The current codebase provides a functional skeleton (sensors, logic loop, basic LMM hook), but it lacks the "brain" defined in `docs/MENTAL_MODEL.md`. The next 30 days are focused on bridging this gap: moving from "detect loud noise" to "estimate 5D state (Arousal, Overload, Focus, Energy, Mood)".
+The ASDGPT project has solidified its core pillars: **System Reliability** (crashes resolved), **Evaluation** (replay harness functional), and **Signal Quality** (VAD and Face Posture active).
+The focus for this week shifts to **Resilience** and **Personalization**. We must ensure the system works even when the LMM is slow or offline (Fallback Mode), and that sensor thresholds adapt to the user's environment (Calibration).
 
-## 1. What Changed (Last Cycle)
-*   **Architecture**: Validated core loop in `LogicEngine` (triggers LMM on sensor thresholds).
-*   **Docs**: `MENTAL_MODEL.md` established as the engineering spec.
-*   **Code**:
-    *   `LogicEngine` now supports Active/Snoozed/Paused modes.
-    *   `InterventionEngine` skeleton created with tier-based logic (placeholder TTS).
-    *   `LMMInterface` created (wrapping local LLM).
+## 1. Change Summary (Last 7 Days)
+*   **Completed**: `verify_crash.py` confirms system reliability (10/10 cycles passed).
+*   **Completed**: `test_doom_scroll.py` passes using the new `replay_harness`.
+*   **Completed**: **DND Mode** (Milestone 4) is fully implemented and tested.
+*   **Merged**: VAD integration into `AudioSensor`, providing `speech_rate` and `speech_confidence` metrics.
+*   **Improved**: LMM Context now utilizes real VAD metrics (Syllables/sec, Voice Activity) instead of legacy approximations.
+*   **Completed**: Added `tests/scenarios/test_panic_attack.py` to verify critical intervention logic.
+*   **Completed**: Added `tests/scenarios/test_flow_state.py` to verify Flow State non-intervention logic.
+*   **Completed**: VAD Refinement validation (`tests/test_vad_refinement.py`) passes, confirming suppression of fan noise and typing sounds.
+*   **Completed**: Verified **Face Posture Metrics** implementation (`tests/test_video_metrics.py`) and verified end-to-end scenario (`tests/scenarios/test_posture_correction.py`).
+*   **Verified**: **Tray Icon State** tooltip correctly displays internal state (Arousal, Energy, etc.).
+*   **Completed**: **Face Posture Metrics**: `VideoSensor` outputs head tilt and slouch estimates (`face_roll_angle`, `posture_state`).
+*   **Completed**: **Tray Icon State**: Tooltip now shows dynamic 5-dimension state ("A: 60 O: 0...").
+*   **Completed**: **Log Rotation**: `DataLogger` uses `RotatingFileHandler` to prevent indefinite log growth.
+*   **Completed**: **LMM Latency Monitoring**: `LMMInterface` now logs request latency and includes it in response metadata.
+*   **Merged**: **VAD Integration**: `AudioSensor` now provides `speech_rate` and `voice_activity`, replacing crude volume thresholds.
+*   **Merged**: **Face Posture Metrics**: `VideoSensor` detects `face_roll_angle` (tilt) and `posture_state` (slouching).
+*   **Merged**: **LMM Latency Tracking**: Request times are logged and monitored; LMM context now includes real VAD data.
+*   **Verified**: **Reliability**: `verify_crash.py` passed 10/10 cycles; `test_doom_scroll` and `test_panic_attack` scenarios confirmed logic.
+*   **Completed**: **DND Mode**: "Do Not Disturb" is functional and testable.
+*   **Completed**: **Log Rotation**: Prevented disk fill-up issues with `RotatingFileHandler`.
 
-## 2. Top 3 Milestones (Next 30 Days)
+## 2. Top Milestones (Next 7 Days)
 
-### 🏆 Milestone 1: The "5D State" Engine
-*   **Goal**: Move beyond simple thresholds. The LMM should receive sensor data and output scores for the 5 dimensions defined in `MENTAL_MODEL.md`.
-*   **Deliverable**: `StateEngine` class that tracks Arousal, Overload, Focus, Energy, Mood (0-100).
-*   **Success Metric**: LMM consistently outputs valid JSON with these 5 scores based on mock sensor data.
+### 🎯 Milestone 1: Signal Calibration (Personalization)
+*   **Goal**: Replace hardcoded `config.py` thresholds with user-specific baselines.
+*   **Deliverable**: A `CalibrationEngine` (or "Wizard" script) that samples environment for 30s to set `VAD_SILENCE_THRESHOLD` and `BASELINE_POSTURE`.
+*   **Success Metric**: `config.json` is updated with personalized values; reduced VAD false positives in quiet rooms.
 
-### 🏆 Milestone 2: Intervention Library V1
-*   **Goal**: Replace generic TTS with specific "Cards" (Physiology, Sensory, Cognitive).
-*   **Deliverable**: `InterventionLibrary` containing at least 3 distinct interventions per category.
-*   **Success Metric**: `InterventionEngine` can execute a "Physiology: Box Breathing" card which triggers a specific sequence (audio + visual).
+### 🎯 Milestone 2: Evaluation Harness V1
+*   **Status**: ✅ COMPLETED (Verified by `test_doom_scroll.py`, `test_panic_attack.py`, `test_flow_state.py`, `test_posture_correction.py`)
+*   **Next Steps**: Add more complex scenarios as needed.
+### 🎯 Milestone 2: LMM Offline Fallback (Resilience)
+*   **Goal**: Ensure "basic safety" interventions work even if the LMM is down or timing out (>10s).
+*   **Deliverable**: `LogicEngine` fallback triggers (e.g., if `LMM_TIMEOUT`, use simple `High Noise -> Reduction` rule).
+*   **Success Metric**: System successfully triggers an intervention during an induced LMM timeout in tests.
 
-### 🏆 Milestone 3: "Snooze" & "Feedback" Loop
-*   **Goal**: Close the loop. User feedback (hotkeys) should influence future interventions.
-*   **Deliverable**: Feedback stored in a structured format that the `LogicEngine` can query before triggering the next intervention.
-*   **Success Metric**: If user presses "Unhelpful" (Ctrl+Alt+Down), that specific intervention type is suppressed for 4 hours.
+### 🎯 Milestone 3: "Meeting Mode" Detection (Context Awareness)
+*   **Goal**: Prevent embarrassing interruptions during calls/meetings.
+*   **Deliverable**: Heuristic detection: `Continuous Speech` + `Face Present` + `No Keyboard` = `Meeting` -> Auto-DND.
+*   **Success Metric**: New scenario `test_meeting_mode.py` passes.
 
-## 3. De-risk List (Unknowns & Tests)
+### 🎯 Milestone 4: UX Feedback Loop (Interaction)
+*   **Goal**: Confirm to the user that their "Helpful/Unhelpful" feedback was registered.
+*   **Deliverable**: Visual toast/notification or Tray Icon flash on hotkey press.
+*   **Success Metric**: User receives immediate visual confirmation of feedback actions.
 
-| Unknown | Impact | Test / Mitigation |
+## 3. De-risk List (Unknowns)
+
+| Unknown | Impact | Mitigation |
 | :--- | :--- | :--- |
-| **LMM Latency** | High | Create a benchmark script to measure round-trip time for 5-second video analysis on the local LLM. Target < 2s. |
-| **Audio Privacy** | High | Verify if simple RMS/Spectrogram is sufficient for state estimation, or if we need local transcription (Whisper). |
-| **Video False Positives** | Med | Test `VideoSensor` triggers against "normal sitting" vs "pacing" to tune sensitivity. |
+| **LMM Latency** | Med | ✅ Monitored in `LMMInterface`. Check logs for latency > 5s. |
+| **VAD False Positives** | Med | Calibrate `AudioSensor` thresholds (`VAD_SILENCE_THRESHOLD`) in real-world usage. |
+| **Performance** | Low | Profiling needed for `VideoSensor` on lower-end hardware. |
+| **LMM Context Window** | Med | Monitor token usage as we add VAD/Posture history. Prune history if needed. |
+| **Sensor CPU Load** | Low | Profile `VideoSensor` with new Posture logic. Consider "Eco Mode" (lower FPS). |
+| **False Positives (VAD)** | Med | Typing/Fan noise triggers. Mitigate via Milestone 1 (Calibration). |
 
-## 4. Backlog (High Priority)
+## 4. Backlog (Selected High Priority)
 
-| Title | Why | Acceptance Criteria | Estimate | Risk |
-| :--- | :--- | :--- | :--- | :--- |
-| **LMM Prompt Engineering** | The "Brain" needs instructions. | LMM prompt is structured to take sensor features and output 5D state JSON. | 3d | High |
-| **StateEngine Class** | Need a place to store the 5D state. | Class exists, stores history, handles smoothing (don't flip state on 1 frame). | 2d | Low |
-| **Intervention "Card" Structure** | Standardize actions. | JSON schema for interventions (Type, Duration, Content, Tier). | 1d | Low |
-| **Audio Feature Extraction** | RMS is too simple. | `AudioSensor` calculates pitch variance and speech rate. | 3d | Med |
-| **Video Feature Extraction** | Pixel diff is too simple. | `VideoSensor` detects face presence and basic posture (using opencv/mediapipe). | 4d | High |
-| **Configurable Thresholds** | Personalization. | `config.py` allows overriding default thresholds for each state dimension. | 1d | Low |
-| **PyTest Setup** | Stability. | `pytest` runs and passes for all core modules. | 2d | Low |
-| **System Tray "State" View** | Visibility. | Hovering over tray icon shows current "Arousal" and "Energy" scores. | 2d | Low |
-
----
-*Generated by Roadmapper Agent*
+| Title | Why | Acceptance Criteria | Estimate | Risk | Owner |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Unit Test Coverage** | Stability. | `pytest` coverage > 80% for `core/`. | M | Low | Testsmith |
+| **Calibration Wizard Script** | "Normal" noise varies wildy. | `tools/calibrate.py` runs, updates `user_data/config.json`. | M | Low | Calibrator |
+| **Audio Calibration Logic** | Core logic for noise floor. | `AudioSensor.calibrate()` returns valid threshold. | S | Low | Calibrator |
+| **Video Calibration Logic** | Core logic for neutral posture. | `VideoSensor.calibrate()` returns baseline tilt. | S | Low | Calibrator |
+| **LMM Fallback Trigger** | Single point of failure. | LogicEngine detects `LMM_TIMEOUT` event. | S | Med | Sentinel |
+| **Offline Intervention Logic** | Safety net when offline. | Simple noise-based intervention triggers without LMM. | M | Med | Sentinel |
+| **Test LMM Timeout** | Verify fallback works. | `tests/test_lmm_timeout.py` passes. | S | Low | Testsmith |
+| **Meeting Mode Logic** | Interruptions destroy trust. | Heuristic (Speech+Face+NoInput) defined in LogicEngine. | M | Med | Navigator |
+| **Meeting Mode Scenario** | Verify meeting logic. | `test_meeting_mode.py` passes. | S | Low | Testsmith |
+| **Visual Feedback (Toast)** | UX is opaque. | Notification shown on hotkey. | S | Low | Navigator |
+| **Token Usage Logging** | Cost/Limit visibility. | `LMMInterface` logs input/output tokens. | S | Low | Profiler |
+| **Prune Context Window** | Prevent overflow errors. | `LMMInterface` truncates history > N tokens. | M | Med | Profiler |
+| **Video Eco Mode** | CPU usage is high. | Reduce FPS to 1 when no face detected. | M | Low | Profiler |
+| **Update README.md** | Entry point is stale. | Installation/Run steps are verified current. | S | Low | Scribe |
+| **Type Hinting Core** | Reduce runtime errors. | `core/logic_engine.py` fully typed. | M | Low | Sentinel |
+| **Dependency Audit** | Bloat reduction. | `requirements.txt` cleaned of unused libs. | S | Low | Scribe |

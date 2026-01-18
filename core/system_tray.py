@@ -1,6 +1,7 @@
 import pystray
 from PIL import Image, ImageDraw # Pillow is needed for Image.open and potentially for creating icons on the fly
 import threading
+import time
 import config
 import os # For path joining
 
@@ -42,16 +43,27 @@ class ACRTrayIcon:
             "paused": "assets/icons/paused_icon.png",
             "snoozed": "assets/icons/snoozed_icon.png",
             "error": "assets/icons/error_icon.png",
+            "dnd": "assets/icons/dnd_icon.png",
             "default": "assets/icons/default_icon.png"
         }
         self.icons = {name: load_image(path) for name, path in self.icon_paths.items()}
 
         self.current_icon_state = "default" # e.g., "active", "paused"
 
+        # Calculate snooze label
+        snooze_minutes = config.SNOOZE_DURATION // 60
+        if snooze_minutes == 60:
+            snooze_label = 'Snooze for 1 Hour'
+        elif snooze_minutes > 60 and snooze_minutes % 60 == 0:
+            snooze_label = f'Snooze for {snooze_minutes // 60} Hours'
+        else:
+            snooze_label = f'Snooze for {snooze_minutes} Minutes'
+
         # Menu items
         menu = (
             pystray.MenuItem('Pause/Resume', self.on_toggle_pause_resume),
-            pystray.MenuItem('Snooze for 1 Hour', self.on_snooze),
+            pystray.MenuItem(snooze_label, self.on_snooze),
+            pystray.MenuItem('Toggle DND', self.on_toggle_dnd),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem('Last: Helpful', self.on_feedback_helpful),
             pystray.MenuItem('Last: Unhelpful', self.on_feedback_unhelpful),
@@ -95,6 +107,23 @@ class ACRTrayIcon:
             else: # Already snoozing, maybe unsnooze it? Or just ignore. For now, ignore.
                 print("Already snoozing.")
 
+    def on_toggle_dnd(self, icon, item):
+        print("Tray: Toggle DND clicked")
+        if self.app and self.app.logic_engine:
+            current_mode = self.app.logic_engine.get_mode()
+            if current_mode == "dnd":
+                # Toggle OFF -> Active
+                self.app.logic_engine.set_mode("active")
+            else:
+                # Toggle ON -> DND
+                self.app.logic_engine.set_mode("dnd")
+
+            new_mode = self.app.logic_engine.get_mode()
+            print(f"Mode changed to {new_mode} via tray DND toggle.")
+            if hasattr(self.app, 'intervention_engine'):
+                self.app.intervention_engine.notify_mode_change(new_mode)
+            self.update_icon_status(new_mode)
+
     def on_feedback_helpful(self, icon, item):
         print("Tray: Feedback 'Helpful' clicked")
         if self.app and hasattr(self.app, 'on_feedback_helpful_pressed'):
@@ -137,12 +166,36 @@ class ACRTrayIcon:
 
         tooltip_text = config.APP_NAME # Default
 
-        if isinstance(state_info, dict):
-            # Format: "A: 50 | E: 80 | F: 50" (Shortened for tooltip)
-            arousal = state_info.get("arousal", "?")
-            energy = state_info.get("energy", "?")
-            focus = state_info.get("focus", "?")
-            tooltip_text = f"{config.APP_NAME}\nA: {arousal} | E: {energy} | F: {focus}"
+        if self.current_icon_state == "dnd":
+            tooltip_text = f"{config.APP_NAME} (DND)"
+        elif isinstance(state_info, dict):
+            if not state_info:
+                tooltip_text = f"{config.APP_NAME}\nInitializing..."
+            else:
+                # Format: "A: 50 | E: 80 | F: 50" (Shortened for tooltip)
+                # We try to fit all 5 dimensions if available
+                # A=Arousal, O=Overload, F=Focus, E=Energy, M=Mood
+
+                parts = []
+
+                # Line 1: Arousal, Overload, Focus
+                line1 = []
+                line1.append(f"A: {state_info.get('arousal', '?')}")
+                line1.append(f"O: {state_info.get('overload', '?')}")
+                line1.append(f"F: {state_info.get('focus', '?')}")
+
+                # Line 2: Energy, Mood
+                line2 = []
+                line2.append(f"E: {state_info.get('energy', '?')}")
+                line2.append(f"M: {state_info.get('mood', '?')}")
+
+                if line1: parts.append(" ".join(line1))
+                if line2: parts.append(" ".join(line2))
+
+                if parts:
+                    tooltip_text = f"{config.APP_NAME}\n" + "\n".join(parts)
+                else:
+                     tooltip_text = f"{config.APP_NAME}\nNo State Data"
         elif isinstance(state_info, str):
             tooltip_text = f"{config.APP_NAME}\n{state_info}"
 
@@ -180,67 +233,3 @@ class ACRTrayIcon:
                 print(f"Notification sent: {title} - {message}")
             except Exception as e:
                 print(f"Failed to send notification: {e}")
-
-if __name__ == '__main__':
-    # This is for testing the tray icon directly.
-    # In the actual app, it will be instantiated and managed by main.py.
-    print("Testing System Tray Icon...")
-
-    # Mock application class
-    class MockApp:
-        def __init__(self):
-            self.logic_engine = MockLogicEngine()
-            self.intervention_engine = MockInterventionEngine()
-
-        def on_pause_resume_pressed(self):
-            print("MockApp: Pause/Resume toggled")
-            if self.logic_engine.get_mode() == "paused":
-                self.logic_engine.set_mode("active")
-            else:
-                self.logic_engine.set_mode("paused")
-            tray.update_icon_status(self.logic_engine.get_mode())
-            self.intervention_engine.notify_mode_change(self.logic_engine.get_mode())
-
-
-        def quit_application(self):
-            print("MockApp: Quitting application")
-            tray.stop()
-            # In a real app, you might need to exit the main loop or sys.exit()
-            # For pystray, stopping the icon is often enough to allow the script to end if it's the only non-daemon thread.
-            os._exit(0) # Force exit for the test script
-
-    class MockLogicEngine:
-        def __init__(self):
-            self.mode = "active"
-        def get_mode(self): return self.mode
-        def set_mode(self, new_mode): self.mode = new_mode; print(f"MockLogic: Mode set to {new_mode}")
-
-    class MockInterventionEngine:
-        def notify_mode_change(self, mode): print(f"MockIntervention: Notified of mode {mode}")
-
-    mock_app = MockApp()
-    tray = ACRTrayIcon(mock_app)
-
-    # Update status for testing
-    tray.update_icon_status("active")
-
-    print("Tray icon should be visible. Right-click for options. Close the tray or press Ctrl+C to exit if it hangs.")
-
-    # pystray's run() is blocking, so it should be the last call or in a thread.
-    # For this direct test, we run it on the main thread.
-    tray.run_threaded()
-
-    # Keep the main thread alive to see the tray icon, or pystray will run it.
-    # If run_threaded() is used, the main thread can do other things or just wait.
-    try:
-        while True:
-            time.sleep(1)
-            # Example of how main app could interact:
-            # if int(time.time()) % 10 == 0:
-            #     print("Flashing icon from test loop")
-            #     tray.flash_icon("error", original_status=mock_app.logic_engine.get_mode())
-
-    except KeyboardInterrupt:
-        print("Ctrl+C received, stopping tray icon.")
-        tray.stop()
-        mock_app.quit_application() # ensure clean exit

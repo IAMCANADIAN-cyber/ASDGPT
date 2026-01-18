@@ -3,13 +3,19 @@ import os
 import shutil
 import tempfile
 import datetime
-from tools.generate_timeline import parse_log_line, generate_markdown_report
+import shutil
+import json
+
+# Ensure tools can be imported
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools.generate_timeline import parse_events, generate_markdown
 
 class TestTimelineGeneration(unittest.TestCase):
     def setUp(self):
-        # Create a temporary log file
+        # Create a temporary directory
         self.test_dir = tempfile.mkdtemp()
-        self.log_file = os.path.join(self.test_dir, "test_acr.log")
+        self.events_file = os.path.join(self.test_dir, "test_events.jsonl")
         self.output_file = os.path.join(self.test_dir, "timeline.md")
 
         # Generate sample logs
@@ -21,9 +27,9 @@ class TestTimelineGeneration(unittest.TestCase):
             f"{datetime.datetime.now().isoformat()} [EVENT] Event: user_feedback | Payload: {{'intervention_type': 'box_breathing', 'feedback_value': 'helpful'}}"
         ]
 
-        with open(self.log_file, "w") as f:
-            for line in self.logs:
-                f.write(line + "\n")
+        with open(self.events_file, "w", encoding='utf-8') as f:
+            for event in self.sample_events:
+                f.write(json.dumps(event) + "\n")
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
@@ -72,7 +78,7 @@ class TestTimelineGeneration(unittest.TestCase):
         self.assertTrue(os.path.exists(self.output_file))
 
         # Verify content
-        with open(self.output_file, 'r') as f:
+        with open(self.output_file, 'r', encoding='utf-8') as f:
             content = f.read()
             # The actual title in generate_markdown_report is "# ACR Timeline Report"
             self.assertIn("# ACR Timeline Report", content)

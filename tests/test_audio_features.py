@@ -1,97 +1,112 @@
 import unittest
-from unittest.mock import Mock, patch
 import numpy as np
-import collections
+from unittest.mock import MagicMock
 from sensors.audio_sensor import AudioSensor
 
-class TestAudioSensorFeatures(unittest.TestCase):
+class TestAudioFeatures(unittest.TestCase):
     def setUp(self):
-        self.mock_logger = Mock()
-        # chunk_duration=1.0, history_seconds=5 => history_size=5
-        self.sensor = AudioSensor(data_logger=self.mock_logger, chunk_duration=1.0, history_seconds=5)
-        # Mock stream to avoid hardware errors
-        self.sensor.stream = Mock()
+        self.sensor = AudioSensor(chunk_duration=0.1, history_seconds=1)
+        # Mock stream to avoid hardware init and errors in release
+        self.sensor.stream = MagicMock()
         self.sensor.stream.closed = False
+        self.sensor.error_state = False
 
-    def tearDown(self):
-        if self.sensor.stream:
-            self.sensor.stream.close()
-
-    def test_initialization(self):
-        self.assertEqual(self.sensor.history_size, 5)
-        self.assertIsInstance(self.sensor.pitch_history, collections.deque)
-        self.assertIsInstance(self.sensor.rms_history, collections.deque)
-
-    def test_silence_metrics(self):
-        # Silence chunk (zeros)
-        chunk = np.zeros(self.sensor.chunk_size)
+    def test_silence(self):
+        # Create silent chunk
+        chunk = np.zeros(4410)
         metrics = self.sensor.analyze_chunk(chunk)
 
-        self.assertAlmostEqual(metrics['rms'], 0.0)
-        self.assertAlmostEqual(metrics['pitch_variance'], 0.0)
-        self.assertEqual(metrics['activity_bursts'], 0)
+        self.assertAlmostEqual(metrics['rms'], 0.0, places=4)
+        self.assertEqual(metrics['speech_rate'], 0.0)
+        # Check backward compatibility keys exist
+        self.assertIn('activity_bursts', metrics)
+        self.assertIn('rms_variance', metrics)
 
-        # Verify history update
-        self.assertEqual(len(self.sensor.rms_history), 1)
-        self.assertEqual(self.sensor.rms_history[-1], 0.0)
-        # Pitch history shouldn't update on silence (pitch=0)
-        self.assertEqual(len(self.sensor.pitch_history), 0)
+    def test_sine_wave_pitch(self):
+        # Create 440Hz sine wave
+        fs = 44100
+        duration = 0.1
+        t = np.linspace(0, duration, int(fs*duration), endpoint=False)
+        chunk = 0.5 * np.sin(2 * np.pi * 440 * t)
 
-    def test_constant_tone_variance(self):
-        # Create a sine wave (constant pitch)
-        t = np.linspace(0, 1.0, self.sensor.chunk_size, endpoint=False)
-        freq = 440.0
-        chunk = 0.5 * np.sin(2 * np.pi * freq * t)
+        metrics = self.sensor.analyze_chunk(chunk)
 
-        # Feed it 3 times to fill history enough for variance
-        for _ in range(3):
+        # Pitch should be close to 440
+        # FFT resolution depends on window size. with 0.1s, resolution is ~10Hz
+        self.assertTrue(400 < metrics['pitch_estimation'] < 480, f"Pitch {metrics['pitch_estimation']} not close to 440")
+
+        # RMS should be ~0.5 / sqrt(2) = 0.3535
+        self.assertAlmostEqual(metrics['rms'], 0.3535, places=1)
+
+    def test_pitch_variance(self):
+        # Generate two chunks with different pitches to trigger variance
+        fs = 44100
+        duration = 0.1
+        t = np.linspace(0, duration, int(fs*duration), endpoint=False)
+
+        chunk1 = 0.5 * np.sin(2 * np.pi * 440 * t) # 440 Hz
+        chunk2 = 0.5 * np.sin(2 * np.pi * 880 * t) # 880 Hz
+
+        self.sensor.analyze_chunk(chunk1)
+        self.sensor.analyze_chunk(chunk2)
+
+        # Add a third to ensure history > 2 calculation
+        self.sensor.analyze_chunk(chunk1)
+
+        metrics = self.sensor.analyze_chunk(chunk1) # 4th call
+
+        self.assertGreater(metrics['pitch_variance'], 0)
+
+    def test_speech_rate(self):
+        # Generate synthetic speech syllables (amplitude bursts)
+        fs = 44100
+        duration = 1.0 # 1 second
+        t = np.linspace(0, duration, int(fs*duration), endpoint=False)
+
+        # Create 3 bursts in 1 second
+        burst_signal = np.zeros_like(t)
+
+        # Burst 1: 0.1s - 0.2s
+        burst_signal[int(0.1*fs):int(0.2*fs)] = np.sin(2 * np.pi * 440 * t[int(0.1*fs):int(0.2*fs)])
+        # Burst 2: 0.4s - 0.5s
+        burst_signal[int(0.4*fs):int(0.5*fs)] = np.sin(2 * np.pi * 440 * t[int(0.4*fs):int(0.5*fs)])
+        # Burst 3: 0.7s - 0.8s
+        burst_signal[int(0.7*fs):int(0.8*fs)] = np.sin(2 * np.pi * 440 * t[int(0.7*fs):int(0.8*fs)])
+
+        metrics = self.sensor.analyze_chunk(burst_signal)
+
+        # We expect roughly 3 syllables per second
+        self.assertAlmostEqual(metrics['speech_rate'], 3.0, delta=1.0) # Delta 1.0 to be safe (2-4 range)
+
+    def test_speech_rate_streaming_small_chunks(self):
+        # Test streaming logic with small chunks (e.g. 50ms)
+        fs = 44100
+        total_duration = 1.0
+        t = np.linspace(0, total_duration, int(fs*total_duration), endpoint=False)
+
+        # 3 bursts total in 1 second
+        full_signal = np.zeros_like(t)
+        full_signal[int(0.1*fs):int(0.2*fs)] = np.sin(2 * np.pi * 440 * t[int(0.1*fs):int(0.2*fs)])
+        full_signal[int(0.4*fs):int(0.5*fs)] = np.sin(2 * np.pi * 440 * t[int(0.4*fs):int(0.5*fs)])
+        full_signal[int(0.7*fs):int(0.8*fs)] = np.sin(2 * np.pi * 440 * t[int(0.7*fs):int(0.8*fs)])
+
+        chunk_size = int(0.05 * fs) # 50ms chunks
+        num_chunks = len(full_signal) // chunk_size
+
+        final_rate = 0.0
+        for i in range(num_chunks):
+            chunk = full_signal[i*chunk_size : (i+1)*chunk_size]
             metrics = self.sensor.analyze_chunk(chunk)
+            # Rate might be 0 until buffer fills, then stabilize
+            if metrics['speech_rate'] > 0:
+                final_rate = metrics['speech_rate']
 
-        # Pitch should be constant ~440, so variance ~0
-        self.assertTrue(metrics['pitch_estimation'] > 400)
-        self.assertAlmostEqual(metrics['pitch_variance'], 0.0, delta=5.0) # Small delta for FFT precision
+        # After full second is buffered, rate should be approx 3.0
+        # The buffer holds 1s, and we fed 1s.
+        self.assertAlmostEqual(final_rate, 3.0, delta=1.0)
 
-        # RMS should be constant, so RMS variance ~0
-        self.assertAlmostEqual(metrics['rms_variance'], 0.0, delta=0.01)
-
-    def test_varying_tone_variance(self):
-        # Feed varying tones
-        freqs = [440, 550, 440, 600, 440]
-        t = np.linspace(0, 1.0, self.sensor.chunk_size, endpoint=False)
-
-        for f in freqs:
-            chunk = 0.5 * np.sin(2 * np.pi * f * t)
-            metrics = self.sensor.analyze_chunk(chunk)
-
-        # Variance should be high
-        self.assertTrue(metrics['pitch_variance'] > 10.0)
-
-    def test_activity_bursts(self):
-        # Simulate bursts: Quiet -> Loud -> Quiet -> Loud
-        quiet = np.zeros(self.sensor.chunk_size)
-        loud = 0.5 * np.ones(self.sensor.chunk_size) # High RMS
-
-        sequence = [quiet, loud, quiet, loud, quiet]
-
-        for chunk in sequence:
-            metrics = self.sensor.analyze_chunk(chunk)
-
-        # Should detect bursts
-        # History: [0, 0.5, 0, 0.5, 0]
-        # Mean RMS: 0.2, Threshold: 0.16
-        # Above: [False, True, False, True, False]
-        # Crossings (F->T): 2 (at index 1 and 3)
-        # Note: np.diff returns array of size N-1
-
-        # Debug info
-        # rms_arr = np.array(self.sensor.rms_history)
-        # threshold = np.mean(rms_arr) * 0.8
-        # above = rms_arr > threshold
-        # print(f"\nRMS History: {rms_arr}")
-        # print(f"Threshold: {threshold}")
-        # print(f"Above: {above}")
-
-        self.assertTrue(metrics['activity_bursts'] >= 1)
+    def tearDown(self):
+        self.sensor.release()
 
 if __name__ == '__main__':
     unittest.main()

@@ -21,16 +21,15 @@ class BenchmarkLogger:
     def log_error(self, msg, details=""): logging.error(f"{msg} | {details}")
     def log_debug(self, msg): logging.debug(msg)
 
-def run_benchmark(use_mock=False):
 def run_benchmark(mock=False):
     print("----------------------------------------------------------------")
-    print(f"Running LMM Benchmark (Mock: {use_mock})")
+    print(f"Running LMM Benchmark (Mock: {mock})")
     print("----------------------------------------------------------------")
 
     logger = BenchmarkLogger()
     lmm = LMMInterface(data_logger=logger)
 
-    if use_mock:
+    if mock:
         print("🛠️  Activating Mock Mode...")
         # Patch requests.get and requests.post on the lmm instance or globally
         import requests
@@ -66,6 +65,7 @@ def run_benchmark(mock=False):
                     "energy": 60,
                     "mood": 75
                 },
+                "visual_context": ["person_sitting", "high_focus"],
                 "suggestion": {
                     "id": "box_breathing",
                     "type": "physiology",
@@ -93,14 +93,6 @@ def run_benchmark(mock=False):
 
     print(f"Target URL: {lmm.llm_url}")
     print(f"Model ID: {config.LOCAL_LLM_MODEL_ID}")
-
-    if mock:
-        print("MOCK MODE ENABLED")
-        lmm.check_connection = MagicMock(return_value=True)
-        lmm.process_data = MagicMock(return_value={
-            "state_estimation": {"arousal": 50, "overload": 0, "focus": 50, "energy": 50, "mood": 50},
-            "suggestion": None
-        })
 
     # 1. Check Connection
     print("\n[1/3] Checking Connection...")
@@ -161,10 +153,6 @@ def run_benchmark(mock=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run LMM Benchmark")
     parser.add_argument("--mock", action="store_true", help="Run with mocked LMM responses")
-    args = parser.parse_args()
-
-    run_benchmark(use_mock=args.mock)
-    parser.add_argument("--mock", action="store_true", help="Run in mock mode without actual LMM connection")
     args = parser.parse_args()
 
     run_benchmark(mock=args.mock)

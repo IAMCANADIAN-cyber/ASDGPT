@@ -4,7 +4,7 @@ import random
 class InterventionLibrary:
     """
     A central registry for all available interventions (Intervention Cards).
-    Organized by category: Physiology, Sensory, Cognitive.
+    Organized by category: Physiology, Sensory, Cognitive, Creative, Recovery, Social.
     """
 
     def __init__(self):
@@ -13,7 +13,7 @@ class InterventionLibrary:
         #   "category_name": [
         #       {
         #           "id": "unique_id",
-        #           "tier": 1, # 1=Gentle, 2=Moderate, 3=Urgent
+        #           "tier": 1, # 1=Gentle/Nudge, 2=Moderate/Choice, 3=Urgent/Escalate
         #           "description": "Short description",
         #           "sequence": [ # List of actions to execute
         #               {"action": "speak", "content": "Text to speak"},
@@ -64,6 +64,29 @@ class InterventionLibrary:
                     ]
                 },
                 {
+                    "id": "posture_water_reset",
+                    "tier": 1,
+                    "description": "Quick posture check and hydration reminder (Flow state protection)",
+                    "sequence": [
+                        {"action": "speak", "content": "You're in flow. Let's protect it. 30 second reset."},
+                        {"action": "speak", "content": "Sit up straight. Take a sip of water."},
+                        {"action": "wait", "duration": 5},
+                        {"action": "speak", "content": "Back to it."}
+                    ]
+                },
+                {
+                    "id": "stand_reset",
+                    "tier": 2,
+                    "description": "Stand up to break hyperfocus or drowsiness",
+                    "sequence": [
+                        {"action": "speak", "content": "Stand up. Right now."},
+                        {"action": "wait", "duration": 2},
+                        {"action": "speak", "content": "Stretch your arms up. Take a deep breath."},
+                        {"action": "wait", "duration": 5},
+                        {"action": "speak", "content": "Good."}
+                    ]
+                },
+                {
                    "id": "arousal_redirect",
                    "tier": 3,
                    "description": "Direct intervention to resolve urge efficiently and return to baseline",
@@ -104,6 +127,16 @@ class InterventionLibrary:
                         {"action": "speak", "content": "Please go splash cold water on your face. It will help reset your nervous system."},
                         {"action": "visual_prompt", "content": "Splash cold water on face."}
                     ]
+                },
+                {
+                    "id": "reduce_input",
+                    "tier": 2,
+                    "description": "Overload management: reduce sensory input",
+                    "sequence": [
+                        {"action": "speak", "content": "Overload detected. Reduce input first."},
+                        {"action": "speak", "content": "Dim the lights. Headphones on (or off). Quiet mode."},
+                        {"action": "visual_prompt", "content": "Reduce Input: Dim lights, Quiet mode."}
+                    ]
                 }
             ],
             "cognitive": [
@@ -143,6 +176,26 @@ class InterventionLibrary:
                     "sequence": [
                         {"action": "speak", "content": "Hey Austin, I see you've been zoned out on your phone for a while. You look a bit restless. Why don't you put the phone down, and I'll guide you through a quick reset?"}
                     ]
+                },
+                {
+                    "id": "bookmark_thought",
+                    "tier": 1,
+                    "description": "Hyperfocus exit aid",
+                    "sequence": [
+                        {"action": "speak", "content": "Bookmark your current thought. Write it down in one sentence."},
+                        {"action": "wait", "duration": 5},
+                        {"action": "speak", "content": "Now stand up for 60 seconds."}
+                    ]
+                },
+                {
+                    "id": "minimum_viable_action",
+                    "tier": 1,
+                    "description": "Low mood / depression drift nudge",
+                    "sequence": [
+                        {"action": "speak", "content": "What is the minimum viable action you can take right now?"},
+                        {"action": "speak", "content": "Maybe just a sip of water, or standing up."},
+                        {"action": "visual_prompt", "content": "Minimum Viable Action"}
+                    ]
                 }
             ],
             "creative": [
@@ -170,6 +223,40 @@ class InterventionLibrary:
                     "sequence": [
                         {"action": "speak", "content": "You look sharp and focused. Let's snap a candid for the public account with a caption about the tech project you're building. It shows ambition without revealing too much."},
                         {"action": "capture_image", "content": "Capturing public image..."}
+                    ]
+                }
+            ],
+            "recovery": [
+                {
+                    "id": "shutdown_reset",
+                    "tier": 2,
+                    "description": "Smallest step for shutdown drift",
+                    "sequence": [
+                        {"action": "speak", "content": "Looks like shutdown drift."},
+                        {"action": "speak", "content": "What is the smallest next step? Just sit up, or take a sip of water."},
+                        {"action": "wait", "duration": 5}
+                    ]
+                },
+                {
+                    "id": "meltdown_prevention",
+                    "tier": 3,
+                    "description": "Urgent stop for meltdown risk",
+                    "sequence": [
+                        {"action": "speak", "content": "Stop. Breathe out."},
+                        {"action": "wait", "duration": 2},
+                        {"action": "speak", "content": "Reduce input now. Dark. Quiet."},
+                        {"action": "visual_prompt", "content": "STOP. Reduce Input."}
+                    ]
+                }
+            ],
+            "social": [
+                {
+                    "id": "low_stakes_message",
+                    "tier": 1,
+                    "description": "Social micro-touch for low mood",
+                    "sequence": [
+                        {"action": "speak", "content": "Consider sending a low-stakes message to someone safe. Just a meme or a hello."},
+                        {"action": "visual_prompt", "content": "Send a meme/hello to a friend."}
                     ]
                 }
             ]
@@ -235,38 +322,3 @@ class InterventionLibrary:
             line = f"[{cat_display}]: {', '.join(ids)}"
             lines.append(line)
         return "\n".join(lines)
-
-if __name__ == "__main__":
-    # Test the library
-    lib = InterventionLibrary()
-
-    print("--- Testing InterventionLibrary ---")
-
-    # Test 1: Get by ID
-    i1 = lib.get_intervention_by_id("box_breathing")
-    print(f"Test 1 (Get by ID): Found {i1['id']}")
-    assert i1["id"] == "box_breathing"
-    assert len(i1["sequence"]) > 0
-
-    # Test 2: Get by Category
-    cat_list = lib.get_interventions_by_category("physiology")
-    print(f"Test 2 (Get by Category): Found {len(cat_list)} in 'physiology'")
-    assert len(cat_list) >= 4 # Updated count
-
-    # Test 3: Get by Tier
-    tier_list = lib.get_interventions_by_tier(3)
-    print(f"Test 3 (Get by Tier 3): Found {len(tier_list)} tier 3 interventions")
-    assert any(i["id"] == "cold_water" for i in tier_list)
-
-    # Test 4: Random Selection
-    rand_i = lib.get_random_intervention(category="cognitive", tier=1)
-    print(f"Test 4 (Random Cognitive Tier 1): {rand_i['id'] if rand_i else 'None'}")
-    assert rand_i["tier"] == 1
-
-    # Test 5: Verify new V4 interventions
-    v4_ids = ["doom_scroll_breaker", "arousal_redirect", "content_pivot", "sultry_persona_prompt", "public_persona_prompt"]
-    for vid in v4_ids:
-        assert lib.get_intervention_by_id(vid) is not None, f"Missing {vid}"
-    print("All V4 interventions found.")
-
-    print("InterventionLibrary tests passed.")

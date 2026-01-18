@@ -1,50 +1,17 @@
-import re
-import datetime
-import argparse
-import os
-import ast
-
-def parse_log_line(line):
-    """
-    Parses a single log line.
-    Expected format: ISO_TIMESTAMP [LEVEL] MESSAGE
-    """
-    # Regex to capture timestamp, level, and message
-    # 2024-05-24T10:00:00.123456 [INFO] Message content...
-    match = re.match(r"^([\d\-T:\.]+) \[(\w+)\] (.*)$", line)
-import ast
-import argparse
-import os
-import sys
-from typing import List, Dict, Any, Optional
-
-def parse_log_line(line: str) -> Optional[Dict[str, Any]]:
-    """
-    Parses a single log line and returns a dictionary of event details if relevant.
-    """
-    # Regex to extract timestamp, level, and message
-    # Format: 2024-05-22T10:00:00.123456 [LEVEL] Message
-    match = re.match(r'^([\d\-T:\.]+) \[(\w+)\] (.*)$', line)
-import os
-import ast
-import argparse
-
-def parse_log_line(line):
-    # Log format: ISO_TIMESTAMP [LEVEL] Message
-    # Example: 2024-05-22T10:00:00.123456 [INFO] LogicEngine Notification: Mode changed from active to snoozed
-
-    # Regex to capture timestamp, level, and message
-    match = re.match(r"^(\S+) \[(\w+)\] (.*)$", line)
-import os
-import re
-import datetime
-import argparse
 import json
+import os
+import argparse
+from datetime import datetime
 import sys
-import ast
 
-# Constants
-DEFAULT_LOG_FILE = "acr_app.log"
+# Add parent directory to path to import config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    import config
+    DEFAULT_EVENTS_FILE = getattr(config, 'EVENTS_FILE', 'user_data/events.jsonl')
+except ImportError:
+    DEFAULT_EVENTS_FILE = 'user_data/events.jsonl'
 DEFAULT_OUTPUT_FILE = "user_data/timeline_report.md"
 
 def parse_log_line(line):
@@ -560,21 +527,28 @@ import argparse
 import datetime
 
 def parse_events(events_file):
+    """Parses the events.jsonl file into a list of dictionaries."""
     events = []
     if not os.path.exists(events_file):
+        print(f"Warning: Events file not found at {events_file}")
         return []
 
-    with open(events_file, 'r') as f:
+    with open(events_file, 'r', encoding='utf-8') as f:
         for line in f:
+            line = line.strip()
+            if not line:
+                continue
             try:
                 events.append(json.loads(line))
             except json.JSONDecodeError:
+                print(f"Skipping invalid JSON line: {line[:50]}...")
                 continue
     return events
 
 def generate_markdown(events, output_file):
+    """Generates a Markdown timeline report from the parsed events."""
     if not events:
-        print("No significant events found to report.")
+        print("No events found to report.")
         return
 
     # Sort events by timestamp

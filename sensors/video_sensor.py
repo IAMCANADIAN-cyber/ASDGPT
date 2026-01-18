@@ -1,6 +1,9 @@
 import cv2
 import time
+import os
 import numpy as np
+import math
+import threading
 
 class VideoSensor:
     def __init__(self, camera_index=0, data_logger=None):
@@ -8,74 +11,209 @@ class VideoSensor:
         self.logger = data_logger
         self.cap = None
         self.last_frame = None
+        self._lock = threading.RLock()
+
+        # Error handling / Recovery state
+        self.error_state = False
+        self.last_error_message = ""
+        self.retry_delay = 30  # seconds
+        self.last_retry_time = 0
+
         self._initialize_camera()
 
         # Load Haarcascade for face detection
-        # Ensure the path is correct or use a system path
-        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        self.face_cascade = cv2.CascadeClassifier(cascade_path)
-        if self.face_cascade.empty():
-            print("Error: Could not load face cascade classifier.")
+        # Try local assets first, then system path
+        cascade_filename = 'haarcascade_frontalface_default.xml'
+        local_path = f"assets/haarcascades/{cascade_filename}"
+        system_path = cv2.data.haarcascades + cascade_filename
+
+        if os.path.exists(local_path):
+             self.face_cascade = cv2.CascadeClassifier(local_path)
+             if not self.face_cascade.empty():
+                 self._log_info(f"Loaded face cascade from local assets: {local_path}")
+             else:
+                 self._log_warning(f"Failed to load local face cascade from {local_path}. Trying system path.")
+
+        if not hasattr(self, 'face_cascade') or self.face_cascade.empty():
+             self.face_cascade = cv2.CascadeClassifier(system_path)
+             if self.face_cascade.empty():
+                 self._log_error(f"Could not load face cascade classifier from {system_path}.")
+             else:
+                 self._log_info(f"Loaded face cascade from system path: {system_path}")
+
+        # Load Haarcascade for eye detection
+        self.eye_cascade = None
+        try:
+             eye_cascade_path = os.path.join(cv2.data.haarcascades, 'haarcascade_eye.xml')
+             if os.path.exists(eye_cascade_path):
+                 self.eye_cascade = cv2.CascadeClassifier(eye_cascade_path)
+                 if not self.eye_cascade.empty():
+                     self._log_info(f"Loaded eye cascade from system path: {eye_cascade_path}")
+                 else:
+                     self._log_warning("Failed to load eye cascade (empty classifier).")
+             else:
+                 self._log_warning(f"Eye cascade not found at {eye_cascade_path}")
+        except Exception as e:
+            self._log_warning(f"Error loading eye cascade: {e}")
+
+        if self.eye_cascade is None or self.eye_cascade.empty():
+            self._log_warning("Head tilt estimation will be disabled.")
+
+    def _log_info(self, message):
+        if self.logger: self.logger.log_info(f"VideoSensor: {message}")
+        else: print(f"VideoSensor [INFO]: {message}")
+
+    def _log_warning(self, message):
+        if self.logger: self.logger.log_warning(f"VideoSensor: {message}")
+        else: print(f"VideoSensor [WARN]: {message}")
+
+    def _log_error(self, message):
+        if self.logger: self.logger.log_error(f"VideoSensor: {message}")
+        else: print(f"VideoSensor [ERROR]: {message}")
 
     def _initialize_camera(self):
-        try:
-            self.cap = cv2.VideoCapture(self.camera_index)
-            if not self.cap.isOpened():
-                print(f"Warning: Could not open video camera {self.camera_index}.")
+        with self._lock:
+            try:
+                if self.camera_index is None:
+                    # Mock or testing mode, do not open actual camera
+                    return
+
+                self._log_info(f"Initializing video camera {self.camera_index}...")
+                self.cap = cv2.VideoCapture(self.camera_index)
+                if not self.cap.isOpened():
+                    self._log_warning(f"Could not open video camera {self.camera_index}.")
+                    self.cap = None
+                    self.error_state = True
+                    self.last_error_message = "Camera failed to open."
+                else:
+                    self._log_info("Video camera initialized successfully.")
+                    self.error_state = False
+                    self.last_error_message = ""
+
+            except Exception as e:
+                self._log_error(f"Error initializing camera: {e}")
                 self.cap = None
-        except Exception as e:
-            print(f"Error initializing camera: {e}")
-            self.cap = None
+                self.error_state = True
+                self.last_error_message = str(e)
+
+            self.last_retry_time = time.time()
 
     def get_frame(self):
-        if self.cap is None or not self.cap.isOpened():
-             # Try to reconnect occasionally?
-             return None
+        """
+        Captures a frame from the video source.
+        Returns: (frame, error_message)
+            frame: numpy array or None
+            error_message: str or None
+        """
+        # Attempt recovery if in error state
+        if self.error_state:
+            if time.time() - self.last_retry_time >= self.retry_delay:
+                self._log_info("Attempting to re-initialize video camera...")
+                self.release()
+                self._initialize_camera()
 
-        ret, frame = self.cap.read()
-        if not ret:
-            print("Warning: Failed to capture video frame.")
-            return None
+            if self.error_state:
+                return None, self.last_error_message
 
-        return frame
+        with self._lock:
+            if self.cap is None or not self.cap.isOpened():
+                 if not self.error_state:
+                     self.error_state = True
+                     self.last_error_message = "Camera not initialized or closed."
+                     self.last_retry_time = time.time()
+                 return None, self.last_error_message
+
+            try:
+                ret, frame = self.cap.read()
+                if not ret:
+                    self._log_warning("Failed to capture video frame (read returned False).")
+                    self.error_state = True
+                    self.last_error_message = "Failed to capture video frame."
+                    self.last_retry_time = time.time()
+                    return None, "Failed to capture video frame."
+
+                # If we succeed, ensure error state is clear
+                if self.error_state:
+                    self.error_state = False
+                    self.last_error_message = ""
+
+                return frame, None
+            except Exception as e:
+                 self._log_error(f"Error capturing frame: {e}")
+                 self.error_state = True
+                 self.last_error_message = str(e)
+                 self.last_retry_time = time.time()
+                 return None, str(e)
+
+    def has_error(self):
+        return self.error_state
+
+    def get_last_error(self):
+        return self.last_error_message
+
+    def calculate_raw_activity(self, gray_frame):
+        """
+        Calculates raw activity level (mean pixel difference) for a given grayscale frame.
+        Updates self.last_frame.
+        """
+        if gray_frame is None:
+            return 0.0
+
+        activity = 0.0
+        if self.last_frame is not None:
+            # Ensure shapes match
+            if self.last_frame.shape == gray_frame.shape:
+                # Calculate absolute difference
+                diff = cv2.absdiff(self.last_frame, gray_frame)
+                # Mean difference
+                activity = np.mean(diff)
+            else:
+                self._log_warning("Frame shape mismatch in activity calculation. Resetting last_frame.")
+
+        self.last_frame = gray_frame
+        return activity
 
     def calculate_activity(self, frame):
         """
-        Calculates activity level for a given frame.
+        Calculates a simple 'activity level' based on pixel differences between frames.
+        Returns a float 0.0 - 1.0 (normalized roughly).
+        Wrapper around calculate_raw_activity for backward compatibility / normalized use.
         """
         if frame is None:
             return 0.0
 
-        # Convert to grayscale for simple diff
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        try:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # Resize for performance consistency if needed, but analyze_frame uses full size?
+            # Let's keep it consistent. If we resize here, we should resize for everything.
+            # LogicEngine used full size or didn't specify.
+            # analyze_frame uses full size for face detection.
+            # We'll use full size for now to be accurate, or small resize for speed.
+            # Previous implementation resized to 100x100. Let's stick to that for 'activity' to match expected values.
 
-        # Resize for performance
-        gray = cv2.resize(gray, (100, 100))
+            gray_small = cv2.resize(gray, (100, 100))
 
-        activity = 0.0
-        if self.last_frame is not None:
-            # Calculate absolute difference
-            diff = cv2.absdiff(self.last_frame, gray)
-            # Mean difference
-            score = np.mean(diff)
+            raw_score = self.calculate_raw_activity(gray_small)
+
             # Normalize (arbitrary scaling factor based on testing)
-            activity = min(1.0, score / 50.0)
+            # Previous logic: min(1.0, score / 50.0)
+            return min(1.0, raw_score / 50.0)
 
-        self.last_frame = gray
-        return activity
+        except Exception as e:
+            self._log_error(f"Error calculating activity: {e}")
+            return 0.0
 
     def get_activity(self):
         """
-        Calculates a simple 'activity level' based on pixel differences between frames.
-        Returns a float 0.0 - 1.0 (normalized roughly).
+        Convenience method to get frame and calculate activity.
         """
         frame = self.get_frame()
         return self.calculate_activity(frame)
 
-    def analyze_frame(self, frame):
+    def _calculate_posture(self, metrics):
         """
-        Detects faces and estimates basic posture metrics.
-        Returns a dict.
+        Calculates posture state based on face metrics.
+        This is a heuristic estimation.
         """
         if frame is None:
             # Consistent with test expectations which might check for keys even on empty
@@ -115,31 +253,142 @@ class VideoSensor:
                 "horizontal_position": 0.0
             }
 
+        # Delta
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+
+        # Angle in degrees
+        angle = np.degrees(np.arctan2(dy, dx))
+        return angle
+
+    def process_frame(self, frame):
+        """
+        Comprehensive frame processing:
+        - Activity calculation (Raw and Normalized)
+        - Face detection and metrics
+
+        Returns a dictionary with all metrics.
+        """
         metrics = {
-            "face_detected": len(faces) > 0,
-            "face_count": len(faces),
-            "face_locations": [], # List of [x, y, w, h]
-            "face_size_ratio": 0.0, # Largest face width / image width
-            "vertical_position": 0.0, # Center of face Y / image height
-            "horizontal_position": 0.0 # Center of face X / image width
+            "video_activity": 0.0,      # Raw mean diff (0-255)
+            "normalized_activity": 0.0, # Normalized (0.0-1.0)
+            "face_detected": False,
+            "face_count": 0,
+            "face_locations": [],
+            "face_size_ratio": 0.0,
+            "vertical_position": 0.0,
+            "horizontal_position": 0.0,
+            "face_roll_angle": 0.0,
+            "timestamp": time.time()
         }
 
-        if len(faces) > 0:
-            # Find largest face
-            largest_face = max(faces, key=lambda f: f[2] * f[3])
-            x, y, w, h = largest_face
+        if frame is None:
+            return metrics
 
-            # Convert all to list for JSON serialization
+        try:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            # 1. Activity Calculation
+            # We use a downscaled version for activity to match historical behavior/performance
+            gray_small = cv2.resize(gray, (100, 100))
+
+            raw_activity = self.calculate_raw_activity(gray_small)
+            metrics["video_activity"] = float(raw_activity)
+            metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
+
+            # 2. Face Detection (using full size gray frame)
+            faces = self.face_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=5,
+                minSize=(30, 30)
+            )
+
+            metrics["face_detected"] = len(faces) > 0
+            metrics["face_count"] = len(faces)
             metrics["face_locations"] = [list(f) for f in faces]
 
-            img_h, img_w = frame.shape[:2]
+            if len(faces) > 0:
+                # Find largest face
+                largest_face = max(faces, key=lambda f: f[2] * f[3])
+                x, y, w, h = largest_face
 
-            metrics["face_size_ratio"] = float(w) / img_w
-            metrics["vertical_position"] = float(y + h/2) / img_h
-            metrics["horizontal_position"] = float(x + w/2) / img_w
+                img_h, img_w = frame.shape[:2]
+
+                metrics["face_size_ratio"] = float(w) / img_w
+                metrics["vertical_position"] = float(y + h/2) / img_h
+                metrics["horizontal_position"] = float(x + w/2) / img_w
+
+                # Head Tilt Estimation (Face Roll)
+                face_roi_gray = gray[y:y+h, x:x+w]
+                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+
+                self._calculate_posture(metrics)
+
+        except Exception as e:
+            self._log_error(f"Error processing frame: {e}")
 
         return metrics
 
+    def analyze_frame(self, frame):
+        """
+        Legacy wrapper for backward compatibility if needed,
+        or just for face detection specifically.
+        """
+        # We can implement this by calling process_frame and filtering keys,
+        # but process_frame updates state (last_frame).
+        # If analyze_frame is called separately, it might mess up activity diff if not careful.
+        # But generally, LogicEngine should assume 'process_frame' is the main entry.
+        # For now, we keep the original logic for analyze_frame to be safe,
+        # BUT note that it doesn't touch 'last_frame'.
+
+        if frame is None:
+            return {}
+
+        try:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            faces = self.face_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=5,
+                minSize=(30, 30)
+            )
+
+            metrics = {
+                "face_detected": len(faces) > 0,
+                "face_count": len(faces),
+                "face_locations": [list(f) for f in faces],
+                "face_size_ratio": 0.0,
+                "vertical_position": 0.0,
+                "horizontal_position": 0.0
+            }
+
+            if len(faces) > 0:
+                largest_face = max(faces, key=lambda f: f[2] * f[3])
+                x, y, w, h = largest_face
+                img_h, img_w = frame.shape[:2]
+                metrics["face_size_ratio"] = float(w) / img_w
+                metrics["vertical_position"] = float(y + h/2) / img_h
+                metrics["horizontal_position"] = float(x + w/2) / img_w
+
+                # Head Tilt Estimation
+                face_roi_gray = gray[y:y+h, x:x+w]
+                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+
+                self._calculate_posture(metrics)
+
+            return metrics
+        except Exception as e:
+            self._log_error(f"Error analyzing frame: {e}")
+            return {}
+
     def release(self):
-        if self.cap:
-            self.cap.release()
+        with self._lock:
+            if self.cap:
+                try:
+                    self.cap.release()
+                except Exception as e:
+                    self._log_error(f"Error releasing video capture: {e}")
+                finally:
+                    self.cap = None
