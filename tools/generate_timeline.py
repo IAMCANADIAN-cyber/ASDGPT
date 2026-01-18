@@ -188,14 +188,23 @@ def generate_markdown_report(events, output_path):
         except Exception:
             details = {"raw": message}
 
-    # 4. LMM Trigger
+    # 4. LMM Trigger (Log Message)
     elif "Triggering LMM analysis" in message:
-        event_type = "LMM_TRIGGER"
-        # Example: Triggering LMM analysis (Reason: periodic_check)...
+        event_type = "LMM_TRIGGER_ATTEMPT"
         match_trig = re.search(r"Reason: (.+?)\)", message)
         if match_trig:
             details = {"reason": match_trig.group(1)}
         else:
+            details = {"raw": message}
+
+    # 4b. LMM Trigger (Structured Event)
+    elif level == "EVENT" and "Event: lmm_trigger" in message:
+        event_type = "LMM_TRIGGER"
+        try:
+            payload_str = message.split("Payload: ")[1]
+            payload = ast.literal_eval(payload_str)
+            details = payload
+        except Exception:
             details = {"raw": message}
 
     # 5. LMM Response (Debug/Info)
@@ -273,8 +282,16 @@ def generate_markdown_report(events: List[Dict[str, Any]], output_file: str):
             markdown_content += "| --- | --- | --- |\n"
             current_date = date_str
 
-        event_type = event.get('event_type', 'unknown')
-        payload = event.get('payload', {})
+            elif etype == "LMM_TRIGGER":
+                details_str = f"Reason: {event['details'].get('reason')}"
+                metrics = event['details'].get('metrics', {})
+                if metrics:
+                    audio = metrics.get('audio_level', 0)
+                    video = metrics.get('video_activity', 0)
+                    details_str += f" | Audio: {audio:.2f}, Video: {video:.2f}"
+
+            elif etype == "LMM_TRIGGER_ATTEMPT":
+                 details_str = f"Attempted - Reason: {event['details'].get('reason')}"
 
         # Format payload for readability
         details = ""
@@ -308,6 +325,51 @@ def generate_markdown_report(events: List[Dict[str, Any]], output_file: str):
             f.write(f"| {time_str} | {etype} | {details_str} |\n")
 
     print(f"Report generated at: {output_file}")
+
+def generate_correlation_csv(events, output_path):
+    if not events:
+        return
+
+    import csv
+
+    with open(output_path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(["Timestamp", "Event Type", "Trigger Reason", "Audio Level", "Video Activity", "Intervention ID", "State Arousal", "State Overload"])
+
+        last_state = {}
+
+        for event in events:
+            row = [
+                event["timestamp"].isoformat(),
+                event["type"],
+                "", # Reason
+                "", # Audio
+                "", # Video
+                "", # Intervention
+                "", # Arousal
+                ""  # Overload
+            ]
+
+            if event["type"] == "LMM_TRIGGER":
+                 row[2] = event["details"].get("reason", "")
+                 metrics = event["details"].get("metrics", {})
+                 row[3] = metrics.get("audio_level", "")
+                 row[4] = metrics.get("video_activity", "")
+
+            elif event["type"] == "STATE_UPDATE":
+                last_state = event["details"].get("state", {})
+                row[6] = last_state.get("arousal", "")
+                row[7] = last_state.get("overload", "")
+
+            elif event["type"] == "INTERVENTION":
+                row[5] = event["details"].get("intervention_id", "")
+                # Include last known state context
+                row[6] = last_state.get("arousal", "")
+                row[7] = last_state.get("overload", "")
+
+            writer.writerow(row)
+
+    print(f"Correlation CSV generated at: {output_path}")
 
 def main():
     return {
@@ -410,6 +472,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate a timeline report from ACR logs.")
     parser.add_argument("--log", default="acr_app.log", help="Path to the log file.")
     parser.add_argument("--output", default="user_data/timeline_report.md", help="Path to the output Markdown file.")
+    parser.add_argument("--csv", default="user_data/correlation.csv", help="Path to the output correlation CSV file.")
 
         markdown_content += f"| {time_str} | **{event_type}** | {details} |\n"
 
@@ -735,6 +798,8 @@ if __name__ == "__main__":
     print(f"Found {len(events)} significant events.")
 
     generate_markdown_report(events, args.output)
+    if args.csv:
+        generate_correlation_csv(events, args.csv)
 
 if __name__ == "__main__":
     main()
