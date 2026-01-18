@@ -322,3 +322,47 @@ class InterventionLibrary:
             line = f"[{cat_display}]: {', '.join(ids)}"
             lines.append(line)
         return "\n".join(lines)
+
+if __name__ == "__main__":
+    # Test the library
+    lib = InterventionLibrary()
+
+    print("--- Testing InterventionLibrary ---")
+
+    # Test 1: Get by ID
+    i1 = lib.get_intervention_by_id("box_breathing")
+    print(f"Test 1 (Get by ID): Found {i1['id']}")
+    assert i1["id"] == "box_breathing"
+    assert len(i1["sequence"]) > 0
+
+    # Test 2: Get by Category
+    cat_list = lib.get_interventions_by_category("physiology")
+    print(f"Test 2 (Get by Category): Found {len(cat_list)} in 'physiology'")
+    assert len(cat_list) >= 4
+
+    # Test 3: Get by Tier
+    tier_list = lib.get_interventions_by_tier(3)
+    print(f"Test 3 (Get by Tier 3): Found {len(tier_list)} tier 3 interventions")
+    assert any(i["id"] == "cold_water" for i in tier_list)
+
+    # Test 4: Random Selection
+    rand_i = lib.get_random_intervention(category="cognitive", tier=1)
+    print(f"Test 4 (Random Cognitive Tier 1): {rand_i['id'] if rand_i else 'None'}")
+    assert rand_i["tier"] == 1
+
+    # Test 5: Verify new V4 interventions
+    v4_ids = ["doom_scroll_breaker", "arousal_redirect", "content_pivot", "sultry_persona_prompt", "public_persona_prompt"]
+    for vid in v4_ids:
+        assert lib.get_intervention_by_id(vid) is not None, f"Missing {vid}"
+
+    # Test 6: Verify new Mental Model additions
+    new_ids = ["posture_water_reset", "stand_reset", "reduce_input", "bookmark_thought", "minimum_viable_action", "shutdown_reset", "meltdown_prevention"]
+    for vid in new_ids:
+         assert lib.get_intervention_by_id(vid) is not None, f"Missing {vid}"
+
+    # Test 7: Verify Social
+    assert lib.get_interventions_by_category("social") is not None
+    assert len(lib.get_interventions_by_category("social")) > 0
+
+    print("All V4 and Mental Model interventions found.")
+    print("InterventionLibrary tests passed.")
