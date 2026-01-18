@@ -79,16 +79,14 @@ class TestLMMInterface(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        # Disable fallback to check that it returns None (or handles it)
-        # Note: In the code, if retries fail and fallback is enabled (default), it returns fallback.
-        # Let's temporarily disable fallback in config if needed, or check for fallback response.
+        # Ensure fallback is enabled for this test
+        import config
+        with patch.object(config, 'LMM_FALLBACK_ENABLED', True):
+            # Checking if it returns fallback response (which has _meta['is_fallback'] = True)
+            result = self.lmm.process_data(user_context={"sensor_metrics": {}})
 
-        # Checking if it returns fallback response (which has _meta['is_fallback'] = True)
-        result = self.lmm.process_data(user_context={"sensor_metrics": {}})
-
-        # It should either be None (if fallback disabled) or fallback
-        # Since fallback is enabled by default in config:
-        self.assertTrue(result.get('_meta', {}).get('is_fallback'))
+            # It should either be None (if fallback disabled) or fallback
+            self.assertTrue(result.get('_meta', {}).get('is_fallback'))
 
     def test_validate_response_schema_visual_context(self):
         """Test validation of visual_context type."""
