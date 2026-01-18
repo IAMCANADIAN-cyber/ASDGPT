@@ -12,6 +12,17 @@ ASDGPT is a Python application designed to act as an autonomous co-regulator. It
 *   **System Tray Icon**: Provides a visual indicator of the application's status and quick access to controls.
 *   **Data Logging**: Logs application events, errors, and sensor data for debugging and analysis.
 
+## How it Works
+
+ASDGPT operates as a continuous loop:
+1.  **Senses**: Monitors audio (speech rate, tone) and video (posture, activity).
+2.  **Analyzes**: Sends aggregated data to a local Large Multi-modal Model (LMM).
+3.  **Updates State**: Tracks 5 internal dimensions (Arousal, Overload, Focus, Energy, Mood).
+4.  **Intervenes**: Suggests micro-regulations (breathing, breaks) if state thresholds are crossed.
+5.  **Learns**: You use hotkeys to mark interventions as "Helpful" or "Unhelpful", tuning future responses.
+
+For a detailed breakdown of the internal architecture and data flow, see [Architecture & Data Flow](docs/ARCHITECTURE.md).
+
 ## Setup and Installation
 
 1.  **Clone the repository:**
@@ -55,6 +66,7 @@ Create a `.env` file in the project root to set these:
 *   `CAMERA_INDEX`: Index of the camera to use (Default: 0)
 *   `AUDIO_THRESHOLD_HIGH`: RMS threshold for high audio levels (Default: 0.5)
 *   `VIDEO_ACTIVITY_THRESHOLD_HIGH`: Threshold for high video activity (Default: 20.0)
+*   `VAD_SILENCE_THRESHOLD`: RMS threshold for silence (Default: 0.01)
 
 **LMM Integration**
 *   `LOCAL_LLM_URL`: URL for the local LLM server (Default: "http://127.0.0.1:1234")
@@ -116,10 +128,8 @@ To verify system reliability and clean shutdown behavior:
 python tools/verify_crash.py
 ```
 
-## Design & Mental Model
+## Documentation
 
-For a deep dive into the system's core philosophy, please refer to the [Mental Model & Design Specification](docs/MENTAL_MODEL.md).
-
-## Project Specification
-
-For the detailed Master Specification (v4), please refer to the [Project Specification](docs/PROJECT_SPECIFICATION.md).
+*   **[Architecture & Data Flow](docs/ARCHITECTURE.md)**: Technical overview of components and data flow.
+*   **[Mental Model & Design Specification](docs/MENTAL_MODEL.md)**: The core philosophy and design spec.
+*   **[Project Specification](docs/PROJECT_SPECIFICATION.md)**: Detailed Master Specification (v4).
