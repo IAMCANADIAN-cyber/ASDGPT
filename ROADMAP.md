@@ -16,7 +16,7 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 *   **Completed**: Added `tests/scenarios/test_panic_attack.py` to verify critical intervention logic.
 *   **Completed**: Added `tests/scenarios/test_flow_state.py` to verify Flow State non-intervention logic.
 *   **Completed**: VAD Refinement validation (`tests/test_vad_refinement.py`) passes, confirming suppression of fan noise and typing sounds.
-*   **Completed**: Verified **Face Posture Metrics** implementation (`tests/test_video_metrics.py`) and added end-to-end scenario test (`tests/scenarios/test_posture_correction.py`).
+*   **Completed**: Verified **Face Posture Metrics** implementation (`tests/test_video_metrics.py`) and verified end-to-end scenario (`tests/scenarios/test_posture_correction.py`).
 *   **Verified**: **Tray Icon State** tooltip correctly displays internal state (Arousal, Energy, etc.).
 *   **Completed**: **Face Posture Metrics**: `VideoSensor` outputs head tilt and slouch estimates (`face_roll_angle`, `posture_state`).
 *   **Completed**: **Tray Icon State**: Tooltip now shows dynamic 5-dimension state ("A: 60 O: 0...").
