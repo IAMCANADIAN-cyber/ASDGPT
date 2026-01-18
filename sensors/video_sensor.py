@@ -48,17 +48,14 @@ class VideoSensor:
                  if not self.eye_cascade.empty():
                      self._log_info(f"Loaded eye cascade from system path: {eye_cascade_path}")
                  else:
-                     self._log_warning("Failed to load eye cascade.")
+                     self._log_warning("Failed to load eye cascade (empty classifier).")
+             else:
+                 self._log_warning(f"Eye cascade not found at {eye_cascade_path}")
         except Exception as e:
             self._log_warning(f"Error loading eye cascade: {e}")
-        # Load Eye Cascade for head tilt estimation
-        eye_cascade_filename = 'haarcascade_eye.xml'
-        system_eye_path = cv2.data.haarcascades + eye_cascade_filename
-        self.eye_cascade = cv2.CascadeClassifier(system_eye_path)
-        if self.eye_cascade.empty():
-            self._log_warning(f"Could not load eye cascade from {system_eye_path}. Head tilt estimation will be disabled.")
-        else:
-            self._log_info(f"Loaded eye cascade from {system_eye_path}")
+
+        if self.eye_cascade is None or self.eye_cascade.empty():
+            self._log_warning("Head tilt estimation will be disabled.")
 
     def _log_info(self, message):
         if self.logger: self.logger.log_info(f"VideoSensor: {message}")
