@@ -1,7 +1,6 @@
 import json
 from typing import Dict, Any, Optional
 from collections import deque
-import config
 
 class StateEngine:
     """
@@ -17,21 +16,14 @@ class StateEngine:
         self.logger = logger
         self.history_size = history_size
 
-        # Initialize state to neutral/baseline values from config
-        default_baseline = {
+        # Initialize state to neutral/baseline values
+        self.state = {
             "arousal": 50,
             "overload": 0,
             "focus": 50,
             "energy": 80,
             "mood": 50
         }
-
-        baseline = getattr(config, 'BASELINE_STATE', default_baseline)
-
-        # Ensure all keys exist in baseline, fall back to default if missing
-        self.state = {}
-        for key, val in default_baseline.items():
-            self.state[key] = baseline.get(key, val)
 
         # Initialize history for each dimension with the initial value
         # This prevents the state from starting at 0 if we were to start with empty history

@@ -58,145 +58,57 @@ class VideoSensor:
              self._log_error(f"Error capturing frame: {e}")
              return None
 
-    def calculate_raw_activity(self, gray_frame):
-        """
-        Calculates raw activity level (mean pixel difference) for a given grayscale frame.
-        Updates self.last_frame.
-        """
-        if gray_frame is None:
-            return 0.0
-
-        activity = 0.0
-        if self.last_frame is not None:
-            # Ensure shapes match
-            if self.last_frame.shape == gray_frame.shape:
-                # Calculate absolute difference
-                diff = cv2.absdiff(self.last_frame, gray_frame)
-                # Mean difference
-                activity = np.mean(diff)
-            else:
-                self._log_warning("Frame shape mismatch in activity calculation. Resetting last_frame.")
-
-        self.last_frame = gray_frame
-        return activity
-
     def calculate_activity(self, frame):
         """
-        Calculates a simple 'activity level' based on pixel differences between frames.
-        Returns a float 0.0 - 1.0 (normalized roughly).
-        Wrapper around calculate_raw_activity for backward compatibility / normalized use.
+        Calculates activity level for a given frame.
         """
         if frame is None:
             return 0.0
 
         try:
+            # Convert to grayscale for simple diff
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            # Resize for performance consistency if needed, but analyze_frame uses full size?
-            # Let's keep it consistent. If we resize here, we should resize for everything.
-            # LogicEngine used full size or didn't specify.
-            # analyze_frame uses full size for face detection.
-            # We'll use full size for now to be accurate, or small resize for speed.
-            # Previous implementation resized to 100x100. Let's stick to that for 'activity' to match expected values.
 
-            gray_small = cv2.resize(gray, (100, 100))
+            # Resize for performance
+            gray = cv2.resize(gray, (100, 100))
 
-            raw_score = self.calculate_raw_activity(gray_small)
+            activity = 0.0
+            if self.last_frame is not None:
+                # Calculate absolute difference
+                diff = cv2.absdiff(self.last_frame, gray)
+                # Mean difference
+                score = np.mean(diff)
+                # Normalize (arbitrary scaling factor based on testing)
+                activity = min(1.0, score / 50.0)
 
-            # Normalize (arbitrary scaling factor based on testing)
-            # Previous logic: min(1.0, score / 50.0)
-            return min(1.0, raw_score / 50.0)
-
+            self.last_frame = gray
+            return activity
         except Exception as e:
             self._log_error(f"Error calculating activity: {e}")
             return 0.0
 
     def get_activity(self):
         """
-        Convenience method to get frame and calculate activity.
+        Calculates a simple 'activity level' based on pixel differences between frames.
+        Returns a float 0.0 - 1.0 (normalized roughly).
         """
         frame = self.get_frame()
-        return self.calculate_activity(frame)
-
-    def process_frame(self, frame):
-        """
-        Comprehensive frame processing:
-        - Activity calculation (Raw and Normalized)
-        - Face detection and metrics
-
-        Returns a dictionary with all metrics.
-        """
-        metrics = {
-            "video_activity": 0.0,      # Raw mean diff (0-255)
-            "normalized_activity": 0.0, # Normalized (0.0-1.0)
-            "face_detected": False,
-            "face_count": 0,
-            "face_locations": [],
-            "face_size_ratio": 0.0,
-            "vertical_position": 0.0,
-            "horizontal_position": 0.0,
-            "timestamp": time.time()
-        }
-
         if frame is None:
-            return metrics
-
-        try:
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-            # 1. Activity Calculation
-            # We use a downscaled version for activity to match historical behavior/performance
-            gray_small = cv2.resize(gray, (100, 100))
-
-            raw_activity = self.calculate_raw_activity(gray_small)
-            metrics["video_activity"] = float(raw_activity)
-            metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
-
-            # 2. Face Detection (using full size gray frame)
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
-
-            metrics["face_detected"] = len(faces) > 0
-            metrics["face_count"] = len(faces)
-            metrics["face_locations"] = [list(f) for f in faces]
-
-            if len(faces) > 0:
-                # Find largest face
-                largest_face = max(faces, key=lambda f: f[2] * f[3])
-                x, y, w, h = largest_face
-
-                img_h, img_w = frame.shape[:2]
-
-                metrics["face_size_ratio"] = float(w) / img_w
-                metrics["vertical_position"] = float(y + h/2) / img_h
-                metrics["horizontal_position"] = float(x + w/2) / img_w
-
-        except Exception as e:
-            self._log_error(f"Error processing frame: {e}")
-
-        return metrics
+             return 0.0
+        return self.calculate_activity(frame)
 
     def analyze_frame(self, frame):
         """
-        Legacy wrapper for backward compatibility if needed,
-        or just for face detection specifically.
+        Detects faces and estimates basic posture metrics.
+        Returns a dict.
         """
-        # We can implement this by calling process_frame and filtering keys,
-        # but process_frame updates state (last_frame).
-        # If analyze_frame is called separately, it might mess up activity diff if not careful.
-        # But generally, LogicEngine should assume 'process_frame' is the main entry.
-        # For now, we keep the original logic for analyze_frame to be safe,
-        # BUT note that it doesn't touch 'last_frame'.
-
         if frame is None:
             return {}
 
         try:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
+            # Detect faces
             faces = self.face_cascade.detectMultiScale(
                 gray,
                 scaleFactor=1.1,
@@ -207,16 +119,22 @@ class VideoSensor:
             metrics = {
                 "face_detected": len(faces) > 0,
                 "face_count": len(faces),
-                "face_locations": [list(f) for f in faces],
-                "face_size_ratio": 0.0,
-                "vertical_position": 0.0,
-                "horizontal_position": 0.0
+                "face_locations": [], # List of [x, y, w, h]
+                "face_size_ratio": 0.0, # Largest face width / image width
+                "vertical_position": 0.0, # Center of face Y / image height
+                "horizontal_position": 0.0 # Center of face X / image width
             }
 
             if len(faces) > 0:
+                # Find largest face
                 largest_face = max(faces, key=lambda f: f[2] * f[3])
                 x, y, w, h = largest_face
+
+                # Convert all to list for JSON serialization
+                metrics["face_locations"] = [list(f) for f in faces]
+
                 img_h, img_w = frame.shape[:2]
+
                 metrics["face_size_ratio"] = float(w) / img_w
                 metrics["vertical_position"] = float(y + h/2) / img_h
                 metrics["horizontal_position"] = float(x + w/2) / img_w

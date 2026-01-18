@@ -146,32 +146,30 @@ class LogicEngine:
             self.previous_video_frame = self.last_video_frame
             self.last_video_frame = frame
 
-            # Use VideoSensor's unified processing if available
-            if self.video_sensor and hasattr(self.video_sensor, 'process_frame'):
-                metrics = self.video_sensor.process_frame(frame)
-                self.video_activity = metrics.get("video_activity", 0.0)
-
-                # Filter out non-face metrics for face_metrics dict
-                self.face_metrics = {k: v for k, v in metrics.items() if k.startswith("face_")}
-                self.video_analysis = self.face_metrics # Reuse for analysis context
-
-            else:
-                # Fallback to legacy calculation (if sensor doesn't have process_frame or is missing)
-                if self.previous_video_frame is not None and self.last_video_frame is not None:
-                    # Ensure shapes match before diffing
-                    if self.previous_video_frame.shape == self.last_video_frame.shape:
-                        diff = cv2.absdiff(self.previous_video_frame, self.last_video_frame)
-                        gray_diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-                        self.video_activity = np.mean(gray_diff)
-                    else:
-                        self.video_activity = 0.0
+            # Calculate video activity (motion)
+            if self.previous_video_frame is not None and self.last_video_frame is not None:
+                # Ensure shapes match before diffing
+                if self.previous_video_frame.shape == self.last_video_frame.shape:
+                    diff = cv2.absdiff(self.previous_video_frame, self.last_video_frame)
+                    gray_diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+                    self.video_activity = np.mean(gray_diff)
                 else:
-                    self.video_activity = 0.0
+                    self.video_activity = 0.0 # Reset if shapes mismatch (e.g. cam change)
+            else:
+                self.video_activity = 0.0
 
+            # Face Detection
+            if self.video_sensor and hasattr(self.video_sensor, 'analyze_frame'):
+                self.face_metrics = self.video_sensor.analyze_frame(frame)
+            else:
                 self.face_metrics = {"face_detected": False, "face_count": 0}
-                self.video_analysis = {}
 
         self.logger.log_debug(f"Processed video frame. Activity: {self.video_activity:.2f}, Face: {self.face_metrics.get('face_detected')}")
+
+        # Reuse face metrics for video analysis
+        self.video_analysis = self.face_metrics
+
+        self.logger.log_debug(f"Processed video frame. Activity: {self.video_activity:.2f}")
 
     def process_audio_data(self, audio_chunk: np.ndarray) -> None:
         with self._lock:
@@ -243,7 +241,7 @@ class LogicEngine:
                 },
                 "current_state_estimation": self.state_engine.get_state(),
                 "suppressed_interventions": suppressed_list,
-                "system_alerts": system_alerts,
+                "system_alerts": system_alerts
                 "preferred_interventions": preferred_list
             }
 
@@ -289,13 +287,10 @@ class LogicEngine:
                 self.logger.log_info("LMM analysis complete and state updated.")
 
                 # Process Visual Context
-                reflexive_intervention_id = None
                 visual_context = analysis.get("visual_context", [])
-                triggered_intervention_id = None
                 if visual_context:
                     self.logger.log_info(f"LMM Detected Visual Context: {visual_context}")
-                    reflexive_intervention_id = self._process_visual_context_triggers(visual_context)
-                    triggered_intervention_id = self._process_visual_context_triggers(visual_context)
+                    self._process_visual_context_triggers(visual_context)
 
                 # Log state update event
                 self.logger.log_event("state_update", self.state_engine.get_state())
@@ -311,45 +306,24 @@ class LogicEngine:
                  if self.lmm_consecutive_failures >= config.LMM_CIRCUIT_BREAKER_MAX_FAILURES:
                      self.lmm_circuit_breaker_open_until = time.time() + config.LMM_CIRCUIT_BREAKER_COOLDOWN
                      self.logger.log_error(f"LMM Circuit Breaker OPENED (No Response). Pausing LMM calls for {config.LMM_CIRCUIT_BREAKER_COOLDOWN}s.")
-                 triggered_intervention_id = None # Ensure defined in this scope
 
 
             if analysis and self.intervention_engine:
                 suggestion = self.lmm_interface.get_intervention_suggestion(analysis)
-
-                # Reflexive triggers take priority over lack of suggestion,
-                # OR can override if needed (policy decision).
-                # For now: if LMM suggests nothing (or None), but we have a reflexive trigger, use it.
-                if not suggestion and reflexive_intervention_id:
-                     self.logger.log_info(f"Reflexive Trigger activated: {reflexive_intervention_id}")
-                     suggestion = {"id": reflexive_intervention_id}
-
                 if suggestion:
-                # Priority: System Triggers > LMM Suggestion
-                final_intervention = None
-
-                if triggered_intervention_id:
-                    final_intervention = {"id": triggered_intervention_id}
-                    self.logger.log_info(f"System Trigger overrides LMM suggestion. Triggered: {triggered_intervention_id}")
-                elif suggestion:
-                    final_intervention = suggestion
-
-                if final_intervention:
                     if allow_intervention:
-                        self.logger.log_info(f"Starting intervention: {final_intervention}")
+                        self.logger.log_info(f"LMM suggested intervention: {suggestion}")
                         # start_intervention is generally thread-safe as it just sets an event/launches another thread
-                        self.intervention_engine.start_intervention(final_intervention)
+                        self.intervention_engine.start_intervention(suggestion)
                     else:
-                        self.logger.log_info(f"Intervention suggested but suppressed due to mode: {final_intervention}")
+                        self.logger.log_info(f"LMM suggested intervention (suppressed due to mode): {suggestion}")
         except Exception as e:
             self.logger.log_error(f"Error in async LMM analysis: {e}")
             self.lmm_consecutive_failures += 1
 
-    def _process_visual_context_triggers(self, visual_context: list) -> Optional[str]:
+    def _process_visual_context_triggers(self, visual_context: list) -> None:
         """
         Analyzes visual context tags for persistent patterns (e.g., Doom Scrolling).
-        Returns an intervention ID string if a specific persistent trigger is met, else None.
-        Returns an intervention ID if a trigger condition is met, else None.
         """
         # Tags we track for persistence
         tracked_tags = ["phone_usage", "messy_room"]
@@ -363,9 +337,19 @@ class LogicEngine:
         # Check for Doom Scroll Trigger
         if self.context_persistence.get("phone_usage", 0) >= self.doom_scroll_trigger_threshold:
             self.logger.log_info("LogicEngine: 'Doom Scroll' persistence threshold reached!")
-            return "doom_scroll_breaker"
+            # Trigger specific intervention if not already triggered recently?
+            # Ideally, we ask the InterventionEngine to queue specific intervention
+            # or rely on the LMM to suggest it next time (now that we sent context).
+            # But the spec says "System Action: Disables passive observer...".
 
-        return None
+            # For now, we'll log it as a specific event that might influence the NEXT LMM call context
+            # or we could forcibly inject a suggestion if we had a way.
+            # But simpler: Rely on the LMM receiving this context in the prompt next time?
+            # Actually, LMM *just* told us this. If it didn't suggest an intervention, maybe we should force one.
+
+            # Let's force a suggestion if LMM didn't provide one, or override.
+            # For this MVP, we will just log it. The LMM *should* have suggested it if it saw the phone.
+            pass
 
     def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
         if not self.lmm_interface:
