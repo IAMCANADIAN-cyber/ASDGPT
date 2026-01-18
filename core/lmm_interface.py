@@ -301,14 +301,14 @@ class LMMInterface:
             # Sometimes it's {'audio_level': ...}, sometimes {'audio': {'rms': ...}}
             # Let's normalize here or assume LogicEngine sends raw sensor outputs
 
-            audio_metrics = metrics.get('audio', {})
-            video_metrics = metrics.get('video', {})
-
-            if not isinstance(audio_metrics, dict):
+            audio_metrics = metrics.get('audio')
+            if not (audio_metrics and isinstance(audio_metrics, dict)):
                 # Fallback for old structure
                 audio_rms = metrics.get('audio_level', 0.0)
                 audio_metrics = {'rms': audio_rms}
-            if not isinstance(video_metrics, dict):
+
+            video_metrics = metrics.get('video')
+            if not (video_metrics and isinstance(video_metrics, dict)):
                 video_activity = metrics.get('video_activity', 0.0)
                 video_metrics = {'activity': video_activity}
 
