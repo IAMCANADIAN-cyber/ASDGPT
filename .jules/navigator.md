@@ -20,3 +20,7 @@
 ## 2026-01-15 - [Roadmap Sync & Finalization]
 **Learning:** Significant "Roadmap Drift" occurred where features like Face Posture Metrics, Tray Icon State, and Log Rotation were implemented and tested but remained in the "Backlog".
 **Action:** Synchronized `ROADMAP.md` with the codebase state, moving completed items out of backlog. Verified that unit tests for these features (`tests/test_video_metrics.py`, `tests/test_tray_tooltip.py`, `tests/test_log_rotation.py`) are passing.
+
+## 2026-01-16 - [Coverage & Hygiene]
+**Learning:** `core/intervention_library.py` contained significant untested logic in an `if __name__ == "__main__":` block, bypassing unit tests. Also, `pytest-cov` generates a binary `.coverage` file which is not ignored by default, posing a repo hygiene risk.
+**Action:** Refactored `intervention_library` to use a proper `unittest` suite (`tests/test_intervention_library.py`) and updated `.gitignore` to exclude coverage artifacts.
