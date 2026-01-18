@@ -215,56 +215,43 @@ class VideoSensor:
         Calculates posture state based on face metrics.
         This is a heuristic estimation.
         """
-        # Default to neutral if no face detected or calculation fails
-        metrics["posture_state"] = "neutral"
+        if frame is None:
+            # Consistent with test expectations which might check for keys even on empty
+            # If tests expect keys, we should provide default dict
+            # But the test calls video_sensor.analyze_frame(None) and checks assertFalse(metrics['face_detected'])
+            # So returning empty dict {} would cause KeyError on 'face_detected'
+            return {
+                "face_detected": False,
+                "face_count": 0,
+                "face_locations": [],
+                "face_size_ratio": 0.0,
+                "vertical_position": 0.0,
+                "horizontal_position": 0.0
+            }
 
-        if not metrics.get("face_detected", False):
-            return
+        try:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # Posture Heuristics
-        # Note: These are simple 2D estimates and require calibration for accuracy.
-        # Assumptions: Camera is roughly eye-level and centered.
-
-        # Head Tilt
-        if abs(metrics.get("face_roll_angle", 0)) > 20:
-             if metrics["face_roll_angle"] > 0:
-                 metrics["posture_state"] = "tilted_right"
-             else:
-                 metrics["posture_state"] = "tilted_left"
-        # Leaning Forward: Face becomes significantly larger
-        # Thresholds should ideally be calibrated (e.g., normal ratio ~0.3-0.4)
-        elif metrics.get("face_size_ratio", 0) > 0.45:
-            metrics["posture_state"] = "leaning_forward"
-        # Leaning Back: Face becomes small
-        elif metrics.get("face_size_ratio", 0) < 0.15:
-            metrics["posture_state"] = "leaning_back"
-        # Slouching: Face center moves down significantly
-        # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
-        elif metrics.get("vertical_position", 0) > 0.65:
-            metrics["posture_state"] = "slouching"
-        else:
-            metrics["posture_state"] = "neutral"
-
-    def _calculate_head_tilt(self, face_gray, face_w, face_h):
-        """
-        Estimates head tilt (roll) in degrees based on eye positions.
-        Returns: float (degrees, positive = right tilt, negative = left tilt)
-        """
-        if self.eye_cascade.empty():
-            return 0.0
-
-        eyes = self.eye_cascade.detectMultiScale(face_gray)
-        if len(eyes) != 2:
-            return 0.0
-
-        # Sort eyes by x-coordinate (left eye on screen is first)
-        eyes = sorted(eyes, key=lambda e: e[0])
-        (ex1, ey1, ew1, eh1) = eyes[0]
-        (ex2, ey2, ew2, eh2) = eyes[1]
-
-        # Centers
-        p1 = (ex1 + ew1 // 2, ey1 + eh1 // 2)
-        p2 = (ex2 + ew2 // 2, ey2 + eh2 // 2)
+            # Detect faces
+            faces = self.face_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=5,
+                minSize=(30, 30)
+            )
+        except Exception as e:
+            if self.logger:
+                self.logger.log_error(f"Face detection error: {e}")
+            else:
+                print(f"Face detection error: {e}")
+            return {
+                "face_detected": False,
+                "face_count": 0,
+                "face_locations": [],
+                "face_size_ratio": 0.0,
+                "vertical_position": 0.0,
+                "horizontal_position": 0.0
+            }
 
         # Delta
         dx = p2[0] - p1[0]
