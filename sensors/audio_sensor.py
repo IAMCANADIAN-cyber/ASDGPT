@@ -358,6 +358,8 @@ class AudioSensor:
                         metrics["pitch_estimation"] = float(freqs[peak_bin])
                 else:
                     metrics["pitch_estimation"] = float(freqs[peak_bin])
+                peak_idx = valid_idx[np.argmax(magnitude[valid_idx])]
+                metrics["pitch_estimation"] = float(freqs[peak_idx])
 
             # 5. Speech Rate (Syllable estimation using buffered audio)
             if len(self.raw_audio_buffer) >= int(0.5 * self.sample_rate): # Need at least 0.5s for meaningful rate

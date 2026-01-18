@@ -3,6 +3,7 @@ import time
 import os
 import numpy as np
 import collections
+import math
 import threading
 
 class VideoSensor:
@@ -274,6 +275,43 @@ class VideoSensor:
         # Centers
         p1 = (ex1 + ew1 // 2, ey1 + eh1 // 2)
         p2 = (ex2 + ew2 // 2, ey2 + eh2 // 2)
+        if frame is None:
+            # Consistent with test expectations which might check for keys even on empty
+            # If tests expect keys, we should provide default dict
+            # But the test calls video_sensor.analyze_frame(None) and checks assertFalse(metrics['face_detected'])
+            # So returning empty dict {} would cause KeyError on 'face_detected'
+            return {
+                "face_detected": False,
+                "face_count": 0,
+                "face_locations": [],
+                "face_size_ratio": 0.0,
+                "vertical_position": 0.0,
+                "horizontal_position": 0.0
+            }
+
+        try:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            # Detect faces
+            faces = self.face_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=5,
+                minSize=(30, 30)
+            )
+        except Exception as e:
+            if self.logger:
+                self.logger.log_error(f"Face detection error: {e}")
+            else:
+                print(f"Face detection error: {e}")
+            return {
+                "face_detected": False,
+                "face_count": 0,
+                "face_locations": [],
+                "face_size_ratio": 0.0,
+                "vertical_position": 0.0,
+                "horizontal_position": 0.0
+            }
 
         # Delta
         dx = p2[0] - p1[0]
@@ -418,6 +456,15 @@ class VideoSensor:
                 # For now, adhering to contract: no face = 0.0, but maybe we should decay history?
                 # Let's keep history for now, but return 0.0.
                 pass
+                metrics["face_size_ratio"] = float(w) / img_w
+                metrics["vertical_position"] = float(y + h/2) / img_h
+                metrics["horizontal_position"] = float(x + w/2) / img_w
+
+                # Head Tilt Estimation
+                face_roi_gray = gray[y:y+h, x:x+w]
+                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+
+                self._calculate_posture(metrics)
 
             return metrics
         except Exception as e:
