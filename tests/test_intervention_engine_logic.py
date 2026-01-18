@@ -187,5 +187,42 @@ class TestInterventionEngineLogic(unittest.TestCase):
         # Verify expired was cleaned up
         self.assertNotIn("expired_suppression", self.intervention_engine.suppressed_interventions)
 
+    def test_start_intervention_missing_data(self):
+        """Test start_intervention with invalid input data."""
+        # Missing 'id' AND ('type' + 'message')
+        details = {"just_random": "data"}
+        self.intervention_engine.last_intervention_time = 0
+
+        result = self.intervention_engine.start_intervention(details)
+
+        self.assertFalse(result)
+        self.mock_run_thread.assert_not_called()
+
+    @patch('core.intervention_engine.cv2')
+    @patch('core.intervention_engine.os.makedirs')
+    @patch('core.intervention_engine.os.path.exists')
+    @patch('core.intervention_engine.datetime')
+    def test_capture_image_execution(self, mock_datetime, mock_exists, mock_makedirs, mock_cv2):
+        """Test the _capture_image method logic directly."""
+        # Setup prerequisites
+        self.intervention_engine.logic_engine.last_video_frame = MagicMock()
+        mock_datetime.datetime.now.return_value.strftime.return_value = "20240101_120000"
+
+        # Force exists to False so makedirs is called
+        mock_exists.return_value = False
+
+        # Call method directly
+        self.intervention_engine._capture_image("test_capture")
+
+        # Verify makedirs called
+        mock_makedirs.assert_called_with("captures")
+
+        # Verify cv2.imwrite called
+        mock_cv2.imwrite.assert_called_once()
+        args, _ = mock_cv2.imwrite.call_args
+        filename = args[0]
+        self.assertIn("captures/capture_20240101_120000_test_capture.jpg", filename)
+        self.assertEqual(args[1], self.intervention_engine.logic_engine.last_video_frame)
+
 if __name__ == '__main__':
     unittest.main()
