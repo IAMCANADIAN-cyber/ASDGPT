@@ -2,12 +2,19 @@ import unittest
 from unittest.mock import MagicMock, patch
 import json
 import requests
+import config
 from core.lmm_interface import LMMInterface
 
 class TestLMMInterface(unittest.TestCase):
     def setUp(self):
         self.mock_logger = MagicMock()
+        # Ensure we patch config at the class/setup level to avoid pollution
+        self.config_patcher = patch('config.LMM_FALLBACK_ENABLED', True)
+        self.config_patcher.start()
         self.lmm = LMMInterface(data_logger=self.mock_logger)
+
+    def tearDown(self):
+        self.config_patcher.stop()
 
     @patch('requests.post')
     def test_process_data_success(self, mock_post):
@@ -79,15 +86,11 @@ class TestLMMInterface(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        # Disable fallback to check that it returns None (or handles it)
-        # Note: In the code, if retries fail and fallback is enabled (default), it returns fallback.
-        # Let's temporarily disable fallback in config if needed, or check for fallback response.
-
         # Checking if it returns fallback response (which has _meta['is_fallback'] = True)
         result = self.lmm.process_data(user_context={"sensor_metrics": {}})
 
-        # It should either be None (if fallback disabled) or fallback
-        # Since fallback is enabled by default in config:
+        # It should return fallback because LMM_FALLBACK_ENABLED is patched to True
+        self.assertIsNotNone(result)
         self.assertTrue(result.get('_meta', {}).get('is_fallback'))
 
     def test_validate_response_schema_visual_context(self):
