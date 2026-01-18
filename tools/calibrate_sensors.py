@@ -10,14 +10,17 @@ Usage:
     python tools/calibrate_sensors.py [duration_seconds]
 """
 
-import sys
-import os
 import time
 import json
 import numpy as np
+import os
+import sys
+import json
+import threading
+from typing import List, Optional
 
-# Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Add project root to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
     from sensors.audio_sensor import AudioSensor

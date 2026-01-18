@@ -415,7 +415,7 @@ if __name__ == "__main__":
 
 
     # Ensure output directory exists
-    output_dir = os.path.dirname(args.output)
+    output_dir = os.path.dirname(output_file)
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
