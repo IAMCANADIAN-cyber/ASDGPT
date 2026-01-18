@@ -1,6 +1,6 @@
 # Roadmapper Journal
 
-**Date:** 2024-05-22
+**Date:** 2026-01-22
 
 ## Critical Learnings
 *   **Vision vs. Reality Gap**: The `MENTAL_MODEL.md` is significantly ahead of the codebase. The doc describes a complex 5-dimensional state machine, while the code is currently a simple "loud noise = trigger" loop.
@@ -10,3 +10,13 @@
 ## Strategic Pivot
 *   Shift focus from "adding more features" (like OS telemetry) to **"deepening the core"**.
 *   We must implement the `StateEngine` and robust Feature Extraction before the system can actually be an "Autonomous Co-Regulator". Currently, it's just a motion/noise detector.
+
+## Weekly Refresh (2024-05-29)
+*   **Outdated Docs**: `ROADMAP.md` was found to be stale (dated May 22). Regular updates are critical for agent alignment.
+*   **Testing Gap**: Verified that while `tools/` exists, there is no robust "Replay Harness" to test `LogicEngine` decisions deterministically. This is a blocker for high-velocity iteration.
+*   **Milestone Alignment**: Previous milestones (5D State, Intervention Library) are effectively "Done" in terms of skeletal code, but "In Progress" in terms of tuning/fidelity.
+
+## Weekly Refresh (2026-01-22)
+*   **LMM Fragility**: While the "Happy Path" works, the system is too fragile if the LMM is slow or offline. **Resilience** via fallback logic is now a top priority.
+*   **Calibration Necessity**: Hardcoded thresholds in `config.py` are causing false positives (VAD, Motion) in different environments. We need a "Calibration Wizard" (Milestone 1) to personalize these.
+*   **Scenario ROI**: The `scenarios/` tests (like `test_doom_scroll`) are proving to be the highest-ROI investment for verifying complex logic. We will double down on "Scenario-Driven Development" (e.g., `test_meeting_mode`).
