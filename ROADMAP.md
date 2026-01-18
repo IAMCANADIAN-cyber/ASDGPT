@@ -22,6 +22,12 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 *   **Completed**: **Tray Icon State**: Tooltip now shows dynamic 5-dimension state ("A: 60 O: 0...").
 *   **Completed**: **Log Rotation**: `DataLogger` uses `RotatingFileHandler` to prevent indefinite log growth.
 *   **Completed**: **LMM Latency Monitoring**: `LMMInterface` now logs request latency and includes it in response metadata.
+*   **Merged**: **VAD Integration**: `AudioSensor` now provides `speech_rate` and `voice_activity`, replacing crude volume thresholds.
+*   **Merged**: **Face Posture Metrics**: `VideoSensor` detects `face_roll_angle` (tilt) and `posture_state` (slouching).
+*   **Merged**: **LMM Latency Tracking**: Request times are logged and monitored; LMM context now includes real VAD data.
+*   **Verified**: **Reliability**: `verify_crash.py` passed 10/10 cycles; `test_doom_scroll` and `test_panic_attack` scenarios confirmed logic.
+*   **Completed**: **DND Mode**: "Do Not Disturb" is functional and testable.
+*   **Completed**: **Log Rotation**: Prevented disk fill-up issues with `RotatingFileHandler`.
 
 ## 2. Top Milestones (Next 7 Days)
 

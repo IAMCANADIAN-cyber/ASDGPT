@@ -28,7 +28,6 @@ user_data_backup/
 custom_logs/
 replay_log.txt*
 *.log.*
-test_signal_quality.log*
 
 # Test Artifacts
 .coverage
