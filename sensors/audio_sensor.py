@@ -2,6 +2,7 @@ import sounddevice as sd
 import numpy as np
 import time
 import collections
+import threading
 import config
 
 class AudioSensor:
@@ -11,6 +12,7 @@ class AudioSensor:
         self.chunk_duration = chunk_duration # seconds
         self.chunk_size = int(self.sample_rate * self.chunk_duration)
         self.channels = channels
+        self._lock = threading.RLock()
 
         # History buffers for advanced feature extraction
         self.history_size = int(history_seconds / chunk_duration)
@@ -62,39 +64,41 @@ class AudioSensor:
 
 
     def _initialize_stream(self):
-        self._log_info(f"Attempting to initialize audio stream (SampleRate: {self.sample_rate}, Channels: {self.channels})...")
-        try:
-            if sd is None:
-                raise ImportError("sounddevice library not loaded.")
+        with self._lock:
+            self._log_info(f"Attempting to initialize audio stream (SampleRate: {self.sample_rate}, Channels: {self.channels})...")
+            try:
+                if sd is None:
+                    raise ImportError("sounddevice library not loaded.")
 
-            self.stream = sd.InputStream(
-                samplerate=self.sample_rate,
-                channels=self.channels,
-                blocksize=self.chunk_size,
-                # device=None, # Default input device
-                callback=None # Using blocking read, so no callback
-            )
-            self.stream.start() # Start the stream
-            self.error_state = False
-            self.last_error_message = ""
-            self._log_info("Audio stream initialized and started successfully.")
+                self.stream = sd.InputStream(
+                    samplerate=self.sample_rate,
+                    channels=self.channels,
+                    blocksize=self.chunk_size,
+                    # device=None, # Default input device
+                    callback=None # Using blocking read, so no callback
+                )
+                self.stream.start() # Start the stream
+                self.error_state = False
+                self.last_error_message = ""
+                self._log_info("Audio stream initialized and started successfully.")
 
-        except Exception as e:
-            self.error_state = True
-            error_msg = "Exception during audio stream initialization."
-            self._log_error(error_msg, str(e))
-            if self.stream:
-                try:
-                    if not self.stream.closed:
-                        self.stream.stop()
-                        self.stream.close()
-                except Exception as close_e:
-                    self._log_error("Exception while closing errored audio stream.", str(close_e))
-            self.stream = None
+            except Exception as e:
+                self.error_state = True
+                error_msg = "Exception during audio stream initialization."
+                self._log_error(error_msg, str(e))
+                if self.stream:
+                    try:
+                        if not self.stream.closed:
+                            self.stream.stop()
+                            self.stream.close()
+                    except Exception as close_e:
+                        self._log_error("Exception while closing errored audio stream.", str(close_e))
+                self.stream = None
 
-        self.last_retry_time = time.time()
+            self.last_retry_time = time.time()
 
     def get_chunk(self):
+        # Check error state before locking to allow recovery logic to run (which uses lock inside release/init)
         if self.error_state:
             if time.time() - self.last_retry_time >= self.retry_delay:
                 self._log_info("Attempting to re-initialize audio stream due to previous error...")
@@ -104,37 +108,38 @@ class AudioSensor:
             if self.error_state: # If still in error state
                 return None, self.last_error_message
 
-        if not self.stream or self.stream.closed:
-            if not self.error_state:
-                 self._log_error("Audio stream is not active or closed, though not in persistent error state.")
-                 self.error_state = True
-            return None, "Audio stream not available."
+        with self._lock:
+            if not self.stream or self.stream.closed:
+                if not self.error_state:
+                     self._log_error("Audio stream is not active or closed, though not in persistent error state.")
+                     self.error_state = True
+                return None, "Audio stream not available."
 
-        try:
-            # With a blocking stream (no callback), read() will wait until it has enough data.
-            data_chunk, overflowed = self.stream.read(self.chunk_size)
-            if overflowed:
-                self._log_warning("Audio buffer overflow detected during read.")
+            try:
+                # With a blocking stream (no callback), read() will wait until it has enough data.
+                data_chunk, overflowed = self.stream.read(self.chunk_size)
+                if overflowed:
+                    self._log_warning("Audio buffer overflow detected during read.")
 
-            if self.error_state: # Was in error, but now working
-                self._log_info("Audio sensor recovered and reading data.")
-                self.error_state = False
-                self.last_error_message = ""
-            return data_chunk, None # Return audio data and no error
+                if self.error_state: # Was in error, but now working
+                    self._log_info("Audio sensor recovered and reading data.")
+                    self.error_state = False
+                    self.last_error_message = ""
+                return data_chunk, None # Return audio data and no error
 
-        except sd.PortAudioError as pae:
-            self.error_state = True
-            error_msg = f"PortAudioError while reading audio chunk: {pae}"
-            self._log_error(error_msg)
-            # Attempt to gracefully stop and close the stream on PortAudioError
-            self._handle_stream_error()
-            return None, error_msg
-        except Exception as e:
-            self.error_state = True
-            error_msg = "Generic exception while reading audio chunk."
-            self._log_error(error_msg, str(e))
-            self._handle_stream_error()
-            return None, error_msg
+            except sd.PortAudioError as pae:
+                self.error_state = True
+                error_msg = f"PortAudioError while reading audio chunk: {pae}"
+                self._log_error(error_msg)
+                # Attempt to gracefully stop and close the stream on PortAudioError
+                self._handle_stream_error()
+                return None, error_msg
+            except Exception as e:
+                self.error_state = True
+                error_msg = "Generic exception while reading audio chunk."
+                self._log_error(error_msg, str(e))
+                self._handle_stream_error()
+                return None, error_msg
 
     def _handle_stream_error(self):
         if self.stream and not self.stream.closed:
@@ -148,22 +153,23 @@ class AudioSensor:
 
 
     def release(self):
-        # Ensure release is idempotent and robust
-        self._log_info("Releasing audio stream.")
-        if self.stream:
-            try:
-                # We do not strictly check stream.closed because sounddevice objects handle it
-                # Stop stream logic
-                if not self.stream.closed:
-                    self.stream.stop()
-                    self.stream.close()
-            except Exception as e:
-                # Even if stop/close fails, we consider it released
-                self._log_error("Exception while releasing audio stream.", str(e))
-            finally:
-                self.stream = None
+        with self._lock:
+            # Ensure release is idempotent and robust
+            self._log_info("Releasing audio stream.")
+            if self.stream:
+                try:
+                    # We do not strictly check stream.closed because sounddevice objects handle it
+                    # Stop stream logic
+                    if not self.stream.closed:
+                        self.stream.stop()
+                        self.stream.close()
+                except Exception as e:
+                    # Even if stop/close fails, we consider it released
+                    self._log_error("Exception while releasing audio stream.", str(e))
+                finally:
+                    self.stream = None
 
-        self.error_state = False
+            self.error_state = False
 
     def has_error(self):
         return self.error_state

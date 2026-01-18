@@ -1,24 +1,30 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
-
-# Mock pystray and PIL before importing ACRTrayIcon
-sys.modules["pystray"] = MagicMock()
-sys.modules["PIL"] = MagicMock()
-sys.modules["PIL.Image"] = MagicMock()
-sys.modules["PIL.ImageDraw"] = MagicMock()
-
-# Mock config
-sys.modules["config"] = MagicMock()
-sys.modules["config"].APP_NAME = "ASDGPT"
-sys.modules["config"].SNOOZE_DURATION = 3600  # Default value needed for init
-
-from core.system_tray import ACRTrayIcon
+import importlib
 
 class TestTrayTooltip(unittest.TestCase):
     def setUp(self):
+        # Mock dependencies in sys.modules
+        self.pystray_mock = MagicMock()
+        sys.modules["pystray"] = self.pystray_mock
+        sys.modules["PIL"] = MagicMock()
+        sys.modules["PIL.Image"] = MagicMock()
+        sys.modules["PIL.ImageDraw"] = MagicMock()
+
+        # Mock config
+        self.config_mock = MagicMock()
+        self.config_mock.APP_NAME = "ASDGPT"
+        self.config_mock.SNOOZE_DURATION = 3600  # Default value
+        sys.modules["config"] = self.config_mock
+
+        # Import and reload the module to ensure it uses the mocked config and dependencies
+        import core.system_tray
+        importlib.reload(core.system_tray)
+        self.ACRTrayIcon = core.system_tray.ACRTrayIcon
+
         self.mock_app = MagicMock()
-        self.tray = ACRTrayIcon(self.mock_app)
+        self.tray = self.ACRTrayIcon(self.mock_app)
         # Mock the tray_icon object itself since we mocked pystray
         self.tray.tray_icon = MagicMock()
 
@@ -66,30 +72,17 @@ class TestTrayTooltip(unittest.TestCase):
 
     def test_snooze_menu_label_default(self):
         """Verify the snooze label generation logic matches the config default"""
-        # Reset mock to ensure we don't catch previous calls
-        sys.modules["pystray"].MenuItem.reset_mock()
-        # Reset config to default in case it was patched elsewhere
-        sys.modules["config"].SNOOZE_DURATION = 3600
+        # Reset mock calls
+        self.pystray_mock.MenuItem.reset_mock()
 
-        # Re-instantiate to catch the __init__ logic with default config (3600s)
-        tray = ACRTrayIcon(self.mock_app)
+        # Ensure default config
+        self.config_mock.SNOOZE_DURATION = 3600
 
-        # Access the private menu object to verify the label
-        # pystray.Icon(..., menu=...)
-        # tray.tray_icon.menu is a Tuple of MenuItems
-        # We need to find the item with 'Snooze' in the text
+        # Re-instantiate
+        tray = self.ACRTrayIcon(self.mock_app)
 
-        # Since we mocked pystray, we need to inspect how the mock was called
-        # The constructor calls pystray.MenuItem multiple times
+        calls = self.pystray_mock.MenuItem.call_args_list
 
-        # Instead of inspecting the mock calls which can be messy,
-        # let's trust that the logic inside __init__ is what we want to test.
-        # But we can't easily test __init__ logic without inspecting the mock calls.
-
-        # Let's inspect the mock calls to pystray.MenuItem
-        calls = sys.modules["pystray"].MenuItem.call_args_list
-
-        # Find the call where the first arg contains 'Snooze'
         found_snooze = False
         for call in calls:
             label = call[0][0]
@@ -102,48 +95,46 @@ class TestTrayTooltip(unittest.TestCase):
 
     def test_snooze_menu_label_custom(self):
         """Verify the snooze label with custom config"""
-        with patch('config.SNOOZE_DURATION', 1800): # 30 mins
-             # Re-instantiate
-            tray = ACRTrayIcon(self.mock_app)
+        # Patch the SNOOZE_DURATION on the mock config object we injected
+        self.config_mock.SNOOZE_DURATION = 1800 # 30 mins
 
-            # Inspect calls again (they append to the list)
-            # We need to look at the MOST RECENT calls or just filter all
-            # Since we can't easily reset the mock history for the module-level mock here without affecting others?
-            # Actually we can reset the mock
-            # sys.modules["pystray"].MenuItem.reset_mock()
-            # But let's just search in the new calls.
+        # We also need to reload the module because the SNOOZE_DURATION is read at __init__ time?
+        # No, it's read in __init__. So just changing the attribute on the mock module is enough,
+        # PROVIDED that core.system_tray.config points to our mock.
 
-            # Let's reset the mock for this test
-            sys.modules["pystray"].MenuItem.reset_mock()
+        self.pystray_mock.MenuItem.reset_mock()
 
-            tray = ACRTrayIcon(self.mock_app)
-            calls = sys.modules["pystray"].MenuItem.call_args_list
+        # Re-instantiate
+        tray = self.ACRTrayIcon(self.mock_app)
 
-            found_snooze = False
-            for call in calls:
-                label = call[0][0]
-                if "Snooze" in label:
-                    self.assertEqual(label, "Snooze for 30 Minutes")
-                    found_snooze = True
-                    break
-            self.assertTrue(found_snooze, "Snooze menu item not found for 30 mins")
+        calls = self.pystray_mock.MenuItem.call_args_list
+
+        found_snooze = False
+        for call in calls:
+            label = call[0][0]
+            if "Snooze" in label:
+                self.assertEqual(label, "Snooze for 30 Minutes")
+                found_snooze = True
+                break
+        self.assertTrue(found_snooze, "Snooze menu item not found for 30 mins")
 
     def test_snooze_menu_label_custom_hours(self):
         """Verify the snooze label with custom config (2 hours)"""
-        with patch('config.SNOOZE_DURATION', 7200): # 2 hours
-            sys.modules["pystray"].MenuItem.reset_mock()
+        self.config_mock.SNOOZE_DURATION = 7200 # 2 hours
 
-            tray = ACRTrayIcon(self.mock_app)
-            calls = sys.modules["pystray"].MenuItem.call_args_list
+        self.pystray_mock.MenuItem.reset_mock()
 
-            found_snooze = False
-            for call in calls:
-                label = call[0][0]
-                if "Snooze" in label:
-                    self.assertEqual(label, "Snooze for 2 Hours")
-                    found_snooze = True
-                    break
-            self.assertTrue(found_snooze, "Snooze menu item not found for 2 hours")
+        tray = self.ACRTrayIcon(self.mock_app)
+        calls = self.pystray_mock.MenuItem.call_args_list
+
+        found_snooze = False
+        for call in calls:
+            label = call[0][0]
+            if "Snooze" in label:
+                self.assertEqual(label, "Snooze for 2 Hours")
+                found_snooze = True
+                break
+        self.assertTrue(found_snooze, "Snooze menu item not found for 2 hours")
 
 if __name__ == "__main__":
     unittest.main()
