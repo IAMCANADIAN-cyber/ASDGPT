@@ -21,12 +21,14 @@ build/
 
 # User Data
 user_data/
+user_data_backup/
 
 # Logs
 *.log
 custom_logs/
 replay_log.txt*
 *.log.*
+test_signal_quality.log*
 
 # Test Artifacts
 .coverage

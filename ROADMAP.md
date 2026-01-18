@@ -22,12 +22,6 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 *   **Completed**: **Tray Icon State**: Tooltip now shows dynamic 5-dimension state ("A: 60 O: 0...").
 *   **Completed**: **Log Rotation**: `DataLogger` uses `RotatingFileHandler` to prevent indefinite log growth.
 *   **Completed**: **LMM Latency Monitoring**: `LMMInterface` now logs request latency and includes it in response metadata.
-*   **Merged**: **VAD Integration**: `AudioSensor` now provides `speech_rate` and `voice_activity`, replacing crude volume thresholds.
-*   **Merged**: **Face Posture Metrics**: `VideoSensor` detects `face_roll_angle` (tilt) and `posture_state` (slouching).
-*   **Merged**: **LMM Latency Tracking**: Request times are logged and monitored; LMM context now includes real VAD data.
-*   **Verified**: **Reliability**: `verify_crash.py` passed 10/10 cycles; `test_doom_scroll` and `test_panic_attack` scenarios confirmed logic.
-*   **Completed**: **DND Mode**: "Do Not Disturb" is functional and testable.
-*   **Completed**: **Log Rotation**: Prevented disk fill-up issues with `RotatingFileHandler`.
 
 ## 2. Top Milestones (Next 7 Days)
 
@@ -69,8 +63,6 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 
 | Title | Why | Acceptance Criteria | Estimate | Risk | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Personalized Baselines** | Improve accuracy. | `StateEngine` loads baseline from user profile. | M | Low | Architect |
-| **Web Dashboard** | Visualization. | Simple local web UI for `events.jsonl`. | L | Med | UI/UX |
 | **Unit Test Coverage** | Stability. | `pytest` coverage > 80% for `core/`. | M | Low | Testsmith |
 | **Calibration Wizard Script** | "Normal" noise varies wildy. | `tools/calibrate.py` runs, updates `user_data/config.json`. | M | Low | Calibrator |
 | **Audio Calibration Logic** | Core logic for noise floor. | `AudioSensor.calibrate()` returns valid threshold. | S | Low | Calibrator |
