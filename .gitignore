@@ -21,6 +21,7 @@ build/
 
 # User Data
 user_data/
+user_data_backup/
 
 # Logs
 *.log

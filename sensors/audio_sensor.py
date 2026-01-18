@@ -337,10 +337,27 @@ class AudioSensor:
             if sum_magnitude > 1e-6:
                 metrics["spectral_centroid"] = float(np.sum(freqs * magnitude) / sum_magnitude)
 
-            # 4. Simple Pitch Estimation (Dominant Frequency)
+            # 4. Pitch Estimation (Dominant Frequency with Parabolic Interpolation)
             # Find peak frequency (ignoring very low freq DC/rumble < 50Hz)
             valid_idx = np.where(freqs > 50)[0]
             if len(valid_idx) > 0:
+                peak_bin = valid_idx[np.argmax(magnitude[valid_idx])]
+
+                # Parabolic Interpolation for better precision
+                if 0 < peak_bin < len(magnitude) - 1:
+                    alpha = magnitude[peak_bin - 1]
+                    beta = magnitude[peak_bin]
+                    gamma = magnitude[peak_bin + 1]
+
+                    denom = alpha - 2 * beta + gamma
+                    if denom != 0:
+                        delta = 0.5 * (alpha - gamma) / denom
+                        true_bin = peak_bin + delta
+                        metrics["pitch_estimation"] = float(true_bin * (self.sample_rate / len(audio_data)))
+                    else:
+                        metrics["pitch_estimation"] = float(freqs[peak_bin])
+                else:
+                    metrics["pitch_estimation"] = float(freqs[peak_bin])
                 peak_idx = valid_idx[np.argmax(magnitude[valid_idx])]
                 metrics["pitch_estimation"] = float(freqs[peak_idx])
 

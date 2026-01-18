@@ -106,11 +106,6 @@ class TestInterventionEngine(unittest.TestCase):
         with patch('threading.Thread'):
             self.engine.start_intervention({"type": "t1", "message": "m1"})
 
-            # Since threading.Thread is mocked, start() does nothing,
-            # so _run_intervention_thread is not called, and _intervention_active remains set.
-            # We must manually clear it to simulate completion for the purpose of the rate limit test.
-            self.engine._intervention_active.clear()
-
         # Immediate next one should fail
         result = self.engine.start_intervention({"type": "t2", "message": "m2"})
         self.assertFalse(result)

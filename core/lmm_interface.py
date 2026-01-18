@@ -28,7 +28,45 @@ class LMMResponse(TypedDict):
     _meta: Optional[Dict[str, Any]] # For internal flags like is_fallback, latency_ms
 
 class LMMInterface:
-    BASE_SYSTEM_INSTRUCTION = SYSTEM_INSTRUCTION_V1
+    BASE_SYSTEM_INSTRUCTION = """
+    You are an autonomous co-regulator. Analyze the provided sensor metrics and context to estimate the user's state.
+
+    Sensor Interpretations:
+    - Audio Level (RMS): High (>0.5) = Loud environment/speech. Low (<0.1) = Silence.
+    - Audio Pitch Variance: High (>50) = Expressive/Emotional. Low (<10) = Monotone/Drone/Bored.
+    - Audio ZCR: High (>0.1) = Noisy/Sibilance. Low (<0.05) = Tonal/Clear.
+    - Speech Rate (Burst Density): High (>5) = Fast speech/Anxiety. Low (<1) = Slow speech/Calm.
+    - Video Activity: High (>20) = High movement/pacing. Low (<5) = Stillness.
+    - Face Size Ratio: High (>0.15) = Leaning in/High Focus. Low (<0.05) = Leaning back/Distanced.
+    - Vertical Position: High (>0.6) = Slouching/Low Energy. Low (<0.4) = Upright/High Energy.
+    - Horizontal Position: Approx 0.5 is centered.
+
+    Output a valid JSON object with the following structure:
+    {
+      "state_estimation": {
+        "arousal": <int 0-100>,
+        "overload": <int 0-100>,
+        "focus": <int 0-100>,
+        "energy": <int 0-100>,
+        "mood": <int 0-100>
+      },
+      "suggestion": {
+        "id": "<intervention_id_string_from_library>",
+        "type": "<intervention_type_string_fallback>",
+        "message": "<text_to_speak_to_user_fallback>"
+      }
+    }
+
+    If no intervention is needed, set "suggestion" to null.
+
+    Available Interventions (by ID):
+    {interventions_list}
+
+    If you suggest one of these, use its exact ID in the "id" field. You may omit "message" if using an ID, as the system will handle the sequence.
+    If you need a custom ad-hoc intervention, leave "id" null and provide "type" and "message".
+
+    Ensure your response is ONLY valid JSON, no markdown formatting.
+    """
 
     def __init__(self, data_logger=None, intervention_library: Optional[InterventionLibrary] = None):
         """
@@ -163,11 +201,20 @@ class LMMInterface:
 
         return True
 
-    def _clean_json_string(self, text):
-        """Removes markdown code blocks and whitespace."""
-        # Remove ```json ... ``` or ``` ... ```
-        text = re.sub(r'^```json\s*', '', text, flags=re.MULTILINE)
-        text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
+    def get_fallback_response(self) -> LMMResponse:
+        """Returns a safe, neutral response when the LMM is unavailable."""
+        return {
+            "state_estimation": {
+                "arousal": 50,
+                "overload": 0,
+                "focus": 50,
+                "energy": 50,
+                "mood": 50
+            },
+            "suggestion": None,
+            "_meta": {"is_fallback": True}
+        }
+
         text = re.sub(r'```$', '', text, flags=re.MULTILINE)
         return text.strip()
 
@@ -388,18 +435,60 @@ class LMMInterface:
 
         except Exception as e:
             self._log_error(f"LMM Request Failed after retries: {e}")
+            return self._fallback_response(user_context)
 
-            # Increment Circuit Breaker
-            self.circuit_failures += 1
-            if self.circuit_failures >= self.circuit_max_failures:
-                 self.circuit_open_time = time.time()
-                 self._log_warning(f"LMM Circuit Breaker TRIPPED. Pausing calls for {self.circuit_cooldown}s.")
+    def _fallback_response(self, user_context: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """
+        Generates a safe fallback response when the LMM is unavailable.
+        """
+        self._log_warning("Using fallback response mechanism.")
+
+        # Simple rule-based fallback
+        # If loud audio, suggest quiet
+        # If high motion, suggest calm
+        # Otherwise, just return neutral state
+
+        metrics = user_context.get('sensor_metrics', {}) if user_context else {}
+        audio_level = metrics.get('audio_level', 0.0)
+        video_activity = metrics.get('video_activity', 0.0)
+
+        # Default neutral state
+        fallback_state = {
+            "arousal": 50,
+            "overload": 50,
+            "focus": 50,
+            "energy": 50,
+            "mood": 50
+        }
+
+        suggestion = None
 
             if getattr(config, 'LMM_FALLBACK_ENABLED', False):
                  self._log_info("LMM_FALLBACK_ENABLED is True. Returning neutral state.")
                  return self._get_fallback_response(user_context)
 
             return None
+
+    def _get_fallback_response(self):
+        """Returns a safe, neutral state when LMM is unavailable."""
+        return {
+            "state_estimation": {
+                "arousal": 50,
+                "overload": 0,
+                "focus": 50,
+                "energy": 50,
+                "mood": 50
+            },
+            "suggestion": None
+        }
+
+    def _clean_json_string(self, text):
+        """Removes markdown code blocks and whitespace."""
+        # Remove ```json ... ``` or ``` ... ```
+        text = re.sub(r'^```json\s*', '', text, flags=re.MULTILINE)
+        text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
+        text = re.sub(r'```$', '', text, flags=re.MULTILINE)
+        return text.strip()
 
     def get_intervention_suggestion(self, processed_analysis: LMMResponse) -> Optional[Dict[str, Any]]:
         """

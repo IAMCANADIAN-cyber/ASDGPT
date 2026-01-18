@@ -2,22 +2,16 @@
 """
 Sensor Calibration Tool for ASDGPT
 ----------------------------------
-This script runs a calibration routine to measure ambient audio noise and
-background video activity. It generates personalized threshold values and
-saves them to `user_data/calibration.json`.
+Measures ambient background levels for Audio (RMS) and Video (Activity).
+Calculates statistical thresholds (Mean + 3*StdDev) to minimize false positives.
+Saves results to `user_data/calibration.json`, which overrides defaults in `config.py`.
 
 Usage:
-    python tools/calibrate_sensors.py [duration_in_seconds]
-
-Dependencies:
-    - numpy
-    - sounddevice
-    - opencv-python-headless
-    - sensors.audio_sensor
-    - sensors.video_sensor
+    python tools/calibrate_sensors.py [duration_seconds]
 """
 
 import time
+import json
 import numpy as np
 import os
 import sys
@@ -36,17 +30,20 @@ except ImportError as e:
     print(f"Error importing core modules: {e}")
     sys.exit(1)
 
-# Mock DataLogger for standalone script
-class ConsoleLogger:
-    def log_info(self, msg): pass
-    def log_warning(self, msg): print(f"[WARN] {msg}")
-    def log_error(self, msg, details=""): print(f"[ERROR] {msg} {details}")
+def calibrate(duration=10):
+    print(f"\n--- ASDGPT Sensor Calibration ({duration}s) ---")
+    print("Instructions:")
+    print("1. Keep the room in its 'normal' background state (fan on, ambient noise, etc).")
+    print("2. Do not speak directly into the microphone.")
+    print("3. Sit normally or keep the camera pointed at the usual background.")
+    print("4. Starting in 3 seconds...")
+    time.sleep(3)
 
-def calibrate(duration: int = 30):
-    print(f"--- Starting Sensor Calibration ({duration}s) ---")
-    print("Please keep the environment in its 'resting' state.")
-    print("- Keep background noise normal (don't speak).")
-    print("- Don't move around excessively (sit normally).")
+    # Mock Logger
+    class ConsoleLogger:
+        def log_info(self, msg): pass
+        def log_warning(self, msg): print(f"[WARN] {msg}")
+        def log_error(self, msg, details=""): print(f"[ERROR] {msg} {details}")
 
     # Initialize Sensors
     audio_sensor = None
@@ -63,7 +60,6 @@ def calibrate(duration: int = 30):
     try:
         video_sensor = VideoSensor(camera_index=config.CAMERA_INDEX, data_logger=ConsoleLogger())
         # Warmup
-        time.sleep(1) # Wait for camera to warm up
         if video_sensor.cap is None or not video_sensor.cap.isOpened():
             print(f"❌ Video sensor init failed (Index {config.CAMERA_INDEX}).")
             video_sensor = None
@@ -91,7 +87,6 @@ def calibrate(duration: int = 30):
 
             # Video
             if video_sensor:
-                # Use process_frame to get full metrics including activity
                 metrics = video_sensor.process_frame(video_sensor.get_frame())
                 if metrics:
                     # Use RAW activity (0-255 scale) because LogicEngine compares this against threshold
@@ -150,11 +145,7 @@ def calibrate(duration: int = 30):
 
     # --- Save ---
     if results:
-        # Save to user_data/calibration.json
-        save_path = getattr(config, 'CALIBRATION_FILE', os.path.join("user_data", "calibration.json"))
-        if not os.path.isabs(save_path) and "user_data" not in save_path:
-             save_path = os.path.join("user_data", "calibration.json")
-
+        save_path = config.CALIBRATION_FILE
         try:
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             with open(save_path, 'w') as f:
