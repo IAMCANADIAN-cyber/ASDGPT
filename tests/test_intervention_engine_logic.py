@@ -208,7 +208,7 @@ class TestInterventionEngineLogic(unittest.TestCase):
         self.intervention_engine.logic_engine.last_video_frame = MagicMock()
         mock_datetime.datetime.now.return_value.strftime.return_value = "20240101_120000"
 
-        # Ensure os.makedirs is called by simulating directory doesn't exist
+        # Force exists to False so makedirs is called
         mock_exists.return_value = False
 
         # Call method directly

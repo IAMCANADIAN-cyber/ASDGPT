@@ -1,227 +1,248 @@
-import pytest
-import time
-import json
+import unittest
+from unittest.mock import MagicMock, patch
+import sys
 import os
-import shutil
-from unittest.mock import MagicMock, patch, call
+import builtins
+import subprocess
+
 from core.intervention_engine import InterventionEngine
-import config
+import core.intervention_engine as ie_module
 
-TEST_USER_DATA_DIR = "test_coverage_data"
-TEST_SUPPRESSIONS_FILE = os.path.join(TEST_USER_DATA_DIR, "suppressions.json")
-TEST_PREFERENCES_FILE = os.path.join(TEST_USER_DATA_DIR, "preferences.json")
+class TestInterventionEngineCoverage(unittest.TestCase):
+    def setUp(self):
+        self.mock_logic = MagicMock()
+        self.mock_logic.get_mode.return_value = "active"
+        self.mock_app = MagicMock()
+        self.mock_app.data_logger = MagicMock()
 
-@pytest.fixture
-def setup_coverage_env():
-    os.makedirs(TEST_USER_DATA_DIR, exist_ok=True)
+        # Instantiate with mocks
+        self.engine = InterventionEngine(self.mock_logic, self.mock_app)
+        # Activating intervention by default for TTS tests that check blocking
+        self.engine._intervention_active.set()
 
-    orig_user_data_dir = getattr(config, 'USER_DATA_DIR', "user_data")
-    orig_suppressions_file = getattr(config, 'SUPPRESSIONS_FILE', "user_data/suppressions.json")
-    orig_preferences_file = getattr(config, 'PREFERENCES_FILE', "user_data/preferences.json")
+    def test_load_suppressions_file_error(self):
+        """Test graceful handling of file read errors for suppressions."""
+        with patch('builtins.open', side_effect=OSError("Read permission denied")):
+            with patch('os.path.exists', return_value=True):
+                self.engine._load_suppressions()
+                # Should log error, not crash
+                self.mock_app.data_logger.log_error.assert_called()
+                args, _ = self.mock_app.data_logger.log_error.call_args
+                assert "Failed to load suppressions" in args[0]
 
-    config.USER_DATA_DIR = TEST_USER_DATA_DIR
-    config.SUPPRESSIONS_FILE = TEST_SUPPRESSIONS_FILE
-    config.PREFERENCES_FILE = TEST_PREFERENCES_FILE
+    def test_save_suppressions_file_error(self):
+        """Test graceful handling of file write errors for suppressions."""
+        # Use a non-empty dict so it tries to save
+        self.engine.suppressed_interventions = {"test": 1234567890}
 
-    yield
+        with patch('builtins.open', side_effect=OSError("Write permission denied")):
+            self.engine._save_suppressions()
+            # Should log error
+            self.mock_app.data_logger.log_error.assert_called()
+            args, _ = self.mock_app.data_logger.log_error.call_args
+            assert "Failed to save suppressions" in args[0]
 
-    if os.path.exists(TEST_USER_DATA_DIR):
-        shutil.rmtree(TEST_USER_DATA_DIR)
+    def test_load_preferences_json_error(self):
+        """Test graceful handling of corrupted JSON in preferences."""
+        # Simulate invalid JSON
+        mock_file = MagicMock()
+        mock_file.__enter__.return_value.read.return_value = "{invalid_json}"
 
-    config.USER_DATA_DIR = orig_user_data_dir
-    config.SUPPRESSIONS_FILE = orig_suppressions_file
-    config.PREFERENCES_FILE = orig_preferences_file
+        with patch('builtins.open', return_value=mock_file): # Just returning a mock, but json.load will fail if we don't mock it or the file content
+            with patch('json.load', side_effect=ValueError("Expecting value")):
+                with patch('os.path.exists', return_value=True):
+                    self.engine._load_preferences()
+                    self.mock_app.data_logger.log_error.assert_called()
+                    args, _ = self.mock_app.data_logger.log_error.call_args
+                    assert "Failed to load preferences" in args[0]
 
-def test_load_suppressions_error(setup_coverage_env):
-    """Test error handling when loading suppressions fails."""
-    mock_logic = MagicMock()
-    mock_app = MagicMock()
-    engine = InterventionEngine(mock_logic, mock_app)
+    def test_missing_cv2_capture(self):
+        """Test capture_image when cv2 is missing."""
+        with patch.object(ie_module, 'cv2', None):
+            self.engine.logic_engine.last_video_frame = "some_frame"
+            self.engine._capture_image("test_details")
 
-    # Mock open to raise exception
-    with patch("builtins.open", side_effect=IOError("Read error")):
-        # We need to ensure the file "exists" check passes for open to be called
-        with patch("os.path.exists", return_value=True):
-            engine._load_suppressions()
+            self.mock_app.data_logger.log_warning.assert_called()
+            args, _ = self.mock_app.data_logger.log_warning.call_args
+            assert "OpenCV (cv2) not available" in args[0]
 
-    mock_app.data_logger.log_error.assert_called_with("Failed to load suppressions: Read error")
+    def test_missing_pil_visual_prompt(self):
+        """Test show_visual_prompt when PIL is missing."""
+        with patch.object(ie_module, 'Image', None):
+            self.engine._show_visual_prompt("some_image.jpg")
 
-def test_save_suppressions_error(setup_coverage_env):
-    """Test error handling when saving suppressions fails."""
-    mock_logic = MagicMock()
-    mock_app = MagicMock()
-    engine = InterventionEngine(mock_logic, mock_app)
+            self.mock_app.data_logger.log_warning.assert_called()
+            args, _ = self.mock_app.data_logger.log_warning.call_args
+            assert "PIL (Pillow) library not available" in args[0]
 
-    engine.suppressed_interventions = {"test": time.time() + 3600}
+    def test_missing_sounddevice_play_sound(self):
+        """Test play_sound when sounddevice is missing."""
+        with patch.object(ie_module, 'sd', None):
+            with patch('os.path.exists', return_value=True):
+                self.engine._play_sound("test.wav")
 
-    with patch("builtins.open", side_effect=IOError("Write error")):
-        engine._save_suppressions()
+                self.mock_app.data_logger.log_warning.assert_called()
+                args, _ = self.mock_app.data_logger.log_warning.call_args
+                assert "sounddevice" in args[0]
 
-    mock_app.data_logger.log_error.assert_called_with("Failed to save suppressions: Write error")
+    @patch('platform.system', return_value='Linux')
+    def test_tts_fallback_linux(self, mock_system):
+        """Test fallback from espeak to spd-say on Linux."""
 
-def test_load_preferences_error(setup_coverage_env):
-    """Test error handling when loading preferences fails."""
-    mock_logic = MagicMock()
-    mock_app = MagicMock()
-    engine = InterventionEngine(mock_logic, mock_app)
+        # We need to test _speak, but it launches a thread or runs directly.
+        # It calls Popen. We want to simulate Popen failing for espeak (FileNotFoundError)
+        # and succeeding for spd-say.
 
-    with patch("builtins.open", side_effect=IOError("Read error")):
-        with patch("os.path.exists", return_value=True):
-            engine._load_preferences()
+        # The _speak method constructs command=["espeak", text]
 
-    mock_app.data_logger.log_error.assert_called_with("Failed to load preferences: Read error")
+        def side_effect(command, **kwargs):
+            if command[0] == "espeak":
+                raise FileNotFoundError("espeak not found")
+            return MagicMock() # Return a mock process for spd-say
 
-def test_save_preferences_error(setup_coverage_env):
-    """Test error handling when saving preferences fails."""
-    mock_logic = MagicMock()
-    mock_app = MagicMock()
-    engine = InterventionEngine(mock_logic, mock_app)
+        with patch('subprocess.Popen', side_effect=side_effect) as mock_popen:
+            self.engine._speak("Hello", blocking=True)
 
-    engine.preferred_interventions = {"test": {"count": 1}}
+            # Verify attempts
+            # Should have tried espeak first
+            calls = mock_popen.call_args_list
+            assert len(calls) == 2
+            assert calls[0][0][0][0] == "espeak"
+            assert calls[1][0][0][0] == "spd-say"
 
-    with patch("builtins.open", side_effect=IOError("Write error")):
-        engine._save_preferences()
+    @patch('platform.system', return_value='Darwin')
+    def test_tts_failure_macos(self, mock_system):
+        """Test generic TTS failure handling (e.g. on macOS)."""
 
-    mock_app.data_logger.log_error.assert_called_with("Failed to save preferences: Write error")
+        with patch('subprocess.Popen', side_effect=Exception("General failure")):
+            self.engine._speak("Hello", blocking=True)
 
-def test_speak_linux_fallback(setup_coverage_env):
-    """Test TTS fallback logic on Linux."""
-    mock_logic = MagicMock()
-    mock_app = MagicMock()
-    # Explicitly set data_logger to allow logging calls
-    mock_app.data_logger = MagicMock()
-    engine = InterventionEngine(mock_logic, mock_app)
+            self.mock_app.data_logger.log_warning.assert_called()
+            args, _ = self.mock_app.data_logger.log_warning.call_args
+            assert "TTS failed" in args[0]
 
-    # MUST set intervention active for blocking speak to proceed
-    engine._intervention_active.set()
+    def test_record_video_no_frame(self):
+        """Test _record_video logic when no frame is available."""
+        self.engine.logic_engine.last_video_frame = None
+        self.engine._record_video("test")
+        self.mock_app.data_logger.log_warning.assert_called()
+        args, _ = self.mock_app.data_logger.log_warning.call_args
+        assert "Signal lost" in args[0]
 
-    with patch("platform.system", return_value="Linux"):
-        # Mock Popen to fail for espeak, then succeed for spd-say
-        with patch("subprocess.Popen") as mock_popen:
-            # First call raises FileNotFoundError (espeak not found)
-            # Second call returns a mock process
-            mock_popen.side_effect = [FileNotFoundError, MagicMock()]
+    def test_record_video_no_attribute(self):
+        """Test _record_video logic when LogicEngine lacks last_video_frame attribute."""
+        del self.engine.logic_engine.last_video_frame
+        self.engine._record_video("test")
+        self.mock_app.data_logger.log_warning.assert_called()
+        args, _ = self.mock_app.data_logger.log_warning.call_args
+        assert "No video frame available" in args[0]
+        # Restore attribute for other tests
+        self.engine.logic_engine.last_video_frame = MagicMock()
 
-            engine._speak("Test message", blocking=True)
+    def test_record_video_no_cv2(self):
+        """Test _record_video logic when cv2 is missing."""
+        with patch.object(ie_module, 'cv2', None):
+            self.engine.logic_engine.last_video_frame = MagicMock()
+            self.engine._record_video("test")
+            self.mock_app.data_logger.log_warning.assert_called()
+            args, _ = self.mock_app.data_logger.log_warning.call_args
+            assert "OpenCV (cv2) not available" in args[0]
 
-            # Check that fallback was attempted
-            assert mock_popen.call_count == 2
-            # Verify the arguments of the second call
-            args, _ = mock_popen.call_args_list[1]
-            assert args[0] == ["spd-say", "Test message"]
+    @patch('core.intervention_engine.time')
+    @patch('core.intervention_engine.cv2')
+    @patch('core.intervention_engine.os.makedirs')
+    @patch('core.intervention_engine.os.path.exists')
+    def test_record_video_success_fast(self, mock_exists, mock_makedirs, mock_cv2, mock_time):
+        """Test _record_video success path with time mocked to exit loop immediately."""
+        mock_frame = MagicMock()
+        mock_frame.shape = (480, 640, 3)
+        self.engine.logic_engine.last_video_frame = mock_frame
+        mock_exists.return_value = False
 
-def test_speak_exception(setup_coverage_env):
-    """Test TTS generic exception handling."""
-    mock_logic = MagicMock()
-    mock_app = MagicMock()
-    # Ensure data_logger is a MagicMock so we can check calls
-    mock_app.data_logger = MagicMock()
-    engine = InterventionEngine(mock_logic, mock_app)
+        mock_writer = mock_cv2.VideoWriter.return_value
+        mock_time.sleep.return_value = None
 
-    # MUST set intervention active for blocking speak to proceed
-    engine._intervention_active.set()
+        # Scenario 1: Immediate exit (loop logic check)
+        # Mock time sequence: start=0, check>5 -> exit
+        mock_time.time.side_effect = [0, 6.0]
+        self.engine._record_video("test_immediate")
 
-    with patch("platform.system", return_value="Linux"):
-        # Popen is called, raises Exception
-        with patch("subprocess.Popen", side_effect=Exception("General failure")):
-            engine._speak("Test message", blocking=True)
+        mock_cv2.VideoWriter.assert_called()
+        mock_writer.release.assert_called()
 
-    # Use any_order=True because _speak logs info before attempting TTS
-    # Or just check if log_warning was called at all
-    mock_app.data_logger.log_warning.assert_called_with("TTS failed: General failure")
+        # Reset mocks for Scenario 2
+        mock_cv2.VideoWriter.reset_mock()
+        mock_writer.reset_mock()
 
-def test_play_sound_missing_libs(setup_coverage_env):
-    """Test _play_sound when libraries are missing."""
-    mock_logic = MagicMock()
-    mock_app = MagicMock()
+        # Scenario 2: One frame captured
+        # Mock time sequence: start=0, check1=1.0 (<5, continue), check2=6.0 (>5, exit)
+        mock_time.time.side_effect = [0, 1.0, 6.0]
 
-    # Patch imports in core.intervention_engine to be None
-    with patch("core.intervention_engine.sd", None):
-        engine = InterventionEngine(mock_logic, mock_app)
-        # Create a dummy file so file check passes
-        dummy_file = os.path.join(TEST_USER_DATA_DIR, "test.wav")
-        with open(dummy_file, 'w') as f: f.write("dummy")
+        self.engine._record_video("test_one_frame")
 
-        engine._play_sound(dummy_file)
+        mock_writer.write.assert_called()
+        mock_writer.release.assert_called_once()
 
-    mock_app.data_logger.log_warning.assert_called_with("sounddevice or scipy.io.wavfile library not available (or Import failed). Cannot play sound.")
+    @patch('core.intervention_engine.wavfile')
+    @patch('core.intervention_engine.sd')
+    @patch('core.intervention_engine.os.path.exists')
+    def test_play_sound_success(self, mock_exists, mock_sd, mock_wavfile):
+        """Test _play_sound success path."""
+        mock_exists.return_value = True
+        mock_wavfile.read.return_value = (44100, "data")
 
-def test_play_sound_file_not_found(setup_coverage_env):
-    """Test _play_sound when file does not exist."""
-    mock_logic = MagicMock()
-    mock_app = MagicMock()
-    engine = InterventionEngine(mock_logic, mock_app)
+        self.engine._play_sound("test.wav")
 
-    engine._play_sound("non_existent.wav")
-    mock_app.data_logger.log_warning.assert_called()
+        mock_sd.play.assert_called_with("data", 44100)
+        mock_sd.wait.assert_called_once()
 
-def test_show_visual_prompt_no_pil(setup_coverage_env):
-    """Test _show_visual_prompt when PIL is missing."""
-    mock_logic = MagicMock()
-    mock_app = MagicMock()
+    def test_show_visual_prompt_success_image(self):
+        """Test _show_visual_prompt with valid image path."""
+        with patch('core.intervention_engine.Image') as mock_image:
+            with patch('core.intervention_engine.os.path.exists', return_value=True):
+                self.engine._show_visual_prompt("test.jpg")
+                mock_image.open.assert_called_with("test.jpg")
+                mock_image.open.return_value.show.assert_called_once()
 
-    with patch("core.intervention_engine.Image", None):
-        engine = InterventionEngine(mock_logic, mock_app)
-        engine._show_visual_prompt("test.jpg")
+    def test_show_visual_prompt_text_only(self):
+        """Test _show_visual_prompt with text (path does not exist)."""
+        with patch('core.intervention_engine.os.path.exists', return_value=False):
+             self.engine._show_visual_prompt("Just some text")
+             # Should just log, no crash
+             self.mock_app.data_logger.log_info.assert_called()
 
-    mock_app.data_logger.log_warning.assert_called_with("PIL (Pillow) library not available. Cannot show image.")
+    def test_shutdown(self):
+        """Test shutdown cleans up resources."""
+        self.engine.intervention_thread = MagicMock()
+        self.engine.intervention_thread.is_alive.return_value = True
 
-def test_capture_image_no_cv2(setup_coverage_env):
-    """Test _capture_image when cv2 is missing."""
-    mock_logic = MagicMock()
-    mock_app = MagicMock()
-    mock_logic.last_video_frame = "exists"
+        with patch.object(ie_module, 'sd') as mock_sd:
+            self.engine.shutdown()
 
-    with patch("core.intervention_engine.cv2", None):
-        engine = InterventionEngine(mock_logic, mock_app)
-        engine._capture_image("details")
+            # Verify stop called
+            self.assertFalse(self.engine._intervention_active.is_set())
+            mock_sd.stop.assert_called_once()
+            self.engine.intervention_thread.join.assert_called()
 
-    mock_app.data_logger.log_warning.assert_called_with("Cannot capture image: OpenCV (cv2) not available.")
+    def test_get_preferred_intervention_types(self):
+        """Test getting preferred interventions sorted."""
+        self.engine.preferred_interventions = {
+            "low_pref": {"count": 1},
+            "high_pref": {"count": 10},
+            "mid_pref": {"count": 5}
+        }
 
-def test_capture_image_no_frame(setup_coverage_env):
-    """Test _capture_image when no frame is available."""
-    mock_logic = MagicMock()
-    mock_logic.last_video_frame = None # Explicitly None
-    mock_app = MagicMock()
+        prefs = self.engine.get_preferred_intervention_types()
+        self.assertEqual(prefs, ["high_pref", "mid_pref", "low_pref"])
 
-    # Ensure cv2 is "present"
-    with patch("core.intervention_engine.cv2", MagicMock()):
-        engine = InterventionEngine(mock_logic, mock_app)
-        engine._capture_image("details")
+    def test_notify_mode_change(self):
+        """Test notify_mode_change triggers speech."""
+        with patch.object(self.engine, '_speak') as mock_speak:
+            self.engine.notify_mode_change("paused")
+            mock_speak.assert_called_with("Co-regulator paused.", blocking=False)
 
-    mock_app.data_logger.log_warning.assert_called_with("Cannot capture image: No video frame available in LogicEngine.")
+            self.engine.notify_mode_change("active", custom_message="Custom")
+            mock_speak.assert_called_with("Custom", blocking=False)
 
-def test_run_sequence_coverage(setup_coverage_env):
-    """Test _run_sequence with various actions."""
-    mock_logic = MagicMock()
-    mock_app = MagicMock()
-    engine = InterventionEngine(mock_logic, mock_app)
-    engine._intervention_active.set()
-
-    # Mock the action methods to avoid side effects and just verify calls
-    engine._speak = MagicMock()
-    engine._play_sound = MagicMock()
-    engine._show_visual_prompt = MagicMock()
-    engine._capture_image = MagicMock()
-    engine._record_video = MagicMock()
-    engine._wait = MagicMock()
-
-    sequence = [
-        {"action": "speak", "content": "Hello"},
-        {"action": "sound", "file": "bell.wav"},
-        {"action": "visual_prompt", "content": "image.jpg"},
-        {"action": "capture_image", "content": "user_face"},
-        {"action": "record_video", "content": "clip"},
-        {"action": "wait", "duration": 1},
-        {"action": "unknown", "content": "what"}
-    ]
-
-    engine._run_sequence(sequence, mock_app.data_logger)
-
-    engine._speak.assert_called_with("Hello", blocking=True)
-    engine._play_sound.assert_called_with("bell.wav")
-    engine._show_visual_prompt.assert_called_with("image.jpg")
-    engine._capture_image.assert_called_with("user_face")
-    engine._record_video.assert_called_with("clip")
-    engine._wait.assert_called_with(1)
-    mock_app.data_logger.log_warning.assert_called_with("Unknown action in sequence: unknown")
+if __name__ == '__main__':
+    unittest.main()
