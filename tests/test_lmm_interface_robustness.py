@@ -86,6 +86,14 @@ class TestLMMInterface(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
+        # Ensure fallback is enabled for this test
+        import config
+        with patch.object(config, 'LMM_FALLBACK_ENABLED', True):
+            # Checking if it returns fallback response (which has _meta['is_fallback'] = True)
+            result = self.lmm.process_data(user_context={"sensor_metrics": {}})
+
+            # It should either be None (if fallback disabled) or fallback
+            self.assertTrue(result.get('_meta', {}).get('is_fallback'))
         # Checking if it returns fallback response (which has _meta['is_fallback'] = True)
         result = self.lmm.process_data(user_context={"sensor_metrics": {}})
 
