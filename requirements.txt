@@ -1,0 +1,11 @@
+keyboard
+pystray
+python-dotenv
+pyinstaller
+opencv-python
+sounddevice
+scipy
+requests
+pillow
+pytest
+numpy
