@@ -1,16 +1,27 @@
 # ASDGPT: Autonomous Co-Regulator
 
-ASDGPT is a Python application designed to act as an autonomous co-regulator. It aims to monitor user activity through video and audio sensors and provide timely interventions or suggestions to help users manage their state, focus, and well-being. The project is intended to leverage Large Language Models (LMMs) for intelligent data processing and decision-making, though current LMM integration is at a placeholder stage.
+ASDGPT is a Python application designed to act as an autonomous co-regulator. It aims to monitor user activity through video and audio sensors and provide timely interventions or suggestions to help users manage their state, focus, and well-being.
 
 ## Features
 
-*   **State Management**: Tracks user state (active, snoozed, paused).
-*   **Sensor Input**: Captures data from camera (video) and microphone (audio). (Requires appropriate hardware and permissions).
-*   **Intervention System**: Can provide notifications and interventions (currently placeholder TTS).
+*   **State Management**: Tracks user state (Active, Snoozed, Paused, DND).
+*   **Sensor Input**: Captures data from camera (video) and microphone (audio).
+*   **Intervention System**: Provides notifications and interventions (TTS, audio prompts).
 *   **User Feedback**: Allows users to provide feedback on interventions via hotkeys.
 *   **Hotkey Controls**: Easily manage application state and provide feedback without GUI interaction.
 *   **System Tray Icon**: Provides a visual indicator of the application's status and quick access to controls.
 *   **Data Logging**: Logs application events, errors, and sensor data for debugging and analysis.
+
+## How it Works
+
+ASDGPT operates as a continuous loop:
+1.  **Senses**: Monitors audio (speech rate, tone) and video (posture, activity).
+2.  **Analyzes**: Sends aggregated data to a local Large Multi-modal Model (LMM).
+3.  **Updates State**: Tracks 5 internal dimensions (Arousal, Overload, Focus, Energy, Mood).
+4.  **Intervenes**: Suggests micro-regulations (breathing, breaks) if state thresholds are crossed.
+5.  **Learns**: You use hotkeys to mark interventions as "Helpful" or "Unhelpful", tuning future responses.
+
+For a detailed breakdown of the internal architecture and data flow, see [Architecture & Data Flow](docs/ARCHITECTURE.md).
 
 ## Setup and Installation
 
@@ -33,14 +44,52 @@ ASDGPT is a Python application designed to act as an autonomous co-regulator. It
     ```
     *Note: `pystray` might have system-specific dependencies for the icon. `sounddevice` might require system audio libraries (e.g., PortAudio).*
 
-4.  **Environment Variables (for LMM Integration):**
-    If you intend to use actual LMM capabilities (once fully implemented), you'll need to set up API keys.
-    *   Create a file named `.env` in the project root directory.
-    *   Add your API keys to this file, for example:
-        ```env
-        GOOGLE_API_KEY="YOUR_ACTUAL_GOOGLE_API_KEY"
-        ```
-    *   The `core/lmm_interface.py` currently looks for `GOOGLE_API_KEY`.
+## Configuration
+
+ASDGPT can be configured via environment variables (for temporary overrides or secrets), a user config file (for persistent settings), or default values.
+
+The priority order is:
+1.  **Environment Variables** (Highest)
+2.  `user_data/config.json`
+3.  **Defaults** (Lowest)
+
+### Key Environment Variables
+
+Create a `.env` file in the project root to set these:
+
+**System & Logging**
+*   `APP_NAME`: Name of the application (Default: "ACR")
+*   `LOG_LEVEL`: Logging verbosity (Default: "INFO", options: DEBUG, INFO, WARNING, ERROR)
+*   `USER_DATA_DIR`: Directory for storing user data (Default: "user_data")
+
+**Sensors**
+*   `CAMERA_INDEX`: Index of the camera to use (Default: 0)
+*   `AUDIO_THRESHOLD_HIGH`: RMS threshold for high audio levels (Default: 0.5)
+*   `VIDEO_ACTIVITY_THRESHOLD_HIGH`: Threshold for high video activity (Default: 20.0)
+*   `VAD_SILENCE_THRESHOLD`: RMS threshold for silence (Default: 0.01)
+
+**LMM Integration**
+*   `LOCAL_LLM_URL`: URL for the local LLM server (Default: "http://127.0.0.1:1234")
+*   `LOCAL_LLM_MODEL_ID`: Model ID for the local LLM (Default: "deepseek/deepseek-r1-0528-qwen3-8b")
+*   `GOOGLE_API_KEY`: API key for Google services if needed (Optional)
+
+**Hotkeys**
+*   `HOTKEY_CYCLE_MODE`: Cycle modes (Default: "ctrl+alt+m")
+*   `HOTKEY_PAUSE_RESUME`: Toggle pause (Default: "ctrl+alt+p")
+*   `HOTKEY_FEEDBACK_HELPFUL`: Rate intervention helpful (Default: "ctrl+alt+up")
+*   `HOTKEY_FEEDBACK_UNHELPFUL`: Rate intervention unhelpful (Default: "ctrl+alt+down")
+
+### User Config File
+
+You can also create a `user_data/config.json` file to persist your settings:
+
+```json
+{
+  "CAMERA_INDEX": 1,
+  "SNOOZE_DURATION": 1800,
+  "HOTKEY_CYCLE_MODE": "ctrl+shift+m"
+}
+```
 
 ## Running the Application
 
@@ -52,50 +101,16 @@ python main.py
 
 The application will start, and a system tray icon should appear.
 
-## Hotkeys
-
-The following hotkeys are configured by default (see `config.py` to customize):
-
-*   **`Ctrl+Alt+M`**: Cycle through modes (Active -> Snoozed -> Paused -> Active).
-*   **`Ctrl+Alt+P`**: Toggle Pause/Resume. If paused, restores the previous state (Active or Snoozed). If active or snoozed, pauses the application.
-*   **`Ctrl+Alt+Up`**: Register "Helpful" feedback for the last intervention.
-*   **`Ctrl+Alt+Down`**: Register "Unhelpful" feedback for the last intervention.
-*   **`Esc`**: Quit the application.
-
 ## Modes of Operation
 
-*   **Active**: The application is actively monitoring sensor data and may provide interventions based on its logic and LMM suggestions.
-*   **Snoozed**: Interventions are temporarily suppressed for a configured duration (e.g., 1 hour). The application will automatically return to "Active" mode when the snooze period ends. Sensor activity might still be monitored lightly or paused depending on implementation.
-*   **Paused**: All active monitoring and interventions are stopped. The application remains in this state until manually resumed or cycled.
-*   **Error**: If a critical sensor (or other component) error occurs, the application may enter an error state, indicated by the tray icon. Some functionalities might be limited.
-
-## Project Structure
-
-*   `main.py`: Main application entry point and orchestrator.
-*   `config.py`: Application configuration settings.
-*   `requirements.txt`: Python dependencies.
-*   `core/`: Core logic modules.
-    *   `logic_engine.py`: Manages application state.
-    *   `intervention_engine.py`: Handles intervention delivery and feedback.
-    *   `data_logger.py`: Logs application data.
-    *   `system_tray.py`: Manages the system tray icon.
-    *   `lmm_interface.py`: Placeholder for LMM interaction.
-*   `sensors/`: Sensor data acquisition modules.
-    *   `video_sensor.py`: Video capture.
-    *   `audio_sensor.py`: Audio capture.
-*   `assets/`: Icons and other static assets.
-*   `AGENTS.md`: Instructions and guidelines for AI agents working on this codebase (to be created).
+*   **Active**: The application is actively monitoring sensor data and may provide interventions.
+*   **Snoozed**: Interventions are suppressed for a set duration (`SNOOZE_DURATION`). Returns to "Active" automatically.
+*   **DND (Do Not Disturb)**: Monitoring continues, but all interventions are suppressed indefinitely.
+*   **Paused**: All active monitoring and interventions are stopped.
 
 ## Contributing
 
 Details for contributing will be added later. For now, focus on understanding the existing structure and planned LMM integration.
-
-## Future Development
-
-*   Full LMM integration for intelligent analysis and intervention suggestions.
-*   Advanced sensor data processing.
-*   User-configurable intervention rules and preferences.
-*   Expanded GUI for settings and data visualization.
 
 ## Testing
 
@@ -105,20 +120,16 @@ Run the test suite using `pytest`:
 pytest
 ```
 
-## Design & Mental Model
+### Stress Testing
 
-For a deep dive into the system's core philosophy, state definitions, and intervention strategies, please refer to the [Mental Model & Design Specification](docs/MENTAL_MODEL.md). This document serves as the engineering spec for the system's logic, covering:
+To verify system reliability and clean shutdown behavior:
 
-*   **Mental Model**: 4 layers from sensors to learning.
-*   **Signals & Checks**: Specific audio/video features to monitor.
-*   **States**: 5D state estimation (Arousal, Overload, Focus, Energy, Mood).
-*   **Interventions**: Structured intervention library and policy.
-*   **Personalization**: How the system adapts to the user.
+```bash
+python tools/verify_crash.py
+```
 
-## Project Specification (Guardian Angel & Creative Director)
+## Documentation
 
-For the detailed Master Specification (v4) outlining the "Guardian Angel" and "Creative Director" architecture, including the local tech stack, functional modules, and specific intervention protocols, please refer to the [Project Specification](docs/PROJECT_SPECIFICATION.md).
-
----
-
-*This README provides a basic overview. Further details on specific components can be found in their respective source files.*
+*   **[Architecture & Data Flow](docs/ARCHITECTURE.md)**: Technical overview of components and data flow.
+*   **[Mental Model & Design Specification](docs/MENTAL_MODEL.md)**: The core philosophy and design spec.
+*   **[Project Specification](docs/PROJECT_SPECIFICATION.md)**: Detailed Master Specification (v4).

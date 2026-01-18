@@ -80,7 +80,7 @@ class LogicEngine:
             self._set_mode_unlocked(mode, from_snooze_expiry)
 
     def _set_mode_unlocked(self, mode: str, from_snooze_expiry: bool = False) -> None:
-        if mode not in ["active", "snoozed", "paused", "error"]:
+        if mode not in ["active", "snoozed", "paused", "error", "dnd"]:
             self.logger.log_warning(f"Attempted to set invalid mode: {mode}")
             return
 
@@ -111,7 +111,7 @@ class LogicEngine:
 
     def cycle_mode(self) -> None:
         with self._lock:
-            current_actual_mode = self.get_mode()
+            current_actual_mode = self.current_mode
             if current_actual_mode == "active":
                 self._set_mode_unlocked("snoozed")
             elif current_actual_mode == "snoozed":
@@ -121,7 +121,7 @@ class LogicEngine:
 
     def toggle_pause_resume(self) -> None:
         with self._lock:
-            current_actual_mode = self.get_mode()
+            current_actual_mode = self.current_mode
             if current_actual_mode == "paused":
                 if self.previous_mode_before_pause == "snoozed" and \
                    self.snooze_end_time != 0 and time.time() >= self.snooze_end_time:
@@ -146,30 +146,39 @@ class LogicEngine:
             self.previous_video_frame = self.last_video_frame
             self.last_video_frame = frame
 
-            # Calculate video activity (motion)
-            if self.previous_video_frame is not None and self.last_video_frame is not None:
-                # Ensure shapes match before diffing
-                if self.previous_video_frame.shape == self.last_video_frame.shape:
-                    diff = cv2.absdiff(self.previous_video_frame, self.last_video_frame)
-                    gray_diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-                    self.video_activity = np.mean(gray_diff)
-                else:
-                    self.video_activity = 0.0 # Reset if shapes mismatch (e.g. cam change)
-            else:
-                self.video_activity = 0.0
+            # Use VideoSensor's unified processing if available
+            if self.video_sensor and hasattr(self.video_sensor, 'process_frame'):
+                metrics = self.video_sensor.process_frame(frame)
+                self.video_activity = metrics.get("video_activity", 0.0)
 
-            # Face Detection
-            if self.video_sensor and hasattr(self.video_sensor, 'analyze_frame'):
-                self.face_metrics = self.video_sensor.analyze_frame(frame)
+                # Filter out non-face metrics for face_metrics dict
+                self.face_metrics = {k: v for k, v in metrics.items() if k.startswith("face_")}
+
+                # Prepare video analysis context for LMM
+                # We want face metrics plus other relevant high-level signals
+                self.video_analysis = self.face_metrics.copy()
+                additional_keys = ["posture_state", "vertical_position", "horizontal_position", "normalized_activity"]
+                for k in additional_keys:
+                    if k in metrics:
+                        self.video_analysis[k] = metrics[k]
+
             else:
+                # Fallback to legacy calculation (if sensor doesn't have process_frame or is missing)
+                if self.previous_video_frame is not None and self.last_video_frame is not None:
+                    # Ensure shapes match before diffing
+                    if self.previous_video_frame.shape == self.last_video_frame.shape:
+                        diff = cv2.absdiff(self.previous_video_frame, self.last_video_frame)
+                        gray_diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+                        self.video_activity = np.mean(gray_diff)
+                    else:
+                        self.video_activity = 0.0
+                else:
+                    self.video_activity = 0.0
+
                 self.face_metrics = {"face_detected": False, "face_count": 0}
+                self.video_analysis = {}
 
         self.logger.log_debug(f"Processed video frame. Activity: {self.video_activity:.2f}, Face: {self.face_metrics.get('face_detected')}")
-
-        # Reuse face metrics for video analysis
-        self.video_analysis = self.face_metrics
-
-        self.logger.log_debug(f"Processed video frame. Activity: {self.video_activity:.2f}")
 
     def process_audio_data(self, audio_chunk: np.ndarray) -> None:
         with self._lock:
@@ -267,17 +276,20 @@ class LogicEngine:
                 # If analysis has _meta.is_fallback, it means LMM failed.
 
                 is_fallback = analysis.get("_meta", {}).get("is_fallback", False)
-                if is_fallback:
-                    self.lmm_consecutive_failures += 1
-                    self.logger.log_warning(f"LMM returned fallback response. Consecutive failures: {self.lmm_consecutive_failures}")
 
-                    if self.lmm_consecutive_failures >= config.LMM_CIRCUIT_BREAKER_MAX_FAILURES:
-                         self.lmm_circuit_breaker_open_until = time.time() + config.LMM_CIRCUIT_BREAKER_COOLDOWN
-                         self.logger.log_error(f"LMM Circuit Breaker OPENED. Pausing LMM calls for {config.LMM_CIRCUIT_BREAKER_COOLDOWN}s.")
-                else:
-                    if self.lmm_consecutive_failures > 0:
-                        self.logger.log_info("LMM recovered. Resetting failure count.")
-                    self.lmm_consecutive_failures = 0
+                with self._lock:
+                    if is_fallback:
+                        self.lmm_consecutive_failures += 1
+                        self.logger.log_warning(f"LMM returned fallback response. Consecutive failures: {self.lmm_consecutive_failures}")
+
+                        if self.lmm_consecutive_failures >= config.LMM_CIRCUIT_BREAKER_MAX_FAILURES:
+                             self.lmm_circuit_breaker_open_until = time.time() + config.LMM_CIRCUIT_BREAKER_COOLDOWN
+                             self.logger.log_error(f"LMM Circuit Breaker OPENED. Pausing LMM calls for {config.LMM_CIRCUIT_BREAKER_COOLDOWN}s.")
+                    else:
+                        if self.lmm_consecutive_failures > 0:
+                            self.logger.log_info("LMM recovered. Resetting failure count.")
+                        self.lmm_consecutive_failures = 0
+
                 # Check if it was a fallback response
                 if analysis.get("fallback"):
                      self.logger.log_warning("LMM analysis used fallback mechanism.")
@@ -287,10 +299,13 @@ class LogicEngine:
                 self.logger.log_info("LMM analysis complete and state updated.")
 
                 # Process Visual Context
+                reflexive_intervention_id = None
                 visual_context = analysis.get("visual_context", [])
+                triggered_intervention_id = None
                 if visual_context:
                     self.logger.log_info(f"LMM Detected Visual Context: {visual_context}")
-                    self._process_visual_context_triggers(visual_context)
+                    reflexive_intervention_id = self._process_visual_context_triggers(visual_context)
+                    triggered_intervention_id = reflexive_intervention_id
 
                 # Log state update event
                 self.logger.log_event("state_update", self.state_engine.get_state())
@@ -302,28 +317,50 @@ class LogicEngine:
             else:
                  # LogicEngine received None (hard failure in interface even after retries and no fallback?)
                  # This usually means no fallback was enabled or interface crashed.
-                 self.lmm_consecutive_failures += 1
-                 if self.lmm_consecutive_failures >= config.LMM_CIRCUIT_BREAKER_MAX_FAILURES:
-                     self.lmm_circuit_breaker_open_until = time.time() + config.LMM_CIRCUIT_BREAKER_COOLDOWN
-                     self.logger.log_error(f"LMM Circuit Breaker OPENED (No Response). Pausing LMM calls for {config.LMM_CIRCUIT_BREAKER_COOLDOWN}s.")
+                 with self._lock:
+                     self.lmm_consecutive_failures += 1
+                     if self.lmm_consecutive_failures >= config.LMM_CIRCUIT_BREAKER_MAX_FAILURES:
+                         self.lmm_circuit_breaker_open_until = time.time() + config.LMM_CIRCUIT_BREAKER_COOLDOWN
+                         self.logger.log_error(f"LMM Circuit Breaker OPENED (No Response). Pausing LMM calls for {config.LMM_CIRCUIT_BREAKER_COOLDOWN}s.")
+                 triggered_intervention_id = None # Ensure defined in this scope
 
 
             if analysis and self.intervention_engine:
                 suggestion = self.lmm_interface.get_intervention_suggestion(analysis)
-                if suggestion:
+
+                # Reflexive triggers take priority over lack of suggestion,
+                # OR can override if needed (policy decision).
+                # For now: if LMM suggests nothing (or None), but we have a reflexive trigger, use it.
+                if not suggestion and reflexive_intervention_id:
+                     self.logger.log_info(f"Reflexive Trigger activated: {reflexive_intervention_id}")
+                     suggestion = {"id": reflexive_intervention_id}
+
+                # Priority: System Triggers > LMM Suggestion
+                final_intervention = None
+
+                if triggered_intervention_id:
+                    final_intervention = {"id": triggered_intervention_id}
+                    self.logger.log_info(f"System Trigger overrides LMM suggestion. Triggered: {triggered_intervention_id}")
+                elif suggestion:
+                    final_intervention = suggestion
+
+                if final_intervention:
                     if allow_intervention:
-                        self.logger.log_info(f"LMM suggested intervention: {suggestion}")
+                        self.logger.log_info(f"Starting intervention: {final_intervention}")
                         # start_intervention is generally thread-safe as it just sets an event/launches another thread
-                        self.intervention_engine.start_intervention(suggestion)
+                        self.intervention_engine.start_intervention(final_intervention)
                     else:
-                        self.logger.log_info(f"LMM suggested intervention (suppressed due to mode): {suggestion}")
+                        self.logger.log_info(f"Intervention suggested but suppressed due to mode: {final_intervention}")
         except Exception as e:
             self.logger.log_error(f"Error in async LMM analysis: {e}")
-            self.lmm_consecutive_failures += 1
+            with self._lock:
+                self.lmm_consecutive_failures += 1
 
-    def _process_visual_context_triggers(self, visual_context: list) -> None:
+    def _process_visual_context_triggers(self, visual_context: list) -> Optional[str]:
         """
         Analyzes visual context tags for persistent patterns (e.g., Doom Scrolling).
+        Returns an intervention ID string if a specific persistent trigger is met, else None.
+        Returns an intervention ID if a trigger condition is met, else None.
         """
         # Tags we track for persistence
         tracked_tags = ["phone_usage", "messy_room"]
@@ -337,19 +374,9 @@ class LogicEngine:
         # Check for Doom Scroll Trigger
         if self.context_persistence.get("phone_usage", 0) >= self.doom_scroll_trigger_threshold:
             self.logger.log_info("LogicEngine: 'Doom Scroll' persistence threshold reached!")
-            # Trigger specific intervention if not already triggered recently?
-            # Ideally, we ask the InterventionEngine to queue specific intervention
-            # or rely on the LMM to suggest it next time (now that we sent context).
-            # But the spec says "System Action: Disables passive observer...".
+            return "doom_scroll_breaker"
 
-            # For now, we'll log it as a specific event that might influence the NEXT LMM call context
-            # or we could forcibly inject a suggestion if we had a way.
-            # But simpler: Rely on the LMM receiving this context in the prompt next time?
-            # Actually, LMM *just* told us this. If it didn't suggest an intervention, maybe we should force one.
-
-            # Let's force a suggestion if LMM didn't provide one, or override.
-            # For this MVP, we will just log it. The LMM *should* have suggested it if it saw the phone.
-            pass
+        return None
 
     def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
         if not self.lmm_interface:
@@ -357,9 +384,10 @@ class LogicEngine:
             return
 
         # Check Circuit Breaker
-        if time.time() < self.lmm_circuit_breaker_open_until:
-             self.logger.log_debug(f"Skipping LMM trigger ({reason}): Circuit breaker is OPEN.")
-             return
+        with self._lock:
+            if time.time() < self.lmm_circuit_breaker_open_until:
+                 self.logger.log_debug(f"Skipping LMM trigger ({reason}): Circuit breaker is OPEN.")
+                 return
 
         # Check if previous analysis is still running
         if self.lmm_thread and self.lmm_thread.is_alive():
@@ -402,10 +430,10 @@ class LogicEngine:
         current_mode = self.get_mode()
         # self.logger.log_debug(f"LogicEngine update. Current mode: {current_mode}")
 
-        if current_mode == "active":
+        if current_mode in ["active", "dnd"]:
             current_time = time.time()
 
-            # Check probation
+            # Check probation (only relevant if recovering to active, but harmless to check)
             if self.recovery_probation_end_time > 0 and current_time > self.recovery_probation_end_time:
                 self.logger.log_info("Error recovery probation passed. Resetting error counters.")
                 self.error_recovery_attempts = 0
@@ -420,19 +448,33 @@ class LogicEngine:
             with self._lock:
                 current_audio_level = self.audio_level
                 current_video_activity = self.video_activity
+                # Get more detailed analysis for filtering triggers
+                is_speech = self.audio_analysis.get("is_speech", False)
+                # Face detection is key for "user activity" vs "shadows"
+                face_detected = self.face_metrics.get("face_detected", False)
+                face_count = self.face_metrics.get("face_count", 0)
 
             # 2. Check for Event-based Triggers
-            # Check for sudden loud noise
+            # Check for sudden loud noise AND it is speech-like
+            # If it's just a loud bang (high RMS, no speech confidence), we ignore it to prevent false positives.
             if current_audio_level > self.audio_threshold_high:
-                if current_time - self.last_lmm_call_time >= self.min_lmm_interval:
-                    trigger_lmm = True
-                    trigger_reason = "high_audio_level"
+                if is_speech:
+                    if current_time - self.last_lmm_call_time >= self.min_lmm_interval:
+                        trigger_lmm = True
+                        trigger_reason = "high_audio_level"
+                else:
+                    self.logger.log_debug(f"High audio level ({current_audio_level:.2f}) ignored: Not speech.")
 
-            # Check for high activity (or sudden movement)
+            # Check for high activity (or sudden movement) AND user is present
             elif current_video_activity > self.video_activity_threshold_high:
-                if current_time - self.last_lmm_call_time >= self.min_lmm_interval:
-                    trigger_lmm = True
-                    trigger_reason = "high_video_activity"
+                # Only trigger if we see a face (user is present)
+                # This prevents triggering on cats, shadows, or empty chairs.
+                if face_detected or face_count > 0:
+                    if current_time - self.last_lmm_call_time >= self.min_lmm_interval:
+                        trigger_lmm = True
+                        trigger_reason = "high_video_activity"
+                else:
+                    self.logger.log_debug(f"High video activity ({current_video_activity:.2f}) ignored: No face detected.")
 
             # 3. Periodic Check (Heartbeat)
             # If no event triggered, check if it's time for a routine check
@@ -444,7 +486,9 @@ class LogicEngine:
             # 4. Trigger LMM if warranted
             if trigger_lmm:
                 self.last_lmm_call_time = current_time
-                self._trigger_lmm_analysis(reason=trigger_reason)
+                # Intervention only allowed in 'active' mode
+                should_intervene = (current_mode == "active")
+                self._trigger_lmm_analysis(reason=trigger_reason, allow_intervention=should_intervene)
 
             # 5. Potentially change mode (e.g. error)
             # (Note: Main application handles sensor hardware errors.
@@ -492,121 +536,12 @@ class LogicEngine:
         Gracefully shuts down the LogicEngine, ensuring background threads complete.
         """
         self.logger.log_info("LogicEngine shutting down...")
+        # Since lmm_thread is daemon and uses network calls, we can't easily interrupt it
+        # unless we add a flag to LMMInterface, but we can wait briefly.
         if self.lmm_thread and self.lmm_thread.is_alive():
             self.logger.log_info("Waiting for LMM analysis thread to finish...")
-            self.lmm_thread.join(timeout=5.0)
+            self.lmm_thread.join(timeout=2.0) # Reduced timeout for faster exit
             if self.lmm_thread.is_alive():
-                self.logger.log_warning("LMM analysis thread did not finish in time.")
+                self.logger.log_warning("LMM analysis thread did not finish in time (will be killed as daemon).")
             else:
                 self.logger.log_info("LMM analysis thread finished.")
-
-
-if __name__ == '__main__':
-    # Mock sensor classes for testing
-    class MockSensor:
-        def __init__(self, name="mock"):
-            self.name = name
-
-    class MockLMMInterface:
-        def __init__(self):
-            self.last_call_data = None
-        def process_data(self, video_data=None, audio_data=None, user_context=None):
-            self.last_call_data = {
-                "video_data": "present" if video_data else None,
-                "audio_data": "present" if audio_data else None,
-                "user_context": user_context
-            }
-            print(f"MockLMMInterface process_data called. Reason: {user_context.get('trigger_reason')}")
-            return {
-                "suggestion": {"type": "test_intervention", "message": "Test"},
-                "state_estimation": {"arousal": 55, "overload": 10, "focus": 60, "energy": 75, "mood": 55}
-            }
-
-        def get_intervention_suggestion(self, analysis):
-            return analysis.get("suggestion")
-
-    class MockInterventionEngine:
-        def start_intervention(self, suggestion):
-            print(f"MockInterventionEngine: Starting {suggestion}")
-
-    mock_lmm = MockLMMInterface()
-    mock_intervention = MockInterventionEngine()
-
-    # Setup Logger
-    if not hasattr(config, 'LOG_FILE'): config.LOG_FILE = "test_logic_engine_log.txt"
-    if not hasattr(config, 'LOG_LEVEL'): config.LOG_LEVEL = "DEBUG"
-    logger = DataLogger(log_file_path=config.LOG_FILE)
-
-    engine = LogicEngine(logger=logger, lmm_interface=mock_lmm)
-    engine.set_intervention_engine(mock_intervention)
-
-    # Adjust thresholds for testing
-    engine.lmm_call_interval = 2
-    engine.min_lmm_interval = 0 # Allow immediate calls for test
-    engine.audio_threshold_high = 0.5
-    engine.video_activity_threshold_high = 10.0
-
-    print("--- Testing LogicEngine Active Mode Logic ---")
-
-    # Test 1: Periodic Check
-    print("\nTest 1: Periodic Check (No data initially)")
-    engine.update() # Should trigger periodic because last_call_time is 0
-    # Wait for async thread if any (should generally be none here as no data)
-    if engine.lmm_thread: engine.lmm_thread.join()
-    assert mock_lmm.last_call_data is None # No data prepared, so no call actually goes out (log says "No new sensor data")
-
-    # Feed some data
-    frame1 = np.zeros((100, 100, 3), dtype=np.uint8)
-    engine.process_video_data(frame1)
-    engine.process_audio_data(np.zeros(1024))
-
-    # Reset timer for controlled test
-    engine.last_lmm_call_time = time.time() - 5
-    engine.update()
-
-    # Wait for async thread to complete
-    if engine.lmm_thread: engine.lmm_thread.join()
-
-    assert mock_lmm.last_call_data is not None
-    assert mock_lmm.last_call_data["user_context"]["trigger_reason"] == "periodic_check"
-    print("Periodic check passed.")
-
-    # Test 2: High Audio Trigger
-    print("\nTest 2: High Audio Trigger")
-    engine.last_lmm_call_time = time.time() # Reset timer, so periodic won't fire
-
-    # Simulate loud audio
-    loud_audio = np.ones(1024) * 0.8
-    engine.process_audio_data(loud_audio)
-
-    engine.update()
-
-    # Wait for async thread to complete
-    if engine.lmm_thread: engine.lmm_thread.join()
-
-    assert mock_lmm.last_call_data["user_context"]["trigger_reason"] == "high_audio_level"
-    assert mock_lmm.last_call_data["user_context"]["sensor_metrics"]["audio_level"] > 0.5
-    print("High audio trigger passed.")
-
-    # Test 3: High Video Activity Trigger
-    print("\nTest 3: High Video Activity Trigger")
-    engine.last_lmm_call_time = time.time() # Reset timer
-
-    # Reset audio to silence so it doesn't trigger audio threshold again
-    silence = np.zeros(1024)
-    engine.process_audio_data(silence)
-
-    # Current frame is black (from Test 1). Send white frame to cause high diff
-    white_frame = np.ones((100, 100, 3), dtype=np.uint8) * 255
-    engine.process_video_data(white_frame)
-
-    engine.update()
-
-    # Wait for async thread to complete
-    if engine.lmm_thread: engine.lmm_thread.join()
-
-    assert mock_lmm.last_call_data["user_context"]["trigger_reason"] == "high_video_activity"
-    assert mock_lmm.last_call_data["user_context"]["sensor_metrics"]["video_activity"] > 10.0
-    print("High video activity trigger passed.")
-
-    print("\nLogicEngine tests complete.")
