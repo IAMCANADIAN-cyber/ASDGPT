@@ -2,15 +2,25 @@ import cv2
 import time
 import os
 import numpy as np
+import collections
 import math
 import threading
 
 class VideoSensor:
-    def __init__(self, camera_index=0, data_logger=None):
+    def __init__(self, camera_index=0, data_logger=None, history_size=5):
         self.camera_index = camera_index
         self.logger = data_logger
         self.cap = None
         self.last_frame = None
+
+        # History buffers for smoothing
+        self.history_size = history_size
+        self.history = {
+            "face_size_ratio": collections.deque(maxlen=history_size),
+            "vertical_position": collections.deque(maxlen=history_size),
+            "horizontal_position": collections.deque(maxlen=history_size)
+        }
+
         self._lock = threading.RLock()
 
         # Error handling / Recovery state
@@ -215,6 +225,56 @@ class VideoSensor:
         Calculates posture state based on face metrics.
         This is a heuristic estimation.
         """
+        # Default to neutral if no face detected or calculation fails
+        metrics["posture_state"] = "neutral"
+
+        if not metrics.get("face_detected", False):
+            return
+
+        # Posture Heuristics
+        # Note: These are simple 2D estimates and require calibration for accuracy.
+        # Assumptions: Camera is roughly eye-level and centered.
+
+        # Head Tilt
+        if abs(metrics.get("face_roll_angle", 0)) > 20:
+             if metrics["face_roll_angle"] > 0:
+                 metrics["posture_state"] = "tilted_right"
+             else:
+                 metrics["posture_state"] = "tilted_left"
+        # Leaning Forward: Face becomes significantly larger
+        # Thresholds should ideally be calibrated (e.g., normal ratio ~0.3-0.4)
+        elif metrics.get("face_size_ratio", 0) > 0.45:
+            metrics["posture_state"] = "leaning_forward"
+        # Leaning Back: Face becomes small
+        elif metrics.get("face_size_ratio", 0) < 0.15:
+            metrics["posture_state"] = "leaning_back"
+        # Slouching: Face center moves down significantly
+        # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
+        elif metrics.get("vertical_position", 0) > 0.65:
+            metrics["posture_state"] = "slouching"
+        else:
+            metrics["posture_state"] = "neutral"
+
+    def _calculate_head_tilt(self, face_gray, face_w, face_h):
+        """
+        Estimates head tilt (roll) in degrees based on eye positions.
+        Returns: float (degrees, positive = right tilt, negative = left tilt)
+        """
+        if self.eye_cascade.empty():
+            return 0.0
+
+        eyes = self.eye_cascade.detectMultiScale(face_gray)
+        if len(eyes) != 2:
+            return 0.0
+
+        # Sort eyes by x-coordinate (left eye on screen is first)
+        eyes = sorted(eyes, key=lambda e: e[0])
+        (ex1, ey1, ew1, eh1) = eyes[0]
+        (ex2, ey2, ew2, eh2) = eyes[1]
+
+        # Centers
+        p1 = (ex1 + ew1 // 2, ey1 + eh1 // 2)
+        p2 = (ex2 + ew2 // 2, ey2 + eh2 // 2)
         if frame is None:
             # Consistent with test expectations which might check for keys even on empty
             # If tests expect keys, we should provide default dict
@@ -368,6 +428,34 @@ class VideoSensor:
                 largest_face = max(faces, key=lambda f: f[2] * f[3])
                 x, y, w, h = largest_face
                 img_h, img_w = frame.shape[:2]
+
+                # Calculate raw metrics
+                raw_size_ratio = float(w) / img_w
+                raw_vert_pos = float(y + h/2) / img_h
+                raw_horiz_pos = float(x + w/2) / img_w
+
+                # Add to history
+                self.history["face_size_ratio"].append(raw_size_ratio)
+                self.history["vertical_position"].append(raw_vert_pos)
+                self.history["horizontal_position"].append(raw_horiz_pos)
+
+                # Return smoothed values
+                metrics["face_size_ratio"] = float(np.mean(self.history["face_size_ratio"]))
+                metrics["vertical_position"] = float(np.mean(self.history["vertical_position"]))
+                metrics["horizontal_position"] = float(np.mean(self.history["horizontal_position"]))
+
+                # Head Tilt Estimation
+                face_roi_gray = gray[y:y+h, x:x+w]
+                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+
+                self._calculate_posture(metrics)
+            else:
+                # If no face, we don't clear history immediately to avoid "glitches" if detection misses one frame.
+                # But we return 0.0 for current metrics as per contract.
+                # Optionally, we could return the last known smoothed value?
+                # For now, adhering to contract: no face = 0.0, but maybe we should decay history?
+                # Let's keep history for now, but return 0.0.
+                pass
                 metrics["face_size_ratio"] = float(w) / img_w
                 metrics["vertical_position"] = float(y + h/2) / img_h
                 metrics["horizontal_position"] = float(x + w/2) / img_w

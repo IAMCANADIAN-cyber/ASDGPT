@@ -69,6 +69,8 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 
 | Title | Why | Acceptance Criteria | Estimate | Risk | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Personalized Baselines** | Improve accuracy. | `StateEngine` loads baseline from user profile. | M | Low | Architect |
+| **Web Dashboard** | Visualization. | Simple local web UI for `events.jsonl`. | L | Med | UI/UX |
 | **Unit Test Coverage** | Stability. | `pytest` coverage > 80% for `core/`. | M | Low | Testsmith |
 | **Calibration Wizard Script** | "Normal" noise varies wildy. | `tools/calibrate.py` runs, updates `user_data/config.json`. | M | Low | Calibrator |
 | **Audio Calibration Logic** | Core logic for noise floor. | `AudioSensor.calibrate()` returns valid threshold. | S | Low | Calibrator |
