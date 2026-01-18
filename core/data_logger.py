@@ -122,24 +122,3 @@ class DataLogger:
             self.event_logger.info(json.dumps(event_entry))
         except Exception as e:
             self.app_logger.error(f"Failed to log event to jsonl: {e}")
-
-if __name__ == '__main__':
-    # Test DataLogger
-    if not hasattr(config, 'LOG_FILE'): config.LOG_FILE = "test_app_log.txt"
-    if not hasattr(config, 'LOG_LEVEL'): config.LOG_LEVEL = "DEBUG"
-
-    # Temporarily override config for rotation test
-    config.LOG_MAX_BYTES = 500 # Small size to force rotation quickly
-    config.LOG_BACKUP_COUNT = 3
-
-    print("--- Testing DataLogger with Rotation ---")
-    logger = DataLogger("test_app_rotated.log", "test_events_rotated.jsonl")
-
-    logger.log_info("Initial info message.")
-
-    print("Generating logs to force rotation...")
-    for i in range(20):
-        logger.log_info(f"This is log message number {i} which is long enough to consume space.")
-        logger.log_event("test_event", {"index": i, "data": "x"*50})
-
-    print("Check directory for .log, .log.1, etc.")
