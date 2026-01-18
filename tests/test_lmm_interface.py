@@ -149,3 +149,68 @@ def test_fallback_logic(mock_post, lmm_interface):
     assert result is not None
     assert result.get("_meta", {}).get("is_fallback") is True
     assert result["state_estimation"]["arousal"] == 50 # Default fallback
+
+# --- NEW TESTS BELOW ---
+
+@patch('requests.get')
+def test_check_connection(mock_get, lmm_interface):
+    # Success case
+    mock_get.return_value.status_code = 200
+    assert lmm_interface.check_connection() is True
+
+    # Failure case
+    mock_get.return_value.status_code = 404
+    assert lmm_interface.check_connection() is False
+
+    # Exception case
+    mock_get.side_effect = requests.exceptions.ConnectionError("Fail")
+    assert lmm_interface.check_connection() is False
+
+def test_clean_json_string(lmm_interface):
+    # Simple JSON
+    assert lmm_interface._clean_json_string('{"a": 1}') == '{"a": 1}'
+
+    # Markdown block
+    assert lmm_interface._clean_json_string('```json\n{"a": 1}\n```') == '{"a": 1}'
+
+    # Generic block
+    assert lmm_interface._clean_json_string('```\n{"a": 1}\n```') == '{"a": 1}'
+
+    # Surrounding text
+    # Note: Logic assumes the block is the only content or implementation strips specifically.
+    # The current implementation uses regex that strips the markers, but keeps content.
+    # If the input is "Text ```json {} ```", it cleans the markers.
+
+    text = '```json\n{"key": "value"}\n```'
+    assert lmm_interface._clean_json_string(text) == '{"key": "value"}'
+
+def test_validate_response_schema_edge_cases(lmm_interface):
+    # Invalid visual_context type
+    invalid_vc = {
+        "state_estimation": {"arousal": 50, "overload": 10, "focus": 50, "energy": 50, "mood": 50},
+        "visual_context": "not_a_list",
+        "suggestion": None
+    }
+    assert lmm_interface._validate_response_schema(invalid_vc) is False
+
+    # Invalid visual_context content
+    invalid_vc_content = {
+        "state_estimation": {"arousal": 50, "overload": 10, "focus": 50, "energy": 50, "mood": 50},
+        "visual_context": [123], # Not strings
+        "suggestion": None
+    }
+    assert lmm_interface._validate_response_schema(invalid_vc_content) is False
+
+    # Invalid suggestion type
+    invalid_suggestion = {
+        "state_estimation": {"arousal": 50, "overload": 10, "focus": 50, "energy": 50, "mood": 50},
+        "suggestion": "not_a_dict"
+    }
+    assert lmm_interface._validate_response_schema(invalid_suggestion) is False
+
+    # Malformed suggestion keys (missing both id and type)
+    bad_suggestion_obj = {
+        "state_estimation": {"arousal": 50, "overload": 10, "focus": 50, "energy": 50, "mood": 50},
+        "suggestion": {"foo": "bar"} # Missing id/type
+    }
+    assert lmm_interface._validate_response_schema(bad_suggestion_obj) is False
