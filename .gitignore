@@ -21,3 +21,13 @@ build/
 
 # User Data
 user_data/
+
+# Logs
+*.log
+custom_logs/
+replay_log.txt*
+*.log.*
+
+# Test Artifacts
+.coverage
+htmlcov/

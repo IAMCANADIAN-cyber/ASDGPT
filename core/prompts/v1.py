@@ -6,7 +6,8 @@ Sensor Interpretations:
 - Audio Pitch (est): Human speech fundamentals are typically 85-255Hz.
 - Audio Pitch Variance: High (>50) = Expressive speech/Emotional. Low (<10) = Monotone/Drone (potential doom-scrolling or dissociation).
 - Audio ZCR: High (>0.1) = Noisy/Sibilant (typing, hissing). Low (<0.05) = Tonal/Voiced.
-- Speech Rate (Burst Density): High (>5) = Fast speech/Excitement/Anxiety. Low (<2) = Slow/Calm/Lethargic.
+- Speech Rate: Syllables/sec. High (>4.0) = Fast speech/Anxiety/Excitement. Low (<2.0) = Slow/Calm/Lethargic.
+- Voice Activity: True/False + Confidence (0.0-1.0). High Confidence (>0.6) = Clear Speech.
 - Video Activity: High (>20) = High movement/pacing. Low (<5) = Stillness.
 - Face Size Ratio: High (>0.15) = Leaning in/High Focus. Low (<0.05) = Leaning back/Distanced.
 - Vertical Position: High (>0.6) = Slouching/Low Energy. Low (<0.4) = Upright/High Energy.
@@ -35,16 +36,26 @@ Output a valid JSON object with the following structure:
 - "dark_room": Lighting is dim.
 - "person_standing": User is standing up.
 - "person_sitting": User is sitting.
+- "lying_down": User is lying down.
 - "eating": User is eating.
 - "drinking": User is drinking.
+- "camera_interaction": User is talking to or interacting with the camera/recording equipment.
+- "studio_lighting": Lighting appears professional or arranged for content creation.
 
 State Estimation Guidance:
 - High Arousal + High Overload + High Speech Rate -> Anxiety/Panic.
 - Low Energy + Low Pitch Variance + Phone Usage -> Doom Scrolling/Dissociation.
 - High Focus + High Video Activity + High Arousal -> Flow State/Excitement (Positive).
 - High Focus + Low Video Activity + Leaning In -> Deep Work.
+- High Energy + High Mood + Camera Interaction -> Content Creation Mode.
+- Low Speech Rate + Low Pitch Variance + (Low Light or Lying Down) -> Intimacy/Relaxation.
 
 If no intervention is needed, set "suggestion" to null.
+
+Intervention Policy:
+1. RESPECT SUPPRESSIONS: Do not suggest interventions listed in the "Suppressed Interventions" list provided in the user context.
+2. PRIORITIZE PREFERENCES: If the user context lists "Preferred Interventions" and one is relevant to the current state, favor it.
+3. MINIMUM EFFECTIVE DOSE: Prefer Tier 1 interventions unless the state is critical (High Overload/Arousal).
 
 Available Interventions (by ID):
 {interventions_list}

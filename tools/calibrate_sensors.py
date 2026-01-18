@@ -4,10 +4,10 @@ Sensor Calibration Tool for ASDGPT
 ----------------------------------
 This script runs a calibration routine to measure ambient audio noise and
 background video activity. It generates personalized threshold values and
-saves them to `user_data/calibration.json` for the LogicEngine to use.
+saves them to `user_data/calibration.json`.
 
 Usage:
-    python tools/calibrate_sensors.py
+    python tools/calibrate_sensors.py [duration_in_seconds]
 
 Dependencies:
     - numpy
@@ -17,15 +17,16 @@ Dependencies:
     - sensors.video_sensor
 """
 
-import sys
-import os
 import time
-import json
 import numpy as np
-import cv2
+import os
+import sys
+import json
+import threading
+from typing import List, Optional
 
-# Add project root to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Add project root to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
     from sensors.audio_sensor import AudioSensor
@@ -33,198 +34,141 @@ try:
     import config
 except ImportError as e:
     print(f"Error importing core modules: {e}")
-    print("Please run this script from the project root or tools/ directory.")
     sys.exit(1)
 
+# Mock DataLogger for standalone script
+class ConsoleLogger:
+    def log_info(self, msg): pass
+    def log_warning(self, msg): print(f"[WARN] {msg}")
+    def log_error(self, msg, details=""): print(f"[ERROR] {msg} {details}")
 
-def calibrate_audio(duration=10):
-    print(f"\n🎧 Calibrating Audio Sensor ({duration}s)...")
-    print("Please remain silent and keep the environment in its 'normal' state.")
+def calibrate(duration: int = 30):
+    print(f"--- Starting Sensor Calibration ({duration}s) ---")
+    print("Please keep the environment in its 'resting' state.")
+    print("- Keep background noise normal (don't speak).")
+    print("- Don't move around excessively (sit normally).")
 
-    # Use a dummy logger
-    class ConsoleLogger:
-        def log_info(self, msg): pass
-        def log_warning(self, msg): print(f"[WARN] {msg}")
-        def log_error(self, msg, details=""): print(f"[ERROR] {msg} {details}")
+    # Initialize Sensors
+    audio_sensor = None
+    video_sensor = None
 
-    sensor = AudioSensor(data_logger=ConsoleLogger(), history_seconds=duration)
+    try:
+        audio_sensor = AudioSensor(data_logger=ConsoleLogger(), chunk_duration=0.5)
+        if audio_sensor.has_error():
+            print(f"❌ Audio sensor init failed: {audio_sensor.get_last_error()}")
+            audio_sensor = None
+    except Exception as e:
+        print(f"❌ Audio sensor exception: {e}")
 
-    if sensor.has_error():
-        print(f"❌ Audio sensor initialization failed: {sensor.get_last_error()}")
-        return None
+    try:
+        video_sensor = VideoSensor(camera_index=config.CAMERA_INDEX, data_logger=ConsoleLogger())
+        # Warmup
+        time.sleep(1) # Wait for camera to warm up
+        if video_sensor.cap is None or not video_sensor.cap.isOpened():
+            print(f"❌ Video sensor init failed (Index {config.CAMERA_INDEX}).")
+            video_sensor = None
+    except Exception as e:
+        print(f"❌ Video sensor exception: {e}")
 
-    rms_values = []
+    if not audio_sensor and not video_sensor:
+        print("No sensors available to calibrate.")
+        return
+
+    audio_samples = [] # RMS values
+    video_samples = [] # Raw activity scores
+
     start_time = time.time()
 
     try:
         while time.time() - start_time < duration:
-            chunk, error = sensor.get_chunk()
-            if error:
-                pass
-            elif chunk is not None:
-                # LogicEngine uses: audio_level = np.sqrt(np.mean(chunk**2)) which is RMS
-                # AudioSensor.analyze_chunk returns this as 'rms'
-                metrics = sensor.analyze_chunk(chunk)
-                rms = metrics.get("rms", 0.0)
-                rms_values.append(rms)
+            # Audio
+            if audio_sensor:
+                chunk, err = audio_sensor.get_chunk()
+                if chunk is not None:
+                    metrics = audio_sensor.analyze_chunk(chunk)
+                    rms = metrics.get('rms', 0.0)
+                    audio_samples.append(rms)
 
-                # Visual progress
-                bar_len = int(rms * 100)
-                print(f"\rRMS: {rms:.4f} |{'=' * bar_len:<20}|", end="")
+            # Video
+            if video_sensor:
+                # Use process_frame to get full metrics including activity
+                metrics = video_sensor.process_frame(video_sensor.get_frame())
+                if metrics:
+                    # Use RAW activity (0-255 scale) because LogicEngine compares this against threshold
+                    act = metrics.get('video_activity', 0.0)
+                    video_samples.append(act)
 
-            time.sleep(0.01)
+            # Progress bar
+            elapsed = time.time() - start_time
+            print(f"\rMeasuring... {elapsed:.1f}/{duration}s | Audio: {len(audio_samples)} | Video: {len(video_samples)}", end="")
 
-    except KeyboardInterrupt:
-        print("\nCalibration interrupted.")
-    finally:
-        sensor.release()
-        print()
-
-    if not rms_values:
-        print("❌ No audio data collected.")
-        return None
-
-    avg_rms = np.mean(rms_values)
-    max_rms = np.max(rms_values)
-    # p95_rms = np.percentile(rms_values, 95)
-    std_rms = np.std(rms_values)
-
-    print(f"\nAudio Calibration Results:")
-    print(f"  Average RMS: {avg_rms:.4f}")
-    print(f"  Max RMS:     {max_rms:.4f}")
-    print(f"  Std Dev:     {std_rms:.4f}")
-
-    # Recommendation:
-    # LogicEngine triggers if current_audio_level > AUDIO_THRESHOLD_HIGH
-    # We want to avoid triggering on background noise.
-    # Mean + 4*StdDev covers 99.99% of normal gaussian noise.
-    recommended_threshold = max(0.01, avg_rms + (4 * std_rms), max_rms * 1.2)
-
-    return recommended_threshold
-
-
-def calibrate_video(duration=10):
-    print(f"\n📷 Calibrating Video Sensor ({duration}s)...")
-    print("Please ensure the camera is pointing at the user/background as normal.")
-    print("Sit relatively still (normal working posture).")
-
-    class ConsoleLogger:
-        def log_info(self, msg): pass
-        def log_warning(self, msg): print(f"[WARN] {msg}")
-        def log_error(self, msg, details=""): print(f"[ERROR] {msg} {details}")
-
-    sensor = VideoSensor(camera_index=config.CAMERA_INDEX, data_logger=ConsoleLogger())
-
-    # Warmup
-    time.sleep(1)
-    if sensor.cap is None or not sensor.cap.isOpened():
-        print("❌ Video sensor initialization failed (Camera not found).")
-        return None
-
-    activity_values = []
-    start_time = time.time()
-
-    last_frame = None
-
-    try:
-        while time.time() - start_time < duration:
-            frame = sensor.get_frame()
-            if frame is not None:
-                # Replicate LogicEngine's exact calculation:
-                # diff = cv2.absdiff(prev, curr); gray_diff = cvtColor(diff, GRAY); mean(gray_diff)
-
-                if last_frame is not None and frame.shape == last_frame.shape:
-                    diff = cv2.absdiff(last_frame, frame)
-                    gray_diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-                    activity = np.mean(gray_diff)
-                    activity_values.append(activity)
-
-                    # Visual progress
-                    bar_len = int(activity) # 0-255 scale
-                    print(f"\rActivity: {activity:.2f} |{'#' * (bar_len // 5):<20}|", end="")
-
-                last_frame = frame.copy()
-
-            # Poll at roughly 10-15 FPS
-            time.sleep(0.05)
+            # If audio sensor is missing, we need to sleep manually
+            if not audio_sensor:
+                time.sleep(0.1)
 
     except KeyboardInterrupt:
         print("\nCalibration interrupted.")
     finally:
-        sensor.release()
+        if audio_sensor: audio_sensor.release()
+        if video_sensor: video_sensor.release()
         print()
 
-    if not activity_values:
-        print("❌ No video data collected.")
-        return None
+    # --- Analysis & Recommendations ---
+    results = {}
 
-    avg_act = np.mean(activity_values)
-    max_act = np.max(activity_values)
-    std_act = np.std(activity_values)
+    # Audio Analysis
+    if audio_samples:
+        a_mean = np.mean(audio_samples)
+        a_std = np.std(audio_samples)
+        a_max = np.max(audio_samples)
 
-    print(f"\nVideo Calibration Results (0-255 scale):")
-    print(f"  Average Activity: {avg_act:.2f}")
-    print(f"  Max Activity:     {max_act:.2f}")
-    print(f"  Std Dev:          {std_act:.2f}")
+        # Threshold: Mean + 4*StdDev, but at least 20% above Max to avoid random triggers
+        rec_audio = max(a_mean + (4 * a_std), a_max * 1.2)
+        # Enforce sanity floor (0.01) and ceiling (0.9)
+        rec_audio = max(0.01, min(0.9, rec_audio))
 
-    # Recommendation:
-    # LogicEngine triggers if current_video_activity > VIDEO_ACTIVITY_THRESHOLD_HIGH
-    # Default is 20.0.
-    # We want a threshold that ignores minor shifting but catches "high activity".
-    # Mean + 4*Std is a good baseline for "outlier" movement.
-    # Ensure it's at least 5.0 to avoid noise triggers in pitch black/static.
-    recommended_threshold = max(5.0, avg_act + (4 * std_act), max_act * 1.5)
-
-    return recommended_threshold
-
-
-def main():
-    print("=========================================")
-    print("      ASDGPT SENSOR CALIBRATION          ")
-    print("=========================================")
-
-    audio_rec = calibrate_audio()
-    video_rec = calibrate_video()
-
-    print("\n\n=========================================")
-    print("       CALIBRATION SUMMARY               ")
-    print("=========================================")
-
-    calibration_data = {}
-
-    if audio_rec is not None:
-        print(f"Recommended AUDIO_THRESHOLD_HIGH: {audio_rec:.4f}")
-        calibration_data["AUDIO_THRESHOLD_HIGH"] = float(f"{audio_rec:.4f}")
+        print(f"\n🎧 Audio (RMS): Mean={a_mean:.4f}, Max={a_max:.4f}, Std={a_std:.4f}")
+        print(f"   -> Recommended Threshold: {rec_audio:.4f}")
+        results["audio_threshold_high"] = rec_audio
     else:
-        print("Audio calibration failed or skipped.")
+        print("\n🎧 Audio: No data collected.")
 
-    if video_rec is not None:
-        print(f"Recommended VIDEO_ACTIVITY_THRESHOLD_HIGH: {video_rec:.4f}")
-        calibration_data["VIDEO_ACTIVITY_THRESHOLD_HIGH"] = float(f"{video_rec:.4f}")
+    # Video Analysis
+    if video_samples:
+        v_mean = np.mean(video_samples)
+        v_std = np.std(video_samples)
+        v_max = np.max(video_samples)
+
+        # Threshold: Mean + 4*StdDev, or 1.5x Max. Floor of 5.0.
+        rec_video = max(v_mean + (4 * v_std), v_max * 1.5, 5.0)
+
+        print(f"\n📷 Video (Raw Activity): Mean={v_mean:.2f}, Max={v_max:.2f}, Std={v_std:.2f}")
+        print(f"   -> Recommended Threshold: {rec_video:.2f}")
+        results["video_activity_threshold_high"] = rec_video
     else:
-        print("Video calibration failed or skipped.")
+        print("\n📷 Video: No data collected.")
 
-    if calibration_data:
-        # Use config if available, else default
-        save_path = getattr(config, 'CALIBRATION_FILE', "user_data/calibration.json")
+    # --- Save ---
+    if results:
+        # Save to user_data/calibration.json
+        save_path = getattr(config, 'CALIBRATION_FILE', os.path.join("user_data", "calibration.json"))
         if not os.path.isabs(save_path) and "user_data" not in save_path:
-             # Try to put it in user_data if path looks bare
              save_path = os.path.join("user_data", "calibration.json")
 
-        # Force default location for safety if config attribute missing
-        if not hasattr(config, 'CALIBRATION_FILE'):
-             save_path = os.path.join("user_data", "calibration.json")
-
-        print(f"\nSaving to {save_path}...")
         try:
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             with open(save_path, 'w') as f:
-                json.dump(calibration_data, f, indent=4)
-            print("✅ Calibration saved. Restart the application to apply.")
+                json.dump(results, f, indent=4)
+            print(f"\n✅ Calibration saved to: {save_path}")
+            print("Restart the application for changes to take effect.")
         except Exception as e:
-            print(f"❌ Failed to save calibration: {e}")
-    else:
-        print("No data to save.")
+            print(f"\n❌ Failed to save calibration: {e}")
 
 if __name__ == "__main__":
-    main()
+    dur = 10
+    if len(sys.argv) > 1:
+        try:
+            dur = int(sys.argv[1])
+        except:
+            pass
+    calibrate(dur)

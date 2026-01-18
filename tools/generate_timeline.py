@@ -1,165 +1,116 @@
-import re
-import datetime
-import argparse
+import json
 import os
-import ast
+import argparse
+from datetime import datetime
+import sys
 
-def parse_log_line(line):
-    """
-    Parses a single log line.
-    Expected format: ISO_TIMESTAMP [LEVEL] MESSAGE
-    """
-    # Regex to capture timestamp, level, and message
-    match = re.match(r"^(\S+) \[(\w+)\] (.*)$", line)
-    if not match:
-        return None
+# Add parent directory to path to import config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-    timestamp_str, level, message = match.groups()
+try:
+    import config
+    DEFAULT_EVENTS_FILE = getattr(config, 'EVENTS_FILE', 'user_data/events.jsonl')
+except ImportError:
+    DEFAULT_EVENTS_FILE = 'user_data/events.jsonl'
+DEFAULT_OUTPUT_FILE = "user_data/timeline_report.md"
 
-    try:
-        timestamp = datetime.datetime.fromisoformat(timestamp_str)
-    except ValueError:
-        return None
-
-    event_type = "generic"
-    details = {}
-    payload = None
-
-    # 1. State Update
-    if "StateEngine: Updated state to" in message:
-        event_type = "STATE_UPDATE"
-        try:
-            dict_str = message.split("Updated state to ")[1]
-            state_dict = ast.literal_eval(dict_str)
-            details = {"state": state_dict}
-        except Exception:
-            details = {"raw": message}
-
-    # 2. Intervention Initiated
-    elif "Intervention" in message and "initiated." in message:
-        event_type = "INTERVENTION"
-        match_int = re.search(r"Intervention '(.+?)'(?: \(Tier (\d+)\))? initiated", message)
-        if match_int:
-            details = {
-                "intervention_id": match_int.group(1),
-                "tier": match_int.group(2) if match_int.group(2) else "1"
-            }
-        else:
-            details = {"raw": message}
-
-    # 3. User Feedback
-    elif level == "EVENT" and "Event: user_feedback" in message:
-        event_type = "FEEDBACK"
-        try:
-            payload_str = message.split("Payload: ")[1]
-            payload = ast.literal_eval(payload_str)
-            details = payload
-        except Exception:
-            details = {"raw": message}
-
-    # 4. LMM Trigger
-    elif "Triggering LMM analysis" in message:
-        event_type = "LMM_TRIGGER"
-        match_trig = re.search(r"Reason: (.+?)\)", message)
-        if match_trig:
-            details = {"reason": match_trig.group(1)}
-        else:
-            details = {"raw": message}
-
-    # 5. LMM Response (Debug/Info)
-    elif "LMM suggested intervention:" in message:
-        event_type = "LMM_SUGGESTION"
-        try:
-             suggestion_str = message.split("LMM suggested intervention: ")[1]
-             if suggestion_str != "None":
-                 details = {"suggestion": ast.literal_eval(suggestion_str)}
-             else:
-                 return None
-        except:
-             details = {"raw": message}
-
-    else:
-        return None
-
-    return {
-        "timestamp": timestamp,
-        "type": event_type,
-        "details": details,
-        "level": level,
-        "payload": payload
-    }
-
-def process_log_file(log_file_path):
+def parse_events(events_file):
+    """Parses the events.jsonl file into a list of dictionaries."""
     events = []
-    if not os.path.exists(log_file_path):
-        print(f"Log file not found: {log_file_path}")
+    if not os.path.exists(events_file):
+        print(f"Warning: Events file not found at {events_file}")
         return []
 
-    with open(log_file_path, 'r', encoding='utf-8') as f:
+    with open(events_file, 'r', encoding='utf-8') as f:
         for line in f:
-            parsed = parse_log_line(line.strip())
-            if parsed:
-                events.append(parsed)
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                events.append(json.loads(line))
+            except json.JSONDecodeError:
+                print(f"Skipping invalid JSON line: {line[:50]}...")
+                continue
     return events
 
-def generate_markdown_report(events, output_path):
+def generate_markdown(events, output_file):
+    """Generates a Markdown timeline report from the parsed events."""
     if not events:
-        print("No significant events found.")
+        print("No events found to report.")
         return
 
-    with open(output_path, 'w') as f:
-        f.write("# ACR Timeline Report\n\n")
-        f.write(f"**Generated:** {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-        f.write("| Time | Event Type | Details |\n")
-        f.write("|---|---|---|\n")
+    # Sort events by timestamp
+    # Timestamp format in DataLogger is '%Y-%m-%dT%H:%M:%S.%f' (isoformat)
+    # We can sort lexicographically since it's ISO, but parsing is safer.
+    events.sort(key=lambda x: x.get('timestamp', ''))
 
-        for event in events:
-            time_str = event["timestamp"].strftime("%H:%M:%S")
-            etype = event["type"]
+    markdown_content = "# ACR Timeline Report\n\n"
+    markdown_content += f"**Generated on:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+    markdown_content += f"**Total Events:** {len(events)}\n\n"
 
-            details_str = ""
-            if etype == "STATE_UPDATE":
-                s = event["details"].get("state", {})
-                details_str = f"Arousal:{s.get('arousal')} Overload:{s.get('overload')} Focus:{s.get('focus')} Energy:{s.get('energy')} Mood:{s.get('mood')}"
+    current_date = ""
 
-            elif etype == "INTERVENTION":
-                details_str = f"**{event['details'].get('intervention_id')}**"
-                if event['details'].get('tier'):
-                    details_str += f" (Tier {event['details']['tier']})"
+    for event in events:
+        ts_str = event.get('timestamp', '')
+        try:
+            ts = datetime.fromisoformat(ts_str)
+            date_str = ts.strftime('%Y-%m-%d')
+            time_str = ts.strftime('%H:%M:%S')
+        except ValueError:
+            # Fallback for invalid timestamp
+            date_str = "Unknown Date"
+            time_str = ts_str
 
-            elif etype == "FEEDBACK":
-                val = event["details"].get("feedback_value", "unknown").upper()
-                int_type = event["details"].get("intervention_type", "unknown")
-                details_str = f"User rated '{int_type}': **{val}**"
+        if date_str != current_date:
+            markdown_content += f"## {date_str}\n\n"
+            markdown_content += "| Time | Event Type | Details |\n"
+            markdown_content += "| --- | --- | --- |\n"
+            current_date = date_str
 
-            elif etype == "LMM_TRIGGER":
-                details_str = f"Reason: {event['details'].get('reason')}"
+        event_type = event.get('event_type', 'unknown')
+        payload = event.get('payload', {})
 
-            elif etype == "LMM_SUGGESTION":
-                 sug = event["details"].get("suggestion", {})
-                 details_str = f"Proposed: {sug.get('id') or sug.get('type')}"
+        # Format payload for readability
+        details = ""
+        if event_type == "state_update":
+            # Payload example: {"arousal": 50, "overload": 0...}
+            details = ", ".join([f"**{k.capitalize()}**: {v}" for k, v in payload.items()])
+        elif event_type == "lmm_trigger":
+            # Payload example: {"reason": "high_audio"}
+            details = f"**Reason**: {payload.get('reason', 'unknown')}"
+        elif event_type == "intervention_start":
+            # Payload example: {"type": "breathing", "id": "box_breathing"}
+            details = f"**Type**: {payload.get('type')}, **ID**: {payload.get('id', 'N/A')}"
+        elif event_type == "user_feedback":
+            # Payload example: {"intervention_type": "...", "feedback_value": "helpful"}
+            details = f"**Rating**: {str(payload.get('feedback_value', '')).upper()} for {payload.get('intervention_type', 'unknown')}"
+        elif event_type == "mode_change":
+             details = f"{payload.get('old_mode', '?')} -> {payload.get('new_mode', '?')}"
+        else:
+            # Generic payload formatting
+            details = str(payload)
 
-            else:
-                details_str = str(event["details"])
+        # Escape pipes to prevent breaking the markdown table
+        details = details.replace("|", "\\|")
 
-            f.write(f"| {time_str} | {etype} | {details_str} |\n")
-
-    print(f"Report generated at: {output_path}")
-
-def main():
-    parser = argparse.ArgumentParser(description="Generate a timeline report from ACR logs.")
-    parser.add_argument("--log", default="acr_app.log", help="Path to the log file.")
-    parser.add_argument("--output", default="user_data/timeline_report.md", help="Path to the output Markdown file.")
-
-    args = parser.parse_args()
+        markdown_content += f"| {time_str} | **{event_type}** | {details} |\n"
 
     # Ensure output directory exists
-    output_dir = os.path.dirname(args.output)
+    output_dir = os.path.dirname(output_file)
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    events = process_log_file(args.log)
-    generate_markdown_report(events, args.output)
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write(markdown_content)
+
+    print(f"Report generated: {output_file}")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Generate timeline report from ACR events.")
+    parser.add_argument("--events", default=DEFAULT_EVENTS_FILE, help="Path to events.jsonl")
+    parser.add_argument("--output", default=DEFAULT_OUTPUT_FILE, help="Path to output markdown file")
+
+    args = parser.parse_args()
+
+    events_list = parse_events(args.events)
+    generate_markdown(events_list, args.output)

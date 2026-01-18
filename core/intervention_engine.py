@@ -10,6 +10,11 @@ from typing import Optional, Any, Dict, List
 
 # Conditional imports for optional dependencies
 try:
+    import cv2
+except ImportError:
+    cv2 = None
+
+try:
     import numpy as np
 except ImportError:
     np = None
@@ -40,6 +45,10 @@ class InterventionEngine:
         self._intervention_active: threading.Event = threading.Event()
         self.intervention_thread: Optional[threading.Thread] = None
         self._current_intervention_details: Dict[str, Any] = {}
+
+        # Track the current blocking subprocess (e.g. speaking) for cleanup
+        self._current_subprocess: Optional[subprocess.Popen] = None
+        self._subprocess_lock: threading.Lock = threading.Lock()
 
         self.last_feedback_eligible_intervention: Dict[str, Any] = {
             "message": None,
@@ -140,9 +149,9 @@ class InterventionEngine:
     def _speak(self, text: str, blocking: bool = True) -> None:
         """
         Uses platform-specific TTS commands to speak the text.
-        Falls back to logging if the command fails.
         If blocking is True, waits for speech to finish.
         If blocking is False, runs in background.
+        Stores the process to allow interruption.
         """
         log_message = f"SPEAKING: '{text}'"
         if self.app and self.app.data_logger:
@@ -152,25 +161,65 @@ class InterventionEngine:
 
         def speak_task():
             system = platform.system()
+            command = []
+
+            if system == "Darwin":  # macOS
+                command = ["say", text]
+            elif system == "Linux":
+                # Try espeak or spd-say
+                # We need to determine which exists or just try one
+                # Note: This is simplified; robust check would verify executable existence
+                command = ["espeak", text] # Default to espeak
+                # If espeak fails, the Popen call might fail or return error, we can catch that
+            elif system == "Windows":
+                # PowerShell
+                ps_cmd = f'Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak("{text}")'
+                command = ["powershell", "-Command", ps_cmd]
+
+            if not command:
+                 return
+
             try:
-                if system == "Darwin":  # macOS
-                    subprocess.run(["say", text], check=False)
-                elif system == "Linux":
-                    # Try espeak or spd-say
-                    try:
-                        subprocess.run(["espeak", text], check=False)
-                    except FileNotFoundError:
-                        subprocess.run(["spd-say", text], check=False)
-                elif system == "Windows":
-                    # Use PowerShell for TTS
-                    command = f'Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak("{text}")'
-                    subprocess.run(["powershell", "-Command", command], check=False)
+                with self._subprocess_lock:
+                    if not self._intervention_active.is_set() and blocking:
+                        # Abort if stopped before start
+                        return
+                    # Use Popen to allow interruption
+                    self._current_subprocess = subprocess.Popen(
+                        command,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL
+                    )
+
+                if self._current_subprocess:
+                    self._current_subprocess.wait()
+
+            except FileNotFoundError:
+                # If linux default failed, try fallback
+                if system == "Linux" and command[0] == "espeak":
+                     try:
+                        command = ["spd-say", text]
+                        with self._subprocess_lock:
+                            if not self._intervention_active.is_set() and blocking: return
+                            self._current_subprocess = subprocess.Popen(
+                                command,
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL
+                            )
+                        if self._current_subprocess:
+                            self._current_subprocess.wait()
+                     except Exception as e:
+                         msg = f"TTS fallback failed: {e}"
+                         if self.app and self.app.data_logger: self.app.data_logger.log_warning(msg)
             except Exception as e:
                 msg = f"TTS failed: {e}"
                 if self.app and self.app.data_logger:
                     self.app.data_logger.log_warning(msg)
                 else:
                     print(msg)
+            finally:
+                with self._subprocess_lock:
+                    self._current_subprocess = None
 
         if blocking:
             speak_task()
@@ -208,7 +257,14 @@ class InterventionEngine:
         try:
             samplerate, data = wavfile.read(sound_file_path)
             sd.play(data, samplerate)
-            sd.wait() # Block until sound finishes (since this runs in a thread)
+
+            # Check for stop signal while waiting
+            # sd.wait() blocks completely. We can't interrupt it easily unless we call sd.stop()
+            # sd.stop() will cause wait() to return.
+            # But we need to know WHEN to stop.
+            # If shutdown() calls sd.stop(), it will unblock this wait() globally.
+            sd.wait()
+
         except Exception as e:
             msg = f"Error playing sound '{sound_file_path}': {e}"
             if self.app and self.app.data_logger:
@@ -248,21 +304,127 @@ class InterventionEngine:
              pass
 
     def _capture_image(self, details: str) -> None:
-        # Placeholder for capturing an image
         log_message = f"CAPTURING_IMAGE: '{details}'"
         if self.app and self.app.data_logger:
             self.app.data_logger.log_info(log_message)
         else:
             print(log_message)
-        # In a real implementation, this would trigger the video sensor to save a snapshot
+
+        if not self.logic_engine or not hasattr(self.logic_engine, 'last_video_frame') or self.logic_engine.last_video_frame is None:
+            msg = "Cannot capture image: No video frame available in LogicEngine."
+            if self.app and self.app.data_logger:
+                 self.app.data_logger.log_warning(msg)
+            else:
+                 print(msg)
+            return
+
+        if cv2 is None:
+             msg = "Cannot capture image: OpenCV (cv2) not available."
+             if self.app and self.app.data_logger:
+                self.app.data_logger.log_warning(msg)
+             else:
+                print(msg)
+             return
+
+        try:
+            captures_dir = "captures"
+            if not os.path.exists(captures_dir):
+                os.makedirs(captures_dir)
+
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            # Sanitize details for filename
+            safe_details = "".join([c if c.isalnum() else "_" for c in details])
+            filename = f"{captures_dir}/capture_{timestamp}_{safe_details}.jpg"
+
+            cv2.imwrite(filename, self.logic_engine.last_video_frame)
+
+            msg = f"Image saved to {filename}"
+            if self.app and self.app.data_logger:
+                self.app.data_logger.log_info(msg)
+            else:
+                print(msg)
+
+        except Exception as e:
+            msg = f"Error saving captured image: {e}"
+            if self.app and self.app.data_logger:
+                self.app.data_logger.log_error(msg)
+            else:
+                print(msg)
 
     def _record_video(self, details: str) -> None:
-        # Placeholder for recording video
         log_message = f"RECORDING_VIDEO: '{details}'"
         if self.app and self.app.data_logger:
             self.app.data_logger.log_info(log_message)
         else:
             print(log_message)
+
+        if not self.logic_engine or not hasattr(self.logic_engine, 'last_video_frame'):
+            msg = "Cannot record video: No video frame available in LogicEngine."
+            if self.app and self.app.data_logger:
+                 self.app.data_logger.log_warning(msg)
+            else:
+                 print(msg)
+            return
+
+        if cv2 is None:
+             msg = "Cannot record video: OpenCV (cv2) not available."
+             if self.app and self.app.data_logger:
+                self.app.data_logger.log_warning(msg)
+             else:
+                print(msg)
+             return
+
+        try:
+            captures_dir = "captures"
+            if not os.path.exists(captures_dir):
+                os.makedirs(captures_dir)
+
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_details = "".join([c if c.isalnum() else "_" for c in details])
+            filename = f"{captures_dir}/video_{timestamp}_{safe_details}.avi"
+
+            # Get dimensions from current frame
+            first_frame = self.logic_engine.last_video_frame
+            if first_frame is None:
+                msg = "Cannot record video: Signal lost."
+                if self.app and self.app.data_logger: self.app.data_logger.log_warning(msg)
+                return
+
+            height, width, _ = first_frame.shape
+            size = (width, height)
+            fps = 10.0
+            duration = 5.0
+
+            out = cv2.VideoWriter(filename, cv2.VideoWriter_fourcc(*'MJPG'), fps, size)
+
+            start_time = time.time()
+            frame_count = 0
+            while time.time() - start_time < duration:
+                # Check cancellation
+                if not self._intervention_active.is_set():
+                    break
+
+                frame = self.logic_engine.last_video_frame
+                if frame is not None and frame.shape == first_frame.shape:
+                    out.write(frame)
+                    frame_count += 1
+
+                time.sleep(1.0/fps)
+
+            out.release()
+
+            msg = f"Video saved to {filename} ({frame_count} frames)"
+            if self.app and self.app.data_logger:
+                self.app.data_logger.log_info(msg)
+            else:
+                print(msg)
+
+        except Exception as e:
+            msg = f"Error recording video: {e}"
+            if self.app and self.app.data_logger:
+                self.app.data_logger.log_error(msg)
+            else:
+                print(msg)
 
     def _wait(self, duration: float) -> None:
         """Waits for a specified duration, respecting the stop signal."""
@@ -458,29 +620,45 @@ class InterventionEngine:
             return False
 
         # Check for suppression
-        if intervention_type in self.suppressed_interventions:
-            expiry = self.suppressed_interventions[intervention_type]
+        # We need to check both the ID (if present and used as type) and the generic 'type'
+        check_type = execution_details.get("type", intervention_type)
+
+        if check_type in self.suppressed_interventions:
+            expiry = self.suppressed_interventions[check_type]
             if time.time() < expiry:
                 remaining_mins = int((expiry - time.time()) / 60)
                 if logger:
-                    logger.log_info(f"Intervention '{intervention_type}' skipped (suppressed for {remaining_mins} more mins).")
+                    logger.log_info(f"Intervention '{check_type}' skipped (suppressed for {remaining_mins} more mins).")
                 else:
-                    print(f"Intervention '{intervention_type}' skipped (suppressed for {remaining_mins} more mins).")
+                    print(f"Intervention '{check_type}' skipped (suppressed for {remaining_mins} more mins).")
                 return False
             else:
                 # Expired, remove from list
-                del self.suppressed_interventions[intervention_type]
+                del self.suppressed_interventions[check_type]
 
         # Critical: If called from within an existing sequence or thread, this check might fail.
         # But generally start_intervention is called from LogicEngine main thread.
         # If an intervention is active, we generally want to ignore new ones unless we have a priority system (TODO).
         if self._intervention_active.is_set():
-            # FUTURE: If new intervention has higher priority (Tier 3 vs 1), stop current and start new.
-            if logger:
-                logger.log_info(f"Intervention attempt ignored: An intervention is already active.")
+            # Check priority: Higher tier preempts lower tier
+            current_tier = self._current_intervention_details.get("tier", 1)
+            new_tier = execution_details.get("tier", 1)
+
+            if new_tier > current_tier:
+                if logger:
+                    logger.log_info(f"Preempting active intervention (Tier {current_tier}) with higher priority intervention '{check_type}' (Tier {new_tier}).")
+                else:
+                    print(f"Preempting active intervention (Tier {current_tier}) with higher priority intervention '{check_type}' (Tier {new_tier}).")
+                self.stop_intervention()
+                # Wait briefly for thread to clear
+                if self.intervention_thread and self.intervention_thread.is_alive():
+                    self.intervention_thread.join(timeout=2.0)
             else:
-                print(f"Intervention attempt ignored: An intervention is already active.")
-            return False
+                if logger:
+                    logger.log_info(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_tier}, New Tier: {new_tier}).")
+                else:
+                    print(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_tier}, New Tier: {new_tier}).")
+                return False
 
         current_app_mode = self.logic_engine.get_mode()
         if current_app_mode != "active":
@@ -529,6 +707,16 @@ class InterventionEngine:
             else:
                 print(f"Stopping intervention...")
             self._intervention_active.clear()
+
+            # Kill any active subprocess (TTS)
+            with self._subprocess_lock:
+                if self._current_subprocess:
+                    if logger: logger.log_info("Terminating active TTS subprocess.")
+                    try:
+                        self._current_subprocess.terminate()
+                        # self._current_subprocess.wait(timeout=1) # Don't block here, just kill
+                    except Exception as e:
+                        if logger: logger.log_warning(f"Error terminating TTS subprocess: {e}")
         else:
             if logger:
                 logger.log_info("No active intervention to stop.")
@@ -544,13 +732,22 @@ class InterventionEngine:
             print("InterventionEngine shutting down...")
 
         self.stop_intervention()
+
+        # Explicitly stop sounddevice if active, to unblock any pending play() calls
+        if sd:
+            try:
+                sd.stop()
+                if logger: logger.log_info("Stopped all sounddevice playback.")
+            except Exception as e:
+                if logger: logger.log_warning(f"Error stopping sounddevice: {e}")
+
         if self.intervention_thread and self.intervention_thread.is_alive():
             if logger:
                 logger.log_info("Waiting for intervention thread to finish...")
             self.intervention_thread.join(timeout=3.0)
             if self.intervention_thread.is_alive():
                 if logger:
-                    logger.log_warning("Intervention thread did not finish in time.")
+                    logger.log_warning("Intervention thread did not finish in time (zombie process possible).")
 
     def notify_mode_change(self, new_mode: str, custom_message: Optional[str] = None) -> None:
         """Handles speaking notifications for mode changes. These are not subject to feedback."""
@@ -622,82 +819,3 @@ class InterventionEngine:
                 self._save_preferences()
 
         self.last_feedback_eligible_intervention = {"message": None, "type": None, "timestamp": None}
-
-
-if __name__ == '__main__':
-    # Enhanced MockApp for testing
-    class MockDataLogger:
-        def log_info(self, msg): print(f"MOCK_LOG_INFO: {msg}")
-        def log_debug(self, msg): print(f"MOCK_LOG_DEBUG: {msg}")
-        def log_warning(self, msg): print(f"MOCK_LOG_WARN: {msg}")
-        def log_error(self, msg, details=""): print(f"MOCK_LOG_ERROR: {msg} | Details: {details}")
-        def log_event(self, event_type, payload):
-            print(f"MOCK_LOG_EVENT: Type='{event_type}', Payload='{payload}'")
-
-    class MockLogicEngine:
-        def __init__(self): self.mode = "active"
-        def get_mode(self): return self.mode
-        def set_mode(self, mode): self.mode = mode
-
-    class MockTrayIcon:
-        def flash_icon(self, flash_status, original_status):
-            print(f"MOCK_TRAY_ICON: Flashing with '{flash_status}' from '{original_status}'.")
-
-    class MockApp:
-        def __init__(self):
-            self.tray_icon = MockTrayIcon()
-            self.data_logger = MockDataLogger()
-            if not hasattr(config, 'FEEDBACK_WINDOW_SECONDS'):
-                config.FEEDBACK_WINDOW_SECONDS = 15
-            if not hasattr(config, 'MIN_TIME_BETWEEN_INTERVENTIONS'): # Default if not in config
-                config.MIN_TIME_BETWEEN_INTERVENTIONS = 10
-            # Ensure it's defined for the test default duration calculation
-            if hasattr(config, 'MIN_TIME_BETWEEN_INTERVENTIONS') and config.MIN_TIME_BETWEEN_INTERVENTIONS == 0:
-                 config.MIN_TIME_BETWEEN_INTERVENTIONS = 10 # Avoid division by zero if set to 0
-            print("MockApp for InterventionEngine test created.")
-
-    mock_logic_engine = MockLogicEngine()
-    mock_app_instance = MockApp()
-    intervention_engine = InterventionEngine(mock_logic_engine, mock_app_instance)
-
-    print("\n--- Test 1: Simple Ad-Hoc Intervention (Legacy) ---")
-    details_t1 = {"type": "posture_check", "message": "Sit straight!"}
-    intervention_engine.start_intervention(details_t1)
-    time.sleep(0.2)
-
-    print("\n--- Test 2: Library Intervention (Sequence) ---")
-    # Using 'box_breathing' from library (assuming it's there)
-    # We cheat the timer for test
-    intervention_engine.last_intervention_time = 0
-    details_t2 = {"id": "box_breathing"}
-    intervention_engine.start_intervention(details_t2)
-    time.sleep(1) # Let it run a bit
-    intervention_engine.stop_intervention()
-    time.sleep(0.2)
-
-    print("\n--- Test 3: Stop early ---")
-    intervention_engine.last_intervention_time = 0
-    details_t3 = {"id": "visual_scan"}
-    intervention_engine.start_intervention(details_t3)
-    time.sleep(0.1)
-    intervention_engine.stop_intervention()
-    time.sleep(0.1)
-
-    print("\n--- Test 4: Start Intervention with missing data ---")
-    intervention_engine.start_intervention({"just_random": "data"})
-    time.sleep(0.1)
-
-    print("\n--- Test 5: Suppressed by Mode ---")
-    mock_logic_engine.set_mode("paused")
-    intervention_engine.start_intervention(details_t1)
-    mock_logic_engine.set_mode("active")
-    time.sleep(0.1)
-
-    print("\n--- Test 6: Capture Image Action ---")
-    intervention_engine.last_intervention_time = 0
-    details_t6 = {"id": "sultry_persona_prompt"}
-    intervention_engine.start_intervention(details_t6)
-    time.sleep(0.2)
-    intervention_engine.stop_intervention()
-
-    print("\nInterventionEngine tests complete.")

@@ -8,3 +8,4 @@ scipy
 requests
 pillow
 pytest
+numpy
