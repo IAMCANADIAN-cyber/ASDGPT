@@ -21,6 +21,11 @@ class VideoSensor:
             "horizontal_position": collections.deque(maxlen=history_size)
         }
 
+        # Posture Thresholds (Defaults)
+        self.roll_threshold = 20.0
+        self.slouch_threshold = 0.65 # Vertical position > 0.65 means slouching (0.0 is top)
+        self.roll_baseline = 0.0
+
         self._lock = threading.RLock()
 
         # Error handling / Recovery state
@@ -161,6 +166,20 @@ class VideoSensor:
     def get_last_error(self):
         return self.last_error_message
 
+    def set_posture_config(self, roll_threshold=None, slouch_threshold=None, roll_baseline=None):
+        """
+        Updates posture detection thresholds dynamically.
+        """
+        with self._lock:
+            if roll_threshold is not None:
+                self.roll_threshold = float(roll_threshold)
+            if slouch_threshold is not None:
+                self.slouch_threshold = float(slouch_threshold)
+            if roll_baseline is not None:
+                self.roll_baseline = float(roll_baseline)
+
+            self._log_info(f"Posture config updated: Roll_Thresh={self.roll_threshold}, Slouch_Thresh={self.slouch_threshold}, Roll_Base={self.roll_baseline}")
+
     def calculate_raw_activity(self, gray_frame):
         """
         Calculates raw activity level (mean pixel difference) for a given grayscale frame.
@@ -235,9 +254,14 @@ class VideoSensor:
         # Note: These are simple 2D estimates and require calibration for accuracy.
         # Assumptions: Camera is roughly eye-level and centered.
 
-        # Head Tilt
-        if abs(metrics.get("face_roll_angle", 0)) > 20:
-             if metrics["face_roll_angle"] > 0:
+        roll_angle = metrics.get("face_roll_angle", 0)
+
+        # Head Tilt (calibrated)
+        # We check deviation from baseline
+        deviation = roll_angle - self.roll_baseline
+
+        if abs(deviation) > self.roll_threshold:
+             if deviation > 0:
                  metrics["posture_state"] = "tilted_right"
              else:
                  metrics["posture_state"] = "tilted_left"
@@ -250,7 +274,8 @@ class VideoSensor:
             metrics["posture_state"] = "leaning_back"
         # Slouching: Face center moves down significantly
         # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
-        elif metrics.get("vertical_position", 0) > 0.65:
+        # Uses configured slouch threshold
+        elif metrics.get("vertical_position", 0) > self.slouch_threshold:
             metrics["posture_state"] = "slouching"
         else:
             metrics["posture_state"] = "neutral"
@@ -275,43 +300,6 @@ class VideoSensor:
         # Centers
         p1 = (ex1 + ew1 // 2, ey1 + eh1 // 2)
         p2 = (ex2 + ew2 // 2, ey2 + eh2 // 2)
-        if frame is None:
-            # Consistent with test expectations which might check for keys even on empty
-            # If tests expect keys, we should provide default dict
-            # But the test calls video_sensor.analyze_frame(None) and checks assertFalse(metrics['face_detected'])
-            # So returning empty dict {} would cause KeyError on 'face_detected'
-            return {
-                "face_detected": False,
-                "face_count": 0,
-                "face_locations": [],
-                "face_size_ratio": 0.0,
-                "vertical_position": 0.0,
-                "horizontal_position": 0.0
-            }
-
-        try:
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-            # Detect faces
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
-        except Exception as e:
-            if self.logger:
-                self.logger.log_error(f"Face detection error: {e}")
-            else:
-                print(f"Face detection error: {e}")
-            return {
-                "face_detected": False,
-                "face_count": 0,
-                "face_locations": [],
-                "face_size_ratio": 0.0,
-                "vertical_position": 0.0,
-                "horizontal_position": 0.0
-            }
 
         # Delta
         dx = p2[0] - p1[0]

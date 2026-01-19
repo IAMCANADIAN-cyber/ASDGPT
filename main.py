@@ -20,6 +20,13 @@ class Application:
 
         # Initialize sensors first, as they might be needed by LogicEngine
         self.video_sensor = VideoSensor(config.CAMERA_INDEX, self.data_logger)
+        # Apply Posture Config
+        self.video_sensor.set_posture_config(
+            roll_threshold=config.POSTURE_ROLL_THRESHOLD,
+            slouch_threshold=config.POSTURE_SLOUCH_THRESHOLD,
+            roll_baseline=config.POSTURE_ROLL_BASELINE
+        )
+
         self.audio_sensor = AudioSensor(self.data_logger)
 
         # Initialize LMM Interface

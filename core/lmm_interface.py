@@ -215,9 +215,6 @@ class LMMInterface:
             "_meta": {"is_fallback": True}
         }
 
-        text = re.sub(r'```$', '', text, flags=re.MULTILINE)
-        return text.strip()
-
     def _send_request_with_retry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Sends request to LMM with manual retry logic."""
         retries = 3
@@ -435,6 +432,10 @@ class LMMInterface:
 
         except Exception as e:
             self._log_error(f"LMM Request Failed after retries: {e}")
+            self.circuit_failures += 1
+            if self.circuit_failures >= self.circuit_max_failures:
+                self.circuit_open_time = time.time()
+                self._log_warning(f"LMM Circuit Breaker tripped. Open for {self.circuit_cooldown}s.")
             return self._fallback_response(user_context)
 
     def _fallback_response(self, user_context: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -463,24 +464,11 @@ class LMMInterface:
 
         suggestion = None
 
-            if getattr(config, 'LMM_FALLBACK_ENABLED', False):
-                 self._log_info("LMM_FALLBACK_ENABLED is True. Returning neutral state.")
-                 return self._get_fallback_response(user_context)
+        if getattr(config, 'LMM_FALLBACK_ENABLED', False):
+             self._log_info("LMM_FALLBACK_ENABLED is True. Returning neutral state.")
+             return self._get_fallback_response(user_context)
 
-            return None
-
-    def _get_fallback_response(self):
-        """Returns a safe, neutral state when LMM is unavailable."""
-        return {
-            "state_estimation": {
-                "arousal": 50,
-                "overload": 0,
-                "focus": 50,
-                "energy": 50,
-                "mood": 50
-            },
-            "suggestion": None
-        }
+        return None
 
     def _clean_json_string(self, text):
         """Removes markdown code blocks and whitespace."""

@@ -107,9 +107,14 @@ DOOM_SCROLL_THRESHOLD = _get_conf("DOOM_SCROLL_THRESHOLD", 3, int)
 
 # --- VAD (Voice Activity Detection) ---
 # RMS Threshold to consider "not silence"
-VAD_SILENCE_THRESHOLD = _get_conf("VAD_SILENCE_THRESHOLD", 0.01, float)
+VAD_SILENCE_THRESHOLD = _get_conf("VAD_SILENCE_THRESHOLD", _calibration_data.get("vad_silence_threshold", 0.01), float)
 VAD_WEAK_THRESHOLD = _get_conf("VAD_WEAK_THRESHOLD", 0.4, float)
 VAD_STRONG_THRESHOLD = _get_conf("VAD_STRONG_THRESHOLD", 0.7, float)
+
+# --- Posture Calibration ---
+POSTURE_ROLL_THRESHOLD = _get_conf("POSTURE_ROLL_THRESHOLD", _calibration_data.get("posture_roll_threshold", 20.0), float)
+POSTURE_SLOUCH_THRESHOLD = _get_conf("POSTURE_SLOUCH_THRESHOLD", _calibration_data.get("posture_slouch_threshold", 0.65), float)
+POSTURE_ROLL_BASELINE = _get_conf("POSTURE_ROLL_BASELINE", _calibration_data.get("posture_roll_baseline", 0.0), float)
 
 # --- State Engine Baseline ---
 # Allows personalization of the "neutral" state.
