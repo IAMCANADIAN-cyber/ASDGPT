@@ -75,6 +75,13 @@ class Application:
             # Quit hotkey
             keyboard.add_hotkey("esc", self.quit_application_hotkey_wrapper, suppress=True)
 
+            # Activity tracking (Meeting Mode)
+            try:
+                keyboard.hook(lambda e: self.logic_engine.notify_user_input())
+                self.data_logger.log_info("Global keyboard hook registered for activity tracking.")
+            except Exception as e:
+                self.data_logger.log_warning(f"Failed to register global keyboard hook: {e}")
+
             self.data_logger.log_info("Hotkeys registered successfully (Mode, Feedback, Quit).")
         except ImportError:
              self.data_logger.log_warning("Keyboard library not found. Hotkeys disabled.")

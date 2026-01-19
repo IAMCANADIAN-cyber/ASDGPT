@@ -434,6 +434,11 @@ class LMMInterface:
             return result
 
         except Exception as e:
+            self.circuit_failures += 1
+            if self.circuit_failures >= self.circuit_max_failures:
+                self.circuit_open_time = time.time()
+                self._log_warning(f"Circuit breaker tripped. Open for {self.circuit_cooldown}s")
+
             self._log_error(f"LMM Request Failed after retries: {e}")
             return self._fallback_response(user_context)
 
@@ -463,24 +468,11 @@ class LMMInterface:
 
         suggestion = None
 
-            if getattr(config, 'LMM_FALLBACK_ENABLED', False):
-                 self._log_info("LMM_FALLBACK_ENABLED is True. Returning neutral state.")
-                 return self._get_fallback_response(user_context)
+        if getattr(config, 'LMM_FALLBACK_ENABLED', False):
+             self._log_info("LMM_FALLBACK_ENABLED is True. Returning neutral state.")
+             return self._get_fallback_response(user_context)
 
-            return None
-
-    def _get_fallback_response(self):
-        """Returns a safe, neutral state when LMM is unavailable."""
-        return {
-            "state_estimation": {
-                "arousal": 50,
-                "overload": 0,
-                "focus": 50,
-                "energy": 50,
-                "mood": 50
-            },
-            "suggestion": None
-        }
+        return None
 
     def _clean_json_string(self, text):
         """Removes markdown code blocks and whitespace."""

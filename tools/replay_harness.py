@@ -291,6 +291,13 @@ class ReplayHarness:
             self.logic_engine.process_video_data(frame2)
             self.logic_engine.process_audio_data(audio_chunk)
 
+            # Inject User Input
+            if 'input' in step:
+                if 'last_user_input_delta' in step['input']:
+                    self.logic_engine.last_user_input_time = time.time() - step['input']['last_user_input_delta']
+                elif step['input'].get('user_input', False):
+                    self.logic_engine.notify_user_input()
+
             # 3. Trigger Update
             # We assume time passes between steps.
             # If step defines 'time_delta', use it. Else assume enough time for LMM check.

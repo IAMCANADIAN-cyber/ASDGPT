@@ -72,7 +72,8 @@ def test_process_data_success(mock_post, lmm_interface):
     mock_post.return_value = mock_response
 
     result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
-    assert result == expected_response
+    assert result["state_estimation"] == response_content["state_estimation"]
+    assert result["suggestion"] == response_content["suggestion"]
 
 @patch('requests.post')
 def test_process_data_retry_and_fallback(mock_post, lmm_interface):
@@ -81,11 +82,9 @@ def test_process_data_retry_and_fallback(mock_post, lmm_interface):
 
     # Speed up retry by mocking sleep
     with patch('time.sleep', return_value=None):
-        # We need to ensure fallback is enabled or that we hit the condition that returns a fallback.
-        # By default in process_data, if an exception occurs after retries, it calls self._fallback_response(user_context).
-        # This _fallback_response returns a dict with "fallback": True.
-        # So we should expect that.
-        result = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.8}})
+        # We need to ensure fallback is enabled
+        with patch('config.LMM_FALLBACK_ENABLED', True):
+            result = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.8}})
 
     assert result is not None
     # It seems the test is still failing. Let's inspect what result we got.

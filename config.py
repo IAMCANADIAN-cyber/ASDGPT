@@ -105,6 +105,11 @@ AUDIO_THRESHOLD_HIGH = _get_conf("AUDIO_THRESHOLD_HIGH", _calibration_data.get("
 VIDEO_ACTIVITY_THRESHOLD_HIGH = _get_conf("VIDEO_ACTIVITY_THRESHOLD_HIGH", _calibration_data.get("video_activity_threshold", 20.0), float)
 DOOM_SCROLL_THRESHOLD = _get_conf("DOOM_SCROLL_THRESHOLD", 3, int)
 
+# --- Meeting Mode Detection ---
+MEETING_MODE_SPEECH_DURATION = _get_conf("MEETING_MODE_SPEECH_DURATION", 10, int)
+MEETING_MODE_FACE_DURATION = _get_conf("MEETING_MODE_FACE_DURATION", 10, int)
+MEETING_MODE_NO_INPUT_DURATION = _get_conf("MEETING_MODE_NO_INPUT_DURATION", 10, int)
+
 # --- VAD (Voice Activity Detection) ---
 # RMS Threshold to consider "not silence"
 VAD_SILENCE_THRESHOLD = _get_conf("VAD_SILENCE_THRESHOLD", 0.01, float)
