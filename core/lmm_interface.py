@@ -280,10 +280,9 @@ class LMMInterface:
             if audio_level > 0.5:
                 # Loud environment
                 fallback_state["overload"] = 70
-                # Try to match with an existing ID if possible, otherwise generic
                 suggestion = {
                     "id": None, # Ad-hoc
-                    "type": "text",
+                    "type": "offline_noise_reduction",
                     "message": "It's quite loud. Maybe take a moment of silence?"
                 }
 
@@ -292,7 +291,7 @@ class LMMInterface:
                 fallback_state["arousal"] = 70
                 suggestion = {
                     "id": None,
-                    "type": "text",
+                    "type": "offline_activity_reduction",
                     "message": "You seem active. Remember to breathe."
                 }
 
@@ -435,6 +434,7 @@ class LMMInterface:
 
         except Exception as e:
             self._log_error(f"LMM Request Failed after retries: {e}")
+            self.circuit_failures += 1
             return self._fallback_response(user_context)
 
     def _fallback_response(self, user_context: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -443,45 +443,11 @@ class LMMInterface:
         """
         self._log_warning("Using fallback response mechanism.")
 
-        # Simple rule-based fallback
-        # If loud audio, suggest quiet
-        # If high motion, suggest calm
-        # Otherwise, just return neutral state
-
-        metrics = user_context.get('sensor_metrics', {}) if user_context else {}
-        audio_level = metrics.get('audio_level', 0.0)
-        video_activity = metrics.get('video_activity', 0.0)
-
-        # Default neutral state
-        fallback_state = {
-            "arousal": 50,
-            "overload": 50,
-            "focus": 50,
-            "energy": 50,
-            "mood": 50
-        }
-
-        suggestion = None
-
         if getattr(config, 'LMM_FALLBACK_ENABLED', False):
-            self._log_info("LMM_FALLBACK_ENABLED is True. Returning neutral state.")
+            self._log_info("LMM_FALLBACK_ENABLED is True. Returning fallback response.")
             return self._get_fallback_response(user_context)
 
         return None
-
-    def _get_fallback_response(self, user_context: Optional[Dict[str, Any]] = None) -> LMMResponse:
-        """Returns a safe, neutral state when LMM is unavailable."""
-        return {
-            "state_estimation": {
-                "arousal": 50,
-                "overload": 0,
-                "focus": 50,
-                "energy": 50,
-                "mood": 50
-            },
-            "suggestion": None,
-            "_meta": {"is_fallback": True}
-        }
 
     def _clean_json_string(self, text):
         """Removes markdown code blocks and whitespace."""

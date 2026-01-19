@@ -24,3 +24,7 @@
 ## 2026-01-16 - [Coverage & Hygiene]
 **Learning:** `core/intervention_library.py` contained significant untested logic in an `if __name__ == "__main__":` block, bypassing unit tests. Also, `pytest-cov` generates a binary `.coverage` file which is not ignored by default, posing a repo hygiene risk.
 **Action:** Refactored `intervention_library` to use a proper `unittest` suite (`tests/test_intervention_library.py`) and updated `.gitignore` to exclude coverage artifacts.
+
+## 2026-01-20 - [LMM Interface Fixes]
+**Learning**: Found duplicate method definitions in `core/lmm_interface.py` where a "dumb" fallback shadowed the intended "smart" fallback logic. Also discovered that `circuit_failures` was not being incremented on exception, preventing the circuit breaker from opening correctly.
+**Action**: Removed the duplicate method, updated fallback types to match `LogicEngine` conventions (`offline_noise_reduction`), and restored the failure increment logic in `process_data`.
