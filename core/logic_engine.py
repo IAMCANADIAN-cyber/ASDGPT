@@ -65,6 +65,10 @@ class LogicEngine:
         self.lmm_consecutive_failures: int = 0
         self.lmm_circuit_breaker_open_until: float = 0
 
+        # Offline Fallback
+        self.last_offline_trigger_time: float = 0
+        self.offline_trigger_interval: int = 30 # Seconds between offline interventions
+
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
@@ -378,6 +382,35 @@ class LogicEngine:
 
         return None
 
+    def _run_offline_fallback_logic(self, reason: str) -> None:
+        """
+        Executes simple heuristic-based interventions when LMM is offline.
+        """
+        current_time = time.time()
+        if current_time - self.last_offline_trigger_time < self.offline_trigger_interval:
+            self.logger.log_debug(f"Offline fallback skipped: Cooldown active ({int(self.offline_trigger_interval - (current_time - self.last_offline_trigger_time))}s left).")
+            return
+
+        intervention_payload = None
+
+        if reason == "high_audio_level":
+            intervention_payload = {
+                "type": "offline_noise_reduction",
+                "message": "It's getting a bit loud, and I'm currently offline. You might want to lower the volume or take a break.",
+                "tier": 1
+            }
+        elif reason == "high_video_activity":
+            intervention_payload = {
+                "type": "offline_activity_reduction",
+                "message": "I'm detecting a lot of movement, but I can't reach the cloud. Maybe take a moment to settle?",
+                "tier": 1
+            }
+
+        if intervention_payload and self.intervention_engine:
+            self.logger.log_info(f"Triggering Offline Fallback Intervention: {reason}")
+            self.intervention_engine.start_intervention(intervention_payload)
+            self.last_offline_trigger_time = current_time
+
     def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
         if not self.lmm_interface:
             self.logger.log_warning("LMM interface not available.")
@@ -488,7 +521,19 @@ class LogicEngine:
                 self.last_lmm_call_time = current_time
                 # Intervention only allowed in 'active' mode
                 should_intervene = (current_mode == "active")
-                self._trigger_lmm_analysis(reason=trigger_reason, allow_intervention=should_intervene)
+
+                # Check Circuit Breaker before calling LMM to see if we should fallback
+                circuit_open = False
+                with self._lock:
+                    if time.time() < self.lmm_circuit_breaker_open_until:
+                        circuit_open = True
+
+                if circuit_open:
+                     self.logger.log_info(f"LMM Circuit Open. Attempting Offline Fallback (Reason: {trigger_reason})")
+                     if should_intervene:
+                        self._run_offline_fallback_logic(reason=trigger_reason)
+                else:
+                    self._trigger_lmm_analysis(reason=trigger_reason, allow_intervention=should_intervene)
 
             # 5. Potentially change mode (e.g. error)
             # (Note: Main application handles sensor hardware errors.

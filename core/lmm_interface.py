@@ -463,13 +463,13 @@ class LMMInterface:
 
         suggestion = None
 
-            if getattr(config, 'LMM_FALLBACK_ENABLED', False):
-                 self._log_info("LMM_FALLBACK_ENABLED is True. Returning neutral state.")
-                 return self._get_fallback_response(user_context)
+        if getattr(config, 'LMM_FALLBACK_ENABLED', False):
+            self._log_info("LMM_FALLBACK_ENABLED is True. Returning neutral state.")
+            return self._get_fallback_response(user_context)
 
-            return None
+        return None
 
-    def _get_fallback_response(self):
+    def _get_fallback_response(self, user_context: Optional[Dict[str, Any]] = None) -> LMMResponse:
         """Returns a safe, neutral state when LMM is unavailable."""
         return {
             "state_estimation": {
@@ -479,7 +479,8 @@ class LMMInterface:
                 "energy": 50,
                 "mood": 50
             },
-            "suggestion": None
+            "suggestion": None,
+            "_meta": {"is_fallback": True}
         }
 
     def _clean_json_string(self, text):

@@ -110,6 +110,9 @@ class TestInterventionEngine(unittest.TestCase):
         result = self.engine.start_intervention({"type": "t2", "message": "m2"})
         self.assertFalse(result)
 
+        # Clear the active flag (since mocked thread didn't run to clear it)
+        self.engine._intervention_active.clear()
+
         # Wait (simulate time passing by manipulating last_intervention_time)
         self.engine.last_intervention_time = time.time() - 20
         with patch('threading.Thread'):
