@@ -3,7 +3,6 @@ import json
 import re
 import time
 from typing import Optional, Dict, Any, List, TypedDict, Union
-from typing import Optional, Dict, Any, TypedDict, List
 import config
 from .intervention_library import InterventionLibrary
 from .prompts.v1 import SYSTEM_INSTRUCTION_V1
@@ -215,9 +214,6 @@ class LMMInterface:
             "_meta": {"is_fallback": True}
         }
 
-        text = re.sub(r'```$', '', text, flags=re.MULTILINE)
-        return text.strip()
-
     def _send_request_with_retry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Sends request to LMM with manual retry logic."""
         retries = 3
@@ -260,7 +256,7 @@ class LMMInterface:
             raise last_exception
         raise Exception("Unknown error in _send_request_with_retry")
 
-    def _get_fallback_response(self, user_context: Optional[Dict[str, Any]] = None) -> LMMResponse:
+    def _generate_heuristic_fallback(self, user_context: Optional[Dict[str, Any]] = None) -> LMMResponse:
         """Returns a safe, neutral response when the LMM is unavailable, using simple heuristics."""
 
         fallback_state = {
@@ -321,9 +317,7 @@ class LMMInterface:
         if self.circuit_failures >= self.circuit_max_failures:
             if time.time() - self.circuit_open_time < self.circuit_cooldown:
                 self._log_warning(f"Circuit breaker open. Skipping LMM call. (Cooldown: {self.circuit_cooldown}s)")
-                if getattr(config, 'LMM_FALLBACK_ENABLED', False):
-                    return self._get_fallback_response(user_context)
-                return None
+                return self._fallback_response(user_context)
             else:
                 self._log_info("Circuit breaker cooldown expired. Retrying connection.")
                 self.circuit_failures = 0
@@ -435,52 +429,21 @@ class LMMInterface:
 
         except Exception as e:
             self._log_error(f"LMM Request Failed after retries: {e}")
+            self.circuit_failures += 1
+            if self.circuit_failures >= self.circuit_max_failures:
+                self.circuit_open_time = time.time()
             return self._fallback_response(user_context)
 
     def _fallback_response(self, user_context: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """
-        Generates a safe fallback response when the LMM is unavailable.
+        Generates a safe fallback response if enabled by config, otherwise returns None.
         """
-        self._log_warning("Using fallback response mechanism.")
+        if getattr(config, 'LMM_FALLBACK_ENABLED', False):
+             self._log_info("LMM_FALLBACK_ENABLED is True. Returning heuristic fallback.")
+             return self._generate_heuristic_fallback(user_context)
 
-        # Simple rule-based fallback
-        # If loud audio, suggest quiet
-        # If high motion, suggest calm
-        # Otherwise, just return neutral state
-
-        metrics = user_context.get('sensor_metrics', {}) if user_context else {}
-        audio_level = metrics.get('audio_level', 0.0)
-        video_activity = metrics.get('video_activity', 0.0)
-
-        # Default neutral state
-        fallback_state = {
-            "arousal": 50,
-            "overload": 50,
-            "focus": 50,
-            "energy": 50,
-            "mood": 50
-        }
-
-        suggestion = None
-
-            if getattr(config, 'LMM_FALLBACK_ENABLED', False):
-                 self._log_info("LMM_FALLBACK_ENABLED is True. Returning neutral state.")
-                 return self._get_fallback_response(user_context)
-
-            return None
-
-    def _get_fallback_response(self):
-        """Returns a safe, neutral state when LMM is unavailable."""
-        return {
-            "state_estimation": {
-                "arousal": 50,
-                "overload": 0,
-                "focus": 50,
-                "energy": 50,
-                "mood": 50
-            },
-            "suggestion": None
-        }
+        self._log_warning("LMM_FALLBACK_ENABLED is False. Returning None.")
+        return None
 
     def _clean_json_string(self, text):
         """Removes markdown code blocks and whitespace."""

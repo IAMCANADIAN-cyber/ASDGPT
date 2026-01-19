@@ -15,11 +15,20 @@ TEST_SUPPRESSIONS_FILE = os.path.join(TEST_USER_DATA_DIR, "suppressions.json")
 def setup_test_env():
     # Setup
     os.makedirs(TEST_USER_DATA_DIR, exist_ok=True)
+
+    # Save original config
+    orig_user_data = config.USER_DATA_DIR
+    orig_suppressions = config.SUPPRESSIONS_FILE
+
     # Override config paths for testing
     config.USER_DATA_DIR = TEST_USER_DATA_DIR
     config.SUPPRESSIONS_FILE = TEST_SUPPRESSIONS_FILE
 
     yield
+
+    # Restore config
+    config.USER_DATA_DIR = orig_user_data
+    config.SUPPRESSIONS_FILE = orig_suppressions
 
     # Teardown
     if os.path.exists(TEST_USER_DATA_DIR):

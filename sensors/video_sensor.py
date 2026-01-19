@@ -194,19 +194,8 @@ class VideoSensor:
 
         try:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            # Resize for performance consistency if needed, but analyze_frame uses full size?
-            # Let's keep it consistent. If we resize here, we should resize for everything.
-            # LogicEngine used full size or didn't specify.
-            # analyze_frame uses full size for face detection.
-            # We'll use full size for now to be accurate, or small resize for speed.
-            # Previous implementation resized to 100x100. Let's stick to that for 'activity' to match expected values.
-
             gray_small = cv2.resize(gray, (100, 100))
-
             raw_score = self.calculate_raw_activity(gray_small)
-
-            # Normalize (arbitrary scaling factor based on testing)
-            # Previous logic: min(1.0, score / 50.0)
             return min(1.0, raw_score / 50.0)
 
         except Exception as e:
@@ -232,9 +221,6 @@ class VideoSensor:
             return
 
         # Posture Heuristics
-        # Note: These are simple 2D estimates and require calibration for accuracy.
-        # Assumptions: Camera is roughly eye-level and centered.
-
         # Head Tilt
         if abs(metrics.get("face_roll_angle", 0)) > 20:
              if metrics["face_roll_angle"] > 0:
@@ -242,14 +228,12 @@ class VideoSensor:
              else:
                  metrics["posture_state"] = "tilted_left"
         # Leaning Forward: Face becomes significantly larger
-        # Thresholds should ideally be calibrated (e.g., normal ratio ~0.3-0.4)
         elif metrics.get("face_size_ratio", 0) > 0.45:
             metrics["posture_state"] = "leaning_forward"
         # Leaning Back: Face becomes small
         elif metrics.get("face_size_ratio", 0) < 0.15:
             metrics["posture_state"] = "leaning_back"
         # Slouching: Face center moves down significantly
-        # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
         elif metrics.get("vertical_position", 0) > 0.65:
             metrics["posture_state"] = "slouching"
         else:
@@ -275,43 +259,6 @@ class VideoSensor:
         # Centers
         p1 = (ex1 + ew1 // 2, ey1 + eh1 // 2)
         p2 = (ex2 + ew2 // 2, ey2 + eh2 // 2)
-        if frame is None:
-            # Consistent with test expectations which might check for keys even on empty
-            # If tests expect keys, we should provide default dict
-            # But the test calls video_sensor.analyze_frame(None) and checks assertFalse(metrics['face_detected'])
-            # So returning empty dict {} would cause KeyError on 'face_detected'
-            return {
-                "face_detected": False,
-                "face_count": 0,
-                "face_locations": [],
-                "face_size_ratio": 0.0,
-                "vertical_position": 0.0,
-                "horizontal_position": 0.0
-            }
-
-        try:
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-            # Detect faces
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
-        except Exception as e:
-            if self.logger:
-                self.logger.log_error(f"Face detection error: {e}")
-            else:
-                print(f"Face detection error: {e}")
-            return {
-                "face_detected": False,
-                "face_count": 0,
-                "face_locations": [],
-                "face_size_ratio": 0.0,
-                "vertical_position": 0.0,
-                "horizontal_position": 0.0
-            }
 
         # Delta
         dx = p2[0] - p1[0]
@@ -349,7 +296,6 @@ class VideoSensor:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
             # 1. Activity Calculation
-            # We use a downscaled version for activity to match historical behavior/performance
             gray_small = cv2.resize(gray, (100, 100))
 
             raw_activity = self.calculate_raw_activity(gray_small)
@@ -395,13 +341,6 @@ class VideoSensor:
         Legacy wrapper for backward compatibility if needed,
         or just for face detection specifically.
         """
-        # We can implement this by calling process_frame and filtering keys,
-        # but process_frame updates state (last_frame).
-        # If analyze_frame is called separately, it might mess up activity diff if not careful.
-        # But generally, LogicEngine should assume 'process_frame' is the main entry.
-        # For now, we keep the original logic for analyze_frame to be safe,
-        # BUT note that it doesn't touch 'last_frame'.
-
         if frame is None:
             return {}
 
@@ -421,7 +360,8 @@ class VideoSensor:
                 "face_locations": [list(f) for f in faces],
                 "face_size_ratio": 0.0,
                 "vertical_position": 0.0,
-                "horizontal_position": 0.0
+                "horizontal_position": 0.0,
+                "face_roll_angle": 0.0 # Default key expected by some tests?
             }
 
             if len(faces) > 0:
@@ -450,21 +390,8 @@ class VideoSensor:
 
                 self._calculate_posture(metrics)
             else:
-                # If no face, we don't clear history immediately to avoid "glitches" if detection misses one frame.
-                # But we return 0.0 for current metrics as per contract.
-                # Optionally, we could return the last known smoothed value?
-                # For now, adhering to contract: no face = 0.0, but maybe we should decay history?
-                # Let's keep history for now, but return 0.0.
+                # No face: metrics remain 0.0
                 pass
-                metrics["face_size_ratio"] = float(w) / img_w
-                metrics["vertical_position"] = float(y + h/2) / img_h
-                metrics["horizontal_position"] = float(x + w/2) / img_w
-
-                # Head Tilt Estimation
-                face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
-
-                self._calculate_posture(metrics)
 
             return metrics
         except Exception as e:

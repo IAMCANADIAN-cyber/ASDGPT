@@ -23,8 +23,8 @@ def _get_conf(key: str, default: Any, cast_type: type = None) -> Any:
     """
     Priority:
     1. Environment Variable (highest for temporary overrides)
-    2. user_data/config.json (for persistent user settings)
-    3. Default value (codebase default)
+    2. User Config (user_data/config.json)
+    3. Default value
     """
     # 1. Environment Variable
     env_val = os.getenv(key)
@@ -55,6 +55,9 @@ def _get_conf(key: str, default: Any, cast_type: type = None) -> Any:
 APP_NAME = _get_conf("APP_NAME", "ACR")
 LOG_LEVEL = _get_conf("LOG_LEVEL", "INFO")
 LOG_FILE = _get_conf("LOG_FILE", "acr_app.log")
+LOG_MAX_BYTES = _get_conf("LOG_MAX_BYTES", 5 * 1024 * 1024, int) # 5 MB
+LOG_BACKUP_COUNT = _get_conf("LOG_BACKUP_COUNT", 5, int)
+
 USER_DATA_DIR = _get_conf("USER_DATA_DIR", "user_data")
 SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
 PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
@@ -74,19 +77,6 @@ HOTKEY_FEEDBACK_UNHELPFUL = _get_conf("HOTKEY_FEEDBACK_UNHELPFUL", "ctrl+alt+dow
 # --- User Feedback ---
 FEEDBACK_WINDOW_SECONDS = _get_conf("FEEDBACK_WINDOW_SECONDS", 15, int)
 FEEDBACK_SUPPRESSION_MINUTES = _get_conf("FEEDBACK_SUPPRESSION_MINUTES", 240, int)
-
-# --- System & Logging ---
-APP_NAME = _get_conf("APP_NAME", "ACR")
-LOG_LEVEL = _get_conf("LOG_LEVEL", "INFO")
-LOG_FILE = _get_conf("LOG_FILE", "acr_app.log")
-LOG_MAX_BYTES = _get_conf("LOG_MAX_BYTES", 5 * 1024 * 1024, int) # 5 MB
-LOG_BACKUP_COUNT = _get_conf("LOG_BACKUP_COUNT", 5, int)
-
-USER_DATA_DIR = _get_conf("USER_DATA_DIR", "user_data")
-SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
-PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
-EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
-CALIBRATION_FILE = os.path.join(USER_DATA_DIR, "calibration.json")
 
 # --- Sensors ---
 CAMERA_INDEX = _get_conf("CAMERA_INDEX", 0, int)
@@ -112,7 +102,6 @@ VAD_WEAK_THRESHOLD = _get_conf("VAD_WEAK_THRESHOLD", 0.4, float)
 VAD_STRONG_THRESHOLD = _get_conf("VAD_STRONG_THRESHOLD", 0.7, float)
 
 # --- State Engine Baseline ---
-# Allows personalization of the "neutral" state.
 BASELINE_STATE = _get_conf("BASELINE_STATE", {
     "arousal": 50,
     "overload": 0,
@@ -126,7 +115,6 @@ MIN_TIME_BETWEEN_INTERVENTIONS = _get_conf("MIN_TIME_BETWEEN_INTERVENTIONS", 300
 DEFAULT_INTERVENTION_DURATION = _get_conf("DEFAULT_INTERVENTION_DURATION", 30, int)
 
 # --- LMM Configuration ---
-# Note: API Keys should ideally be strictly ENV for security, but we allow config for local URLs.
 LOCAL_LLM_URL = _get_conf("LOCAL_LLM_URL", "http://127.0.0.1:1234")
 LOCAL_LLM_MODEL_ID = _get_conf("LOCAL_LLM_MODEL_ID", "deepseek/deepseek-r1-0528-qwen3-8b")
 
@@ -138,7 +126,6 @@ LMM_CIRCUIT_BREAKER_COOLDOWN = _get_conf("LMM_CIRCUIT_BREAKER_COOLDOWN", 60, int
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 # --- Tiered Intervention Configurations ---
-# (Used for legacy ad-hoc interventions or fallback defaults)
 INTERVENTION_CONFIGS = {
     "gentle_reminder_text": {
         "tier": 1,

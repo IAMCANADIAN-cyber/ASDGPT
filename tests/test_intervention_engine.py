@@ -112,6 +112,8 @@ class TestInterventionEngine(unittest.TestCase):
 
         # Wait (simulate time passing by manipulating last_intervention_time)
         self.engine.last_intervention_time = time.time() - 20
+        # Ensure previous intervention is considered finished
+        self.engine._intervention_active.clear()
         with patch('threading.Thread'):
             result = self.engine.start_intervention({"type": "t2", "message": "m2"})
         self.assertTrue(result)
