@@ -24,3 +24,8 @@
 ## 2026-01-16 - [Coverage & Hygiene]
 **Learning:** `core/intervention_library.py` contained significant untested logic in an `if __name__ == "__main__":` block, bypassing unit tests. Also, `pytest-cov` generates a binary `.coverage` file which is not ignored by default, posing a repo hygiene risk.
 **Action:** Refactored `intervention_library` to use a proper `unittest` suite (`tests/test_intervention_library.py`) and updated `.gitignore` to exclude coverage artifacts.
+
+## 2026-01-22 - [Meeting Mode & LMM Fixes]
+**Learning:** `ReplayHarness` is useful but lacks time-travel capabilities for testing duration-based logic (e.g., "5 seconds of silence"). Tests requiring precise time manipulation should patch `time.time`.
+**Pitfall:** `core/lmm_interface.py` contained broken code (syntax errors, duplicate methods) and the circuit breaker logic was incomplete (failure counter never incremented). This suggests previous merges might not have been fully verified.
+**Action:** Implemented "Meeting Mode" (Milestone 3) with robust tests using mocked time. Repaired `core/lmm_interface.py` and fixed its unit tests.

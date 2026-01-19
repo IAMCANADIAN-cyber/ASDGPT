@@ -69,7 +69,20 @@ class LogicEngine:
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
 
+        # Meeting Mode Detection
+        self.last_user_input_time: float = time.time()
+        self.speech_start_time: float = 0
+        self.face_start_time: float = 0
+        self.meeting_mode_active: bool = False
+
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
+
+    def register_user_input(self) -> None:
+        """
+        Registers a user input event (keyboard/mouse) to reset idle timer.
+        """
+        with self._lock:
+            self.last_user_input_time = time.time()
 
     def get_mode(self) -> str:
         with self._lock:
@@ -453,6 +466,51 @@ class LogicEngine:
                 # Face detection is key for "user activity" vs "shadows"
                 face_detected = self.face_metrics.get("face_detected", False)
                 face_count = self.face_metrics.get("face_count", 0)
+
+            # --- Meeting Mode Detection Logic ---
+            # Update state durations
+            if is_speech:
+                if self.speech_start_time == 0:
+                    self.speech_start_time = current_time
+            else:
+                self.speech_start_time = 0
+
+            if face_detected:
+                if self.face_start_time == 0:
+                    self.face_start_time = current_time
+            else:
+                self.face_start_time = 0
+
+            # Evaluate durations
+            speech_duration = (current_time - self.speech_start_time) if self.speech_start_time > 0 else 0
+            face_duration = (current_time - self.face_start_time) if self.face_start_time > 0 else 0
+            idle_duration = current_time - self.last_user_input_time
+
+            # Check for Meeting Mode Entry
+            if not self.meeting_mode_active:
+                if (speech_duration >= config.MEETING_SPEECH_DURATION and
+                    face_duration >= config.MEETING_FACE_DURATION and
+                    idle_duration >= config.MEETING_IDLE_DURATION):
+
+                    self.logger.log_info(f"Meeting Mode Detected! Speech: {speech_duration:.1f}s, Face: {face_duration:.1f}s, Idle: {idle_duration:.1f}s")
+                    self.meeting_mode_active = True
+                    if self.current_mode == "active":
+                         self.set_mode("dnd")
+                         if self.notification_callback:
+                             self.notification_callback("Meeting Mode Detected", "Switching to DND to prevent interruptions.")
+
+            # Check for Meeting Mode Exit
+            # If we are in meeting mode, but user starts typing OR speech stops for a long time?
+            # For robustness, we exit if user interacts (typing) OR if BOTH speech and face are gone for a while.
+            # But "Meeting" implies talking. If talking stops, maybe meeting is over?
+            # Let's keep it simple: Exit if User Input is detected (Idle < Threshold).
+            # This allows user to "break" meeting mode by typing.
+            elif self.meeting_mode_active:
+                if idle_duration < 1.0: # User actively typing
+                     self.logger.log_info("Meeting Mode Interrupted by User Input.")
+                     self.meeting_mode_active = False
+                     if self.current_mode == "dnd":
+                         self.set_mode("active")
 
             # 2. Check for Event-based Triggers
             # Check for sudden loud noise AND it is speech-like

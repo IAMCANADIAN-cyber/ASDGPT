@@ -64,6 +64,26 @@ class Application:
         self.data_logger.log_info("Setting up hotkeys...")
         try:
             import keyboard
+
+            # Global Activity Hook (for Idle Detection)
+            # We debounce this to avoid excessive locking/calls during rapid typing
+            self._last_hook_time = 0
+            def activity_hook(e):
+                # Simple throttle: only update logic engine once per second max
+                # We use a simple non-thread-safe check here because precision isn't critical
+                # for "idle" detection (resolution of 1s is fine).
+                now = time.time()
+                if now - self._last_hook_time > 1.0:
+                    self.logic_engine.register_user_input()
+                    self._last_hook_time = now
+
+            try:
+                # hook calls callback for every event, but it's non-blocking usually
+                keyboard.hook(activity_hook)
+                self.data_logger.log_info("Global keyboard hook installed for idle detection.")
+            except Exception as e:
+                self.data_logger.log_warning(f"Failed to install global keyboard hook (Idle detection may be impaired): {e}")
+
             # Mode control hotkeys
             keyboard.add_hotkey(config.HOTKEY_CYCLE_MODE, lambda: self.on_cycle_mode_pressed(), suppress=True)
             keyboard.add_hotkey(config.HOTKEY_PAUSE_RESUME, lambda: self.on_pause_resume_pressed(), suppress=True)
