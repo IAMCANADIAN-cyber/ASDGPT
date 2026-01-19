@@ -8,20 +8,6 @@ The ASDGPT project has solidified its core pillars: **System Reliability** (cras
 The focus for this week shifts to **Resilience** and **Personalization**. We must ensure the system works even when the LMM is slow or offline (Fallback Mode), and that sensor thresholds adapt to the user's environment (Calibration).
 
 ## 1. Change Summary (Last 7 Days)
-*   **Completed**: `verify_crash.py` confirms system reliability (10/10 cycles passed).
-*   **Completed**: `test_doom_scroll.py` passes using the new `replay_harness`.
-*   **Completed**: **DND Mode** (Milestone 4) is fully implemented and tested.
-*   **Merged**: VAD integration into `AudioSensor`, providing `speech_rate` and `speech_confidence` metrics.
-*   **Improved**: LMM Context now utilizes real VAD metrics (Syllables/sec, Voice Activity) instead of legacy approximations.
-*   **Completed**: Added `tests/scenarios/test_panic_attack.py` to verify critical intervention logic.
-*   **Completed**: Added `tests/scenarios/test_flow_state.py` to verify Flow State non-intervention logic.
-*   **Completed**: VAD Refinement validation (`tests/test_vad_refinement.py`) passes, confirming suppression of fan noise and typing sounds.
-*   **Completed**: Verified **Face Posture Metrics** implementation (`tests/test_video_metrics.py`) and verified end-to-end scenario (`tests/scenarios/test_posture_correction.py`).
-*   **Verified**: **Tray Icon State** tooltip correctly displays internal state (Arousal, Energy, etc.).
-*   **Completed**: **Face Posture Metrics**: `VideoSensor` outputs head tilt and slouch estimates (`face_roll_angle`, `posture_state`).
-*   **Completed**: **Tray Icon State**: Tooltip now shows dynamic 5-dimension state ("A: 60 O: 0...").
-*   **Completed**: **Log Rotation**: `DataLogger` uses `RotatingFileHandler` to prevent indefinite log growth.
-*   **Completed**: **LMM Latency Monitoring**: `LMMInterface` now logs request latency and includes it in response metadata.
 *   **Merged**: **VAD Integration**: `AudioSensor` now provides `speech_rate` and `voice_activity`, replacing crude volume thresholds.
 *   **Merged**: **Face Posture Metrics**: `VideoSensor` detects `face_roll_angle` (tilt) and `posture_state` (slouching).
 *   **Merged**: **LMM Latency Tracking**: Request times are logged and monitored; LMM context now includes real VAD data.
@@ -36,9 +22,6 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 *   **Deliverable**: A `CalibrationEngine` (or "Wizard" script) that samples environment for 30s to set `VAD_SILENCE_THRESHOLD` and `BASELINE_POSTURE`.
 *   **Success Metric**: `config.json` is updated with personalized values; reduced VAD false positives in quiet rooms.
 
-### 🎯 Milestone 2: Evaluation Harness V1
-*   **Status**: ✅ COMPLETED (Verified by `test_doom_scroll.py`, `test_panic_attack.py`, `test_flow_state.py`, `test_posture_correction.py`)
-*   **Next Steps**: Add more complex scenarios as needed.
 ### 🎯 Milestone 2: LMM Offline Fallback (Resilience)
 *   **Goal**: Ensure "basic safety" interventions work even if the LMM is down or timing out (>10s).
 *   **Deliverable**: `LogicEngine` fallback triggers (e.g., if `LMM_TIMEOUT`, use simple `High Noise -> Reduction` rule).
@@ -58,9 +41,6 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 
 | Unknown | Impact | Mitigation |
 | :--- | :--- | :--- |
-| **LMM Latency** | Med | ✅ Monitored in `LMMInterface`. Check logs for latency > 5s. |
-| **VAD False Positives** | Med | Calibrate `AudioSensor` thresholds (`VAD_SILENCE_THRESHOLD`) in real-world usage. |
-| **Performance** | Low | Profiling needed for `VideoSensor` on lower-end hardware. |
 | **LMM Context Window** | Med | Monitor token usage as we add VAD/Posture history. Prune history if needed. |
 | **Sensor CPU Load** | Low | Profile `VideoSensor` with new Posture logic. Consider "Eco Mode" (lower FPS). |
 | **False Positives (VAD)** | Med | Typing/Fan noise triggers. Mitigate via Milestone 1 (Calibration). |
@@ -69,9 +49,6 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 
 | Title | Why | Acceptance Criteria | Estimate | Risk | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Personalized Baselines** | Improve accuracy. | `StateEngine` loads baseline from user profile. | M | Low | Architect |
-| **Web Dashboard** | Visualization. | Simple local web UI for `events.jsonl`. | L | Med | UI/UX |
-| **Unit Test Coverage** | Stability. | `pytest` coverage > 80% for `core/`. | M | Low | Testsmith |
 | **Calibration Wizard Script** | "Normal" noise varies wildy. | `tools/calibrate.py` runs, updates `user_data/config.json`. | M | Low | Calibrator |
 | **Audio Calibration Logic** | Core logic for noise floor. | `AudioSensor.calibrate()` returns valid threshold. | S | Low | Calibrator |
 | **Video Calibration Logic** | Core logic for neutral posture. | `VideoSensor.calibrate()` returns baseline tilt. | S | Low | Calibrator |
