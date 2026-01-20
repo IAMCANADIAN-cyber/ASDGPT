@@ -3,7 +3,7 @@ import time
 import json
 import os
 import shutil
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from core.intervention_engine import InterventionEngine
 import config
 
@@ -15,11 +15,28 @@ TEST_SUPPRESSIONS_FILE = os.path.join(TEST_USER_DATA_DIR, "suppressions.json")
 def setup_test_env():
     # Setup
     os.makedirs(TEST_USER_DATA_DIR, exist_ok=True)
-    # Override config paths for testing
-    config.USER_DATA_DIR = TEST_USER_DATA_DIR
-    config.SUPPRESSIONS_FILE = TEST_SUPPRESSIONS_FILE
+
+    # Patch config variables using mock.patch
+    # We patch them on the 'config' module directly AND on the module usages to be safe
+    # If there are import issues, patching the reference in the target module helps.
+    patcher_dir = patch('core.intervention_engine.config.USER_DATA_DIR', TEST_USER_DATA_DIR)
+    patcher_file = patch('core.intervention_engine.config.SUPPRESSIONS_FILE', TEST_SUPPRESSIONS_FILE)
+
+    # Also patch local config reference just in case
+    patcher_dir_local = patch('config.USER_DATA_DIR', TEST_USER_DATA_DIR)
+    patcher_file_local = patch('config.SUPPRESSIONS_FILE', TEST_SUPPRESSIONS_FILE)
+
+    patcher_dir.start()
+    patcher_file.start()
+    patcher_dir_local.start()
+    patcher_file_local.start()
 
     yield
+
+    patcher_dir.stop()
+    patcher_file.stop()
+    patcher_dir_local.stop()
+    patcher_file_local.stop()
 
     # Teardown
     if os.path.exists(TEST_USER_DATA_DIR):

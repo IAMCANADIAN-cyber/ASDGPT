@@ -20,12 +20,14 @@ class TestLMMInterfaceCoverage(unittest.TestCase):
     def test_init_url_handling(self):
         """Test URL handling in __init__"""
         # Test case where URL doesn't end with /v1/chat/completions
-        with patch('config.LOCAL_LLM_URL', 'http://base-url/'):
+        with patch('config.LOCAL_LLM_URL', 'http://base-url/'), \
+             patch('core.lmm_interface.config.LOCAL_LLM_URL', 'http://base-url/'):
             lmm = LMMInterface(data_logger=self.mock_logger)
             self.assertEqual(lmm.llm_url, 'http://base-url/v1/chat/completions')
 
         # Test case where URL already ends with it
-        with patch('config.LOCAL_LLM_URL', 'http://base-url/v1/chat/completions'):
+        with patch('config.LOCAL_LLM_URL', 'http://base-url/v1/chat/completions'), \
+             patch('core.lmm_interface.config.LOCAL_LLM_URL', 'http://base-url/v1/chat/completions'):
             lmm = LMMInterface(data_logger=self.mock_logger)
             self.assertEqual(lmm.llm_url, 'http://base-url/v1/chat/completions')
 
@@ -180,7 +182,8 @@ class TestLMMInterfaceCoverage(unittest.TestCase):
         self.lmm_interface.circuit_open_time = time.time()
 
         # Should fail fast and return None or fallback
-        with patch('config.LMM_FALLBACK_ENABLED', False):
+        with patch('config.LMM_FALLBACK_ENABLED', False), \
+             patch('core.lmm_interface.config.LMM_FALLBACK_ENABLED', False):
             result = self.lmm_interface.process_data(video_data="img")
             self.assertIsNone(result)
 
