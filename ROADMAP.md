@@ -14,6 +14,7 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 *   **Verified**: **Reliability**: `verify_crash.py` passed 10/10 cycles; `test_doom_scroll` and `test_panic_attack` scenarios confirmed logic.
 *   **Completed**: **DND Mode**: "Do Not Disturb" is functional and testable.
 *   **Completed**: **Log Rotation**: Prevented disk fill-up issues with `RotatingFileHandler`.
+*   **Completed**: **Meeting Mode**: Heuristic detection (Speech+Face+Idle) triggers Auto-DND; `test_meeting_mode.py` passes.
 
 ## 2. Top Milestones (Next 7 Days)
 
@@ -55,8 +56,6 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 | **LMM Fallback Trigger** | Single point of failure. | LogicEngine detects `LMM_TIMEOUT` event. | S | Med | Sentinel |
 | **Offline Intervention Logic** | Safety net when offline. | Simple noise-based intervention triggers without LMM. | M | Med | Sentinel |
 | **Test LMM Timeout** | Verify fallback works. | `tests/test_lmm_timeout.py` passes. | S | Low | Testsmith |
-| **Meeting Mode Logic** | Interruptions destroy trust. | Heuristic (Speech+Face+NoInput) defined in LogicEngine. | M | Med | Navigator |
-| **Meeting Mode Scenario** | Verify meeting logic. | `test_meeting_mode.py` passes. | S | Low | Testsmith |
 | **Visual Feedback (Toast)** | UX is opaque. | Notification shown on hotkey. | S | Low | Navigator |
 | **Token Usage Logging** | Cost/Limit visibility. | `LMMInterface` logs input/output tokens. | S | Low | Profiler |
 | **Prune Context Window** | Prevent overflow errors. | `LMMInterface` truncates history > N tokens. | M | Med | Profiler |

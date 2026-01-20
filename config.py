@@ -137,6 +137,12 @@ LMM_CIRCUIT_BREAKER_COOLDOWN = _get_conf("LMM_CIRCUIT_BREAKER_COOLDOWN", 60, int
 # --- API Keys ---
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
+# --- Meeting Mode Heuristics ---
+MEETING_MODE_ENABLED = _get_conf("MEETING_MODE_ENABLED", True, bool)
+MEETING_SPEECH_DURATION = _get_conf("MEETING_SPEECH_DURATION", 45, int)
+MEETING_FACE_DURATION = _get_conf("MEETING_FACE_DURATION", 30, int)
+MEETING_IDLE_DURATION = _get_conf("MEETING_IDLE_DURATION", 30, int)
+
 # --- Tiered Intervention Configurations ---
 # (Used for legacy ad-hoc interventions or fallback defaults)
 INTERVENTION_CONFIGS = {

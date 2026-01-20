@@ -73,6 +73,14 @@ class LogicEngine:
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
 
+        # Meeting Mode Heuristics
+        self.last_speech_time: float = 0
+        self.speech_session_start: float = 0
+        self.last_face_time: float = 0
+        self.face_session_start: float = 0
+        self.last_user_input_time: float = time.time() # Initialize to now to avoid immediate trigger
+        self.meeting_mode_trigger_count: int = 0
+
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
     def get_mode(self) -> str:
@@ -466,6 +474,9 @@ class LogicEngine:
         if current_mode in ["active", "dnd"]:
             current_time = time.time()
 
+            # Check for Meeting Mode (Auto-DND)
+            self._check_meeting_mode()
+
             # Check probation (only relevant if recovering to active, but harmless to check)
             if self.recovery_probation_end_time > 0 and current_time > self.recovery_probation_end_time:
                 self.logger.log_info("Error recovery probation passed. Resetting error counters.")
@@ -575,6 +586,73 @@ class LogicEngine:
             if current_time - self.last_lmm_call_time >= self.lmm_call_interval:
                 self.last_lmm_call_time = current_time
                 self._trigger_lmm_analysis(allow_intervention=False)
+
+    def register_user_input(self) -> None:
+        """
+        Called by external hooks (e.g. keyboard) to register user activity.
+        """
+        self.last_user_input_time = time.time()
+
+    def _check_meeting_mode(self) -> None:
+        """
+        Checks heuristics for "Meeting Mode" (Continuous Speech + Face + Idle).
+        If conditions are met, transitions to DND.
+        """
+        if not config.MEETING_MODE_ENABLED:
+            return
+
+        # Only check if in active mode (don't override snooze or existing DND or error)
+        if self.current_mode != "active":
+            return
+
+        current_time = time.time()
+
+        # Update Session Tracking
+        is_speech = self.audio_analysis.get("is_speech", False)
+        face_detected = self.face_metrics.get("face_detected", False)
+
+        # Speech Session
+        if is_speech:
+            self.last_speech_time = current_time
+            if self.speech_session_start == 0:
+                self.speech_session_start = current_time
+        else:
+            # Allow 5s gap
+            if current_time - self.last_speech_time > 5.0:
+                self.speech_session_start = 0
+
+        # Face Session
+        if face_detected:
+            self.last_face_time = current_time
+            if self.face_session_start == 0:
+                self.face_session_start = current_time
+        else:
+             # Allow 5s gap
+            if current_time - self.last_face_time > 5.0:
+                self.face_session_start = 0
+
+        # Check Durations
+        speech_duration = (current_time - self.speech_session_start) if self.speech_session_start > 0 else 0
+        face_duration = (current_time - self.face_session_start) if self.face_session_start > 0 else 0
+        idle_duration = current_time - self.last_user_input_time
+
+        if (speech_duration >= config.MEETING_SPEECH_DURATION and
+            face_duration >= config.MEETING_FACE_DURATION and
+            idle_duration >= config.MEETING_IDLE_DURATION):
+
+            # Use a counter or confirmation logic to avoid rapid toggling?
+            # The durations are long enough that rapid toggling is unlikely,
+            # but we should ensure we don't spam.
+
+            # Idempotency check handled by set_mode logic (returns if same mode).
+
+            self.logger.log_info(f"Meeting Mode Heuristics Met: Speech={speech_duration:.1f}s, Face={face_duration:.1f}s, Idle={idle_duration:.1f}s")
+            self.logger.log_info("Transitioning to DND (Meeting Mode).")
+
+            self.set_mode("dnd")
+            # Optionally notify user why?
+            if self.notification_callback:
+                self.notification_callback("Meeting Mode Detected", "Switched to Do Not Disturb to prevent interruptions.")
 
     def shutdown(self) -> None:
         """

@@ -177,6 +177,11 @@ class ReplayHarness:
             target_audio = event['input']['audio_level']
             audio_chunk = np.full(1024, target_audio)
 
+            # Inject User Input (if specified)
+            if 'last_user_input_delta' in event['input']:
+                delta = event['input']['last_user_input_delta']
+                self.logic_engine.last_user_input_time = time.time() - delta
+
             target_video = event['input']['video_activity']
             pixel_val = min(255, int(target_video))
 
@@ -280,6 +285,11 @@ class ReplayHarness:
             # 2. Inject Data
             target_audio = step['input']['audio_level']
             audio_chunk = np.full(1024, target_audio)
+
+            # Inject User Input (if specified)
+            if 'last_user_input_delta' in step['input']:
+                delta = step['input']['last_user_input_delta']
+                self.logic_engine.last_user_input_time = time.time() - delta
 
             target_video = step['input']['video_activity']
             pixel_val = min(255, int(target_video))

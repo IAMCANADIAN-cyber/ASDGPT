@@ -24,3 +24,7 @@
 ## 2026-01-16 - [Coverage & Hygiene]
 **Learning:** `core/intervention_library.py` contained significant untested logic in an `if __name__ == "__main__":` block, bypassing unit tests. Also, `pytest-cov` generates a binary `.coverage` file which is not ignored by default, posing a repo hygiene risk.
 **Action:** Refactored `intervention_library` to use a proper `unittest` suite (`tests/test_intervention_library.py`) and updated `.gitignore` to exclude coverage artifacts.
+
+## 2026-01-22 - [Meeting Mode]
+**Learning:** Implementing "Meeting Mode" required bridging a gap in `main.py` where user activity tracking (keyboard hooks) was planned but not implemented. Also, `LogicEngine` tests that do not mock the logger will pollute the production log file (`acr_app.log`), causing dirty worktrees.
+**Action:** Implemented keyboard hooks in `main.py`, added heuristic detection in `LogicEngine` (Speech+Face+Idle -> DND), and created `tests/scenarios/test_meeting_mode.py` with proper logger mocking.

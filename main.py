@@ -52,7 +52,9 @@ class Application:
         self.logic_engine.state_update_callback = self.update_tray_tooltip
         self.logic_engine.notification_callback = self.send_notification
 
+        self._last_input_update = 0
         self._setup_hotkeys()
+        self._setup_activity_hooks()
 
         self.data_logger.log_info(f"ACR Initialized. Mode: {self.logic_engine.get_mode()}.")
         self.data_logger.log_info(f"Press Esc to quit.")
@@ -81,6 +83,27 @@ class Application:
         except Exception as e:
             log_msg = f"Error setting up hotkeys: {e}. This might require admin/sudo rights."
             self.data_logger.log_error(log_msg)
+
+    def _setup_activity_hooks(self) -> None:
+        self.data_logger.log_info("Setting up activity hooks...")
+        try:
+            import keyboard
+
+            def on_activity(e):
+                # Throttle updates to LogicEngine
+                current_time = time.time()
+                if current_time - self._last_input_update > 1.0:
+                    self.logic_engine.register_user_input()
+                    self._last_input_update = current_time
+
+            # Hook all key events
+            keyboard.hook(on_activity)
+            self.data_logger.log_info("Global keyboard hook registered for activity tracking.")
+
+        except ImportError:
+            self.data_logger.log_warning("Keyboard library not found. Activity tracking disabled.")
+        except Exception as e:
+            self.data_logger.log_warning(f"Could not setup global activity hook: {e}. (Meeting Mode heuristics may rely on idle time)")
 
     # --- Feedback Hotkey Handlers (Task 4.4) ---
     def on_feedback_helpful_pressed(self) -> None:
