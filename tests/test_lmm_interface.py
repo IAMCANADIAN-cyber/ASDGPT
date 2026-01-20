@@ -17,9 +17,16 @@ def mock_logger():
 
 @pytest.fixture
 def lmm_interface(mock_logger):
+    # Store original
+    orig_fallback = getattr(config, 'LMM_FALLBACK_ENABLED', False)
+
     # Reset config defaults for tests
     config.LMM_FALLBACK_ENABLED = False
-    return LMMInterface(data_logger=mock_logger)
+
+    yield LMMInterface(data_logger=mock_logger)
+
+    # Restore
+    config.LMM_FALLBACK_ENABLED = orig_fallback
 
 def test_initialization(lmm_interface):
     assert lmm_interface.llm_url.endswith("/v1/chat/completions")

@@ -55,6 +55,9 @@ def _get_conf(key: str, default: Any, cast_type: type = None) -> Any:
 APP_NAME = _get_conf("APP_NAME", "ACR")
 LOG_LEVEL = _get_conf("LOG_LEVEL", "INFO")
 LOG_FILE = _get_conf("LOG_FILE", "acr_app.log")
+LOG_MAX_BYTES = _get_conf("LOG_MAX_BYTES", 5 * 1024 * 1024, int) # 5 MB
+LOG_BACKUP_COUNT = _get_conf("LOG_BACKUP_COUNT", 5, int)
+
 USER_DATA_DIR = _get_conf("USER_DATA_DIR", "user_data")
 SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
 PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
@@ -74,19 +77,6 @@ HOTKEY_FEEDBACK_UNHELPFUL = _get_conf("HOTKEY_FEEDBACK_UNHELPFUL", "ctrl+alt+dow
 # --- User Feedback ---
 FEEDBACK_WINDOW_SECONDS = _get_conf("FEEDBACK_WINDOW_SECONDS", 15, int)
 FEEDBACK_SUPPRESSION_MINUTES = _get_conf("FEEDBACK_SUPPRESSION_MINUTES", 240, int)
-
-# --- System & Logging ---
-APP_NAME = _get_conf("APP_NAME", "ACR")
-LOG_LEVEL = _get_conf("LOG_LEVEL", "INFO")
-LOG_FILE = _get_conf("LOG_FILE", "acr_app.log")
-LOG_MAX_BYTES = _get_conf("LOG_MAX_BYTES", 5 * 1024 * 1024, int) # 5 MB
-LOG_BACKUP_COUNT = _get_conf("LOG_BACKUP_COUNT", 5, int)
-
-USER_DATA_DIR = _get_conf("USER_DATA_DIR", "user_data")
-SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
-PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
-EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
-CALIBRATION_FILE = os.path.join(USER_DATA_DIR, "calibration.json")
 
 # --- Sensors ---
 CAMERA_INDEX = _get_conf("CAMERA_INDEX", 0, int)

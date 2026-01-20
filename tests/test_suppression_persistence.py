@@ -15,6 +15,11 @@ TEST_SUPPRESSIONS_FILE = os.path.join(TEST_USER_DATA_DIR, "suppressions.json")
 def setup_test_env():
     # Setup
     os.makedirs(TEST_USER_DATA_DIR, exist_ok=True)
+
+    # Store original values
+    orig_user_data_dir = config.USER_DATA_DIR
+    orig_suppressions_file = config.SUPPRESSIONS_FILE
+
     # Override config paths for testing
     config.USER_DATA_DIR = TEST_USER_DATA_DIR
     config.SUPPRESSIONS_FILE = TEST_SUPPRESSIONS_FILE
@@ -24,6 +29,10 @@ def setup_test_env():
     # Teardown
     if os.path.exists(TEST_USER_DATA_DIR):
         shutil.rmtree(TEST_USER_DATA_DIR)
+
+    # Restore original values
+    config.USER_DATA_DIR = orig_user_data_dir
+    config.SUPPRESSIONS_FILE = orig_suppressions_file
 
 def test_suppression_persistence(setup_test_env):
     """Test that suppressions are saved to disk and loaded back."""

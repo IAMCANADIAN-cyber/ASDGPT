@@ -11,11 +11,20 @@ class TestLMMInterfaceCoverage(unittest.TestCase):
         self.mock_logger = MagicMock()
         self.mock_library = MagicMock(spec=InterventionLibrary)
         self.mock_library.get_all_interventions_info.return_value = "Mock Interventions"
+
+        # Store original config
+        self.orig_url = config.LOCAL_LLM_URL
+        self.orig_fallback = getattr(config, 'LMM_FALLBACK_ENABLED', False)
+
         self.lmm_interface = LMMInterface(
             data_logger=self.mock_logger,
             intervention_library=self.mock_library
         )
         self.lmm_interface.llm_url = "http://mock-url/v1/chat/completions"
+
+    def tearDown(self):
+        config.LOCAL_LLM_URL = self.orig_url
+        config.LMM_FALLBACK_ENABLED = self.orig_fallback
 
     def test_init_url_handling(self):
         """Test URL handling in __init__"""

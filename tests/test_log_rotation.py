@@ -15,6 +15,11 @@ class TestLogRotation(unittest.TestCase):
         # Cleanup previous test files
         self._cleanup()
 
+        # Store original config
+        self.orig_log_max_bytes = getattr(config, 'LOG_MAX_BYTES', 5 * 1024 * 1024)
+        self.orig_log_backup_count = getattr(config, 'LOG_BACKUP_COUNT', 5)
+        self.orig_log_level = getattr(config, 'LOG_LEVEL', "INFO")
+
         # Override config for testing
         config.LOG_MAX_BYTES = 1000  # 1KB
         config.LOG_BACKUP_COUNT = 3
@@ -29,6 +34,11 @@ class TestLogRotation(unittest.TestCase):
                 handler.close()
 
         self._cleanup()
+
+        # Restore config
+        config.LOG_MAX_BYTES = self.orig_log_max_bytes
+        config.LOG_BACKUP_COUNT = self.orig_log_backup_count
+        config.LOG_LEVEL = self.orig_log_level
 
     def _cleanup(self):
         for f in glob.glob("test_rotation*"):

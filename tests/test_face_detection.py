@@ -54,8 +54,8 @@ class TestFaceDetection(unittest.TestCase):
 
     def test_analyze_frame_with_none(self):
         metrics = self.video_sensor.analyze_frame(None)
-        # Expect empty dict
-        self.assertEqual(metrics, {})
+        # Expect default dict with face_detected=False
+        self.assertFalse(metrics.get("face_detected"))
 
     def test_analyze_frame_exception(self):
         # Make detectMultiScale raise an exception
@@ -64,8 +64,8 @@ class TestFaceDetection(unittest.TestCase):
         frame = np.zeros((100, 100, 3), dtype=np.uint8)
         metrics = self.video_sensor.analyze_frame(frame)
 
-        # Should handle exception gracefully and return default empty metrics or similar
-        self.assertEqual(metrics, {})
+        # Should handle exception gracefully and return default metrics
+        self.assertFalse(metrics.get("face_detected"))
         # Should have logged error
         self.mock_logger.log_error.assert_called()
 
