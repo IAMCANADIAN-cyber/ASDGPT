@@ -24,3 +24,7 @@
 ## 2026-01-16 - [Coverage & Hygiene]
 **Learning:** `core/intervention_library.py` contained significant untested logic in an `if __name__ == "__main__":` block, bypassing unit tests. Also, `pytest-cov` generates a binary `.coverage` file which is not ignored by default, posing a repo hygiene risk.
 **Action:** Refactored `intervention_library` to use a proper `unittest` suite (`tests/test_intervention_library.py`) and updated `.gitignore` to exclude coverage artifacts.
+
+## 2026-01-22 - [LMM Timeout Verification]
+**Learning:** The system employs a dual circuit breaker mechanism (one in `LMMInterface`, one in `LogicEngine`). Verified that repeated network timeouts correctly trip the breaker and trigger `offline_noise_reduction` interventions.
+**Action:** Implemented `tests/test_lmm_timeout.py` to target the `LogicEngine` fallback loop and confirmed resilience.
