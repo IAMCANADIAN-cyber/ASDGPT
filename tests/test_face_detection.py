@@ -33,9 +33,6 @@ class TestFaceDetection(unittest.TestCase):
         self.assertEqual(metrics['face_count'], 0)
         self.assertEqual(metrics['face_locations'], [])
 
-        # Verify conversion to grayscale happened
-        # We can't easily check cv2.cvtColor call without patching cv2, but we can assume it worked if no error.
-
     def test_face_detected(self):
         # Setup mock to return one face: (x=10, y=10, w=20, h=20)
         # It usually returns a numpy array or tuple of arrays
@@ -54,8 +51,8 @@ class TestFaceDetection(unittest.TestCase):
 
     def test_analyze_frame_with_none(self):
         metrics = self.video_sensor.analyze_frame(None)
-        # Expect empty dict
-        self.assertEqual(metrics, {})
+        # Expect default dict with False
+        self.assertFalse(metrics.get('face_detected', True))
 
     def test_analyze_frame_exception(self):
         # Make detectMultiScale raise an exception
@@ -64,8 +61,8 @@ class TestFaceDetection(unittest.TestCase):
         frame = np.zeros((100, 100, 3), dtype=np.uint8)
         metrics = self.video_sensor.analyze_frame(frame)
 
-        # Should handle exception gracefully and return default empty metrics or similar
-        self.assertEqual(metrics, {})
+        # Should handle exception gracefully and return default metrics
+        self.assertFalse(metrics.get('face_detected', True))
         # Should have logged error
         self.mock_logger.log_error.assert_called()
 

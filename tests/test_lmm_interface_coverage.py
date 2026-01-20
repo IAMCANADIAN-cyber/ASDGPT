@@ -21,13 +21,23 @@ class TestLMMInterfaceCoverage(unittest.TestCase):
         """Test URL handling in __init__"""
         # Test case where URL doesn't end with /v1/chat/completions
         with patch('config.LOCAL_LLM_URL', 'http://base-url/'):
-            lmm = LMMInterface(data_logger=self.mock_logger)
-            self.assertEqual(lmm.llm_url, 'http://base-url/v1/chat/completions')
+            # Reload module or manually set, but patching config attribute should work if imported as 'import config'
+            # Note: Since config is imported in lmm_interface, patching 'config.LOCAL_LLM_URL' in the test file
+            # might not affect lmm_interface if it's not the same module object.
+            # But normally 'import config' is a singleton.
+            # Let's try explicit attribute setting to be safe.
+            orig_url = getattr(config, 'LOCAL_LLM_URL', '')
 
-        # Test case where URL already ends with it
-        with patch('config.LOCAL_LLM_URL', 'http://base-url/v1/chat/completions'):
-            lmm = LMMInterface(data_logger=self.mock_logger)
-            self.assertEqual(lmm.llm_url, 'http://base-url/v1/chat/completions')
+            try:
+                config.LOCAL_LLM_URL = 'http://base-url/'
+                lmm = LMMInterface(data_logger=self.mock_logger)
+                self.assertEqual(lmm.llm_url, 'http://base-url/v1/chat/completions')
+
+                config.LOCAL_LLM_URL = 'http://base-url/v1/chat/completions'
+                lmm = LMMInterface(data_logger=self.mock_logger)
+                self.assertEqual(lmm.llm_url, 'http://base-url/v1/chat/completions')
+            finally:
+                config.LOCAL_LLM_URL = orig_url
 
     def test_log_methods_fallback(self):
         """Test logging methods when no logger is provided (print fallback)"""
