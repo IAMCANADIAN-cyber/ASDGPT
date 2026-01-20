@@ -73,7 +73,26 @@ class LogicEngine:
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
 
+        # Meeting Mode Detection
+        self.last_user_input_time: float = time.time()
+        self.meeting_speech_start_time: float = 0
+        self.auto_dnd_active: bool = False
+        self.meeting_mode_speech_threshold: float = 3.0 # Seconds of continuous speech
+        self.meeting_mode_idle_threshold: float = 10.0 # Seconds of no keyboard input
+
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
+
+    def register_user_input(self) -> None:
+        """
+        Registers user input (e.g. keyboard) activity.
+        Updates timestamp and potentially exits Auto-DND.
+        """
+        with self._lock:
+            self.last_user_input_time = time.time()
+            if self.auto_dnd_active and self.current_mode == "dnd":
+                self.logger.log_info("User input detected. Exiting Auto-DND Meeting Mode.")
+                self.auto_dnd_active = False
+                self._set_mode_unlocked("active")
 
     def get_mode(self) -> str:
         with self._lock:
@@ -486,6 +505,35 @@ class LogicEngine:
                 # Face detection is key for "user activity" vs "shadows"
                 face_detected = self.face_metrics.get("face_detected", False)
                 face_count = self.face_metrics.get("face_count", 0)
+
+                # Meeting Mode Logic
+                if is_speech:
+                    if self.meeting_speech_start_time == 0:
+                        self.meeting_speech_start_time = current_time
+                else:
+                    self.meeting_speech_start_time = 0
+
+                speech_duration = 0
+                if self.meeting_speech_start_time > 0:
+                    speech_duration = current_time - self.meeting_speech_start_time
+
+                idle_duration = current_time - self.last_user_input_time
+
+                # Trigger Auto-DND if meeting conditions met
+                if self.current_mode == "active" and not self.auto_dnd_active:
+                    if (speech_duration >= self.meeting_mode_speech_threshold and
+                        face_detected and
+                        idle_duration >= self.meeting_mode_idle_threshold):
+                            self.logger.log_info(f"Meeting Mode Detected (Speech: {speech_duration:.1f}s, Idle: {idle_duration:.1f}s). Entering Auto-DND.")
+                            self.auto_dnd_active = True
+                            self._set_mode_unlocked("dnd")
+
+                # Reset Auto-DND flag if manually changed out of DND (e.g. via tray/hotkey, handled in set_mode)
+                # We check here to sync state if it drifted, but strict state management is better in set_mode.
+                # However, set_mode doesn't know WHO called it.
+                # If current_mode changed to something else, reset flag.
+                if self.auto_dnd_active and self.current_mode != "dnd":
+                    self.auto_dnd_active = False
 
             # 2. Check for Event-based Triggers
             # Check for sudden loud noise AND it is speech-like

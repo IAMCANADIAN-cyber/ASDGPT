@@ -1,3 +1,5 @@
+# Navigator's Journal
+
 ## 2024-05-24 - [Initial Run]
 **Learning:** Initial setup of the navigator journal.
 **Action:** Created the journal file.
@@ -24,3 +26,9 @@
 ## 2026-01-16 - [Coverage & Hygiene]
 **Learning:** `core/intervention_library.py` contained significant untested logic in an `if __name__ == "__main__":` block, bypassing unit tests. Also, `pytest-cov` generates a binary `.coverage` file which is not ignored by default, posing a repo hygiene risk.
 **Action:** Refactored `intervention_library` to use a proper `unittest` suite (`tests/test_intervention_library.py`) and updated `.gitignore` to exclude coverage artifacts.
+
+## 2026-01-22 - [Meeting Mode]
+**Learning:** `LogicEngine.update` checks `self.auto_dnd_active` flag before entering DND, but `set_mode` does not manage this flag. This means manual mode changes via tray/hotkey will desync the flag if not handled in `update`.
+**Action:** Implemented sync logic in `update` to clear `auto_dnd_active` if `current_mode` is no longer `dnd`.
+**Pitfall:** `tools/generate_timeline.py` was in a broken state with duplicate code blocks and missing imports, causing unrelated test failures. Fixed by rewriting it to a clean state matching test expectations.
+**Pitfall:** `UnboundLocalError` in `VideoSensor` when no face is detected was causing test failures. Fixed by correctly initializing metrics in the `else` block.

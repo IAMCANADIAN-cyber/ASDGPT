@@ -8,6 +8,8 @@ The ASDGPT project has solidified its core pillars: **System Reliability** (cras
 The focus for this week shifts to **Resilience** and **Personalization**. We must ensure the system works even when the LMM is slow or offline (Fallback Mode), and that sensor thresholds adapt to the user's environment (Calibration).
 
 ## 1. Change Summary (Last 7 Days)
+*   **Merged**: **Meeting Mode Detection**: Auto-DND triggers on continuous speech + face detected + idle input.
+*   **Verified**: **Meeting Mode**: `tests/scenarios/test_meeting_mode.py` passes.
 *   **Merged**: **VAD Integration**: `AudioSensor` now provides `speech_rate` and `voice_activity`, replacing crude volume thresholds.
 *   **Merged**: **Face Posture Metrics**: `VideoSensor` detects `face_roll_angle` (tilt) and `posture_state` (slouching).
 *   **Merged**: **LMM Latency Tracking**: Request times are logged and monitored; LMM context now includes real VAD data.
@@ -55,8 +57,6 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 | **LMM Fallback Trigger** | Single point of failure. | LogicEngine detects `LMM_TIMEOUT` event. | S | Med | Sentinel |
 | **Offline Intervention Logic** | Safety net when offline. | Simple noise-based intervention triggers without LMM. | M | Med | Sentinel |
 | **Test LMM Timeout** | Verify fallback works. | `tests/test_lmm_timeout.py` passes. | S | Low | Testsmith |
-| **Meeting Mode Logic** | Interruptions destroy trust. | Heuristic (Speech+Face+NoInput) defined in LogicEngine. | M | Med | Navigator |
-| **Meeting Mode Scenario** | Verify meeting logic. | `test_meeting_mode.py` passes. | S | Low | Testsmith |
 | **Visual Feedback (Toast)** | UX is opaque. | Notification shown on hotkey. | S | Low | Navigator |
 | **Token Usage Logging** | Cost/Limit visibility. | `LMMInterface` logs input/output tokens. | S | Low | Profiler |
 | **Prune Context Window** | Prevent overflow errors. | `LMMInterface` truncates history > N tokens. | M | Med | Profiler |

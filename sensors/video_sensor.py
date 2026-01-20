@@ -450,19 +450,11 @@ class VideoSensor:
 
                 self._calculate_posture(metrics)
             else:
-                # If no face, we don't clear history immediately to avoid "glitches" if detection misses one frame.
-                # But we return 0.0 for current metrics as per contract.
-                # Optionally, we could return the last known smoothed value?
-                # For now, adhering to contract: no face = 0.0, but maybe we should decay history?
-                # Let's keep history for now, but return 0.0.
-                pass
-                metrics["face_size_ratio"] = float(w) / img_w
-                metrics["vertical_position"] = float(y + h/2) / img_h
-                metrics["horizontal_position"] = float(x + w/2) / img_w
-
-                # Head Tilt Estimation
-                face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+                # If no face, we return 0.0 for current metrics.
+                metrics["face_size_ratio"] = 0.0
+                metrics["vertical_position"] = 0.0
+                metrics["horizontal_position"] = 0.0
+                metrics["face_roll_angle"] = 0.0
 
                 self._calculate_posture(metrics)
 

@@ -75,6 +75,18 @@ class Application:
             # Quit hotkey
             keyboard.add_hotkey("esc", self.quit_application_hotkey_wrapper, suppress=True)
 
+            # Global activity hook (Meeting Mode / Idle Detection)
+            # We hook all events to detect user presence
+            self._last_input_time = 0.0
+            def on_activity(event):
+                # Rate limit updates to LogicEngine to avoid lock contention (max 1Hz)
+                current_t = time.time()
+                if current_t - self._last_input_time > 1.0:
+                    self._last_input_time = current_t
+                    self.logic_engine.register_user_input()
+
+            keyboard.hook(on_activity)
+
             self.data_logger.log_info("Hotkeys registered successfully (Mode, Feedback, Quit).")
         except ImportError:
              self.data_logger.log_warning("Keyboard library not found. Hotkeys disabled.")
