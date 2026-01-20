@@ -87,7 +87,7 @@ def test_process_data_retry_and_fallback(mock_post, lmm_interface):
     assert result is None
 
     # Now enable it
-    with patch('config.LMM_FALLBACK_ENABLED', True):
+    with patch('core.lmm_interface.config.LMM_FALLBACK_ENABLED', True):
          # Also patch the fallback method used to ensure it returns what we want
          with patch.object(lmm_interface, '_get_fallback_response', return_value={"fallback": True, "state_estimation": {}}):
              result = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.8}})
