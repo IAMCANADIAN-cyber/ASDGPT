@@ -170,3 +170,8 @@ INTERVENTION_CONFIGS = {
         "force_action": True,
     }
 }
+
+# --- Meeting Mode Detection ---
+MEETING_SPEECH_DURATION = _get_conf("MEETING_SPEECH_DURATION", 15, int) # Seconds of continuous speech/VAD
+MEETING_FACE_DURATION = _get_conf("MEETING_FACE_DURATION", 30, int) # Seconds of continuous face presence
+MEETING_IDLE_DURATION = _get_conf("MEETING_IDLE_DURATION", 45, int) # Seconds of no keyboard/mouse input

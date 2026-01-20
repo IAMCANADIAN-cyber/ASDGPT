@@ -53,12 +53,39 @@ class Application:
         self.logic_engine.notification_callback = self.send_notification
 
         self._setup_hotkeys()
+        self._setup_activity_hook()
 
         self.data_logger.log_info(f"ACR Initialized. Mode: {self.logic_engine.get_mode()}.")
         self.data_logger.log_info(f"Press Esc to quit.")
         self.data_logger.log_info(f"Hotkeys: Cycle Mode ({config.HOTKEY_CYCLE_MODE}), Pause/Resume ({config.HOTKEY_PAUSE_RESUME})")
         self.data_logger.log_info(f"Feedback Hotkeys: Helpful ({config.HOTKEY_FEEDBACK_HELPFUL}), Unhelpful ({config.HOTKEY_FEEDBACK_UNHELPFUL})")
 
+
+    def _setup_activity_hook(self) -> None:
+        """Sets up a global hook to track user activity (keyboard)."""
+        self.data_logger.log_info("Setting up activity hook...")
+        try:
+            import keyboard
+
+            # Throttle updates to LogicEngine to avoid lock contention
+            self.last_activity_update = 0
+
+            def on_activity(event):
+                current_time = time.time()
+                if current_time - self.last_activity_update > 1.0:
+                    self.logic_engine.register_user_input()
+                    self.last_activity_update = current_time
+
+            # Hook all key events
+            keyboard.hook(on_activity)
+            self.data_logger.log_info("Activity hook registered.")
+            # Explicitly register once to enable tracking flag in LogicEngine
+            self.logic_engine.register_user_input()
+
+        except ImportError:
+            self.data_logger.log_warning("Keyboard library not found. Activity tracking disabled.")
+        except Exception as e:
+            self.data_logger.log_warning(f"Could not setup activity hook: {e}. Activity tracking disabled.")
 
     def _setup_hotkeys(self) -> None:
         self.data_logger.log_info("Setting up hotkeys...")

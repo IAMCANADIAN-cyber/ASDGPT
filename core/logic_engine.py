@@ -73,7 +73,20 @@ class LogicEngine:
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
 
+        # Meeting Mode Heuristics
+        self.last_user_input_time: float = time.time()
+        self.meeting_speech_start_time: float = 0
+        self.meeting_face_start_time: float = 0
+        self.last_speech_timestamp: float = 0
+        self.meeting_grace_period: float = 2.0 # Seconds of silence allowed before breaking "continuous speech"
+        self.activity_tracking_enabled: bool = False
+
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
+
+    def register_user_input(self) -> None:
+        """Called by main application to register user activity (keyboard/mouse)."""
+        self.last_user_input_time = time.time()
+        self.activity_tracking_enabled = True
 
     def get_mode(self) -> str:
         with self._lock:
@@ -240,6 +253,10 @@ class LogicEngine:
             system_alerts = []
             if self.context_persistence.get("phone_usage", 0) >= self.doom_scroll_trigger_threshold:
                  system_alerts.append("Persistent Phone Usage Detected (Potential Doom Scrolling)")
+
+            # Meeting Mode context
+            if self.current_mode == "dnd":
+                 system_alerts.append("System is in DND (Meeting Mode).")
 
             context = {
                 "current_mode": self.current_mode,
@@ -465,6 +482,56 @@ class LogicEngine:
 
         if current_mode in ["active", "dnd"]:
             current_time = time.time()
+
+            # --- Meeting Mode Heuristic Checks ---
+            # Only check if active (don't auto-dnd if already dnd, or maybe we want to keep it there?)
+            # Requirement: Meeting -> Auto-DND.
+            if current_mode == "active":
+                with self._lock:
+                    is_speech = self.audio_analysis.get("is_speech", False)
+                    face_detected = self.face_metrics.get("face_detected", False)
+
+                # 1. Update Speech Duration
+                if is_speech:
+                    self.last_speech_timestamp = current_time
+                    if self.meeting_speech_start_time == 0:
+                        self.meeting_speech_start_time = current_time
+                else:
+                    # Allow a grace period before resetting speech timer
+                    if current_time - self.last_speech_timestamp > self.meeting_grace_period:
+                        self.meeting_speech_start_time = 0
+
+                # 2. Update Face Duration
+                if face_detected:
+                    if self.meeting_face_start_time == 0:
+                        self.meeting_face_start_time = current_time
+                else:
+                    self.meeting_face_start_time = 0 # Strict continuous face
+
+                # 3. Check Durations against Thresholds
+                speech_dur = current_time - self.meeting_speech_start_time if self.meeting_speech_start_time > 0 else 0
+                face_dur = current_time - self.meeting_face_start_time if self.meeting_face_start_time > 0 else 0
+                idle_time = current_time - self.last_user_input_time
+
+                # Constants handled via config lookup or defaults
+                meet_speech_thresh = getattr(config, 'MEETING_SPEECH_DURATION', 15)
+                meet_face_thresh = getattr(config, 'MEETING_FACE_DURATION', 30)
+                meet_idle_thresh = getattr(config, 'MEETING_IDLE_DURATION', 45)
+
+                # Only trigger if we have valid activity tracking (avoids false positives if hook failed)
+                if (self.activity_tracking_enabled and
+                    speech_dur > meet_speech_thresh and
+                    face_dur > meet_face_thresh and
+                    idle_time > meet_idle_thresh):
+
+                    self.logger.log_info(f"Meeting Mode Detected! (Speech: {speech_dur:.1f}s, Face: {face_dur:.1f}s, Idle: {idle_time:.1f}s)")
+                    self.set_mode("dnd")
+                    if self.notification_callback:
+                        self.notification_callback("Meeting Mode Active", "Switched to Do Not Disturb based on activity.")
+                    # Reset triggers to prevent immediate re-trigger if manually changed back?
+                    # But if conditions persist, it might trigger again.
+                    # Ideally we latch until conditions break.
+                    # For now, simplistic trigger is fine.
 
             # Check probation (only relevant if recovering to active, but harmless to check)
             if self.recovery_probation_end_time > 0 and current_time > self.recovery_probation_end_time:
