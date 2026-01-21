@@ -11,13 +11,14 @@ import config
 TEST_USER_DATA_DIR = "test_user_data"
 TEST_SUPPRESSIONS_FILE = os.path.join(TEST_USER_DATA_DIR, "suppressions.json")
 
+from unittest.mock import patch
+
 @pytest.fixture
 def setup_test_env():
     # Setup
     os.makedirs(TEST_USER_DATA_DIR, exist_ok=True)
-    # Override config paths for testing
-    config.USER_DATA_DIR = TEST_USER_DATA_DIR
-    config.SUPPRESSIONS_FILE = TEST_SUPPRESSIONS_FILE
+    # Override config paths for testing is done via patch in the test function or here if we could.
+    # But fixtures + patches are tricky. Let's do nothing here and use patch in tests.
 
     yield
 
@@ -29,24 +30,26 @@ def test_suppression_persistence(setup_test_env):
     """Test that suppressions are saved to disk and loaded back."""
 
     mock_logic = MagicMock()
-    engine = InterventionEngine(mock_logic)
 
-    # 1. Add a suppression
-    engine.suppress_intervention("test_intervention", 60) # 60 minutes
+    with patch('core.intervention_engine.config.SUPPRESSIONS_FILE', TEST_SUPPRESSIONS_FILE):
+        engine = InterventionEngine(mock_logic)
 
-    assert "test_intervention" in engine.suppressed_interventions
-    assert os.path.exists(TEST_SUPPRESSIONS_FILE)
+        # 1. Add a suppression
+        engine.suppress_intervention("test_intervention", 60) # 60 minutes
 
-    # Verify file content
-    with open(TEST_SUPPRESSIONS_FILE, 'r') as f:
-        data = json.load(f)
-        assert "test_intervention" in data
-        assert data["test_intervention"] > time.time()
+        assert "test_intervention" in engine.suppressed_interventions
+        assert os.path.exists(TEST_SUPPRESSIONS_FILE)
 
-    # 2. Create a new engine instance to test loading
-    engine2 = InterventionEngine(mock_logic)
-    assert "test_intervention" in engine2.suppressed_interventions
-    assert engine2.suppressed_interventions["test_intervention"] == engine.suppressed_interventions["test_intervention"]
+        # Verify file content
+        with open(TEST_SUPPRESSIONS_FILE, 'r') as f:
+            data = json.load(f)
+            assert "test_intervention" in data
+            assert data["test_intervention"] > time.time()
+
+        # 2. Create a new engine instance to test loading
+        engine2 = InterventionEngine(mock_logic)
+        assert "test_intervention" in engine2.suppressed_interventions
+        assert engine2.suppressed_interventions["test_intervention"] == engine.suppressed_interventions["test_intervention"]
 
 def test_expired_suppression_cleanup(setup_test_env):
     """Test that expired suppressions are removed on load."""
@@ -60,12 +63,13 @@ def test_expired_suppression_cleanup(setup_test_env):
         json.dump(data, f)
 
     mock_logic = MagicMock()
-    engine = InterventionEngine(mock_logic)
+    with patch('core.intervention_engine.config.SUPPRESSIONS_FILE', TEST_SUPPRESSIONS_FILE):
+        engine = InterventionEngine(mock_logic)
 
-    assert "expired_intervention" not in engine.suppressed_interventions
-    assert "valid_intervention" in engine.suppressed_interventions
+        assert "expired_intervention" not in engine.suppressed_interventions
+        assert "valid_intervention" in engine.suppressed_interventions
 
-    # Verify file was updated (expired removed)
-    with open(TEST_SUPPRESSIONS_FILE, 'r') as f:
-        data_loaded = json.load(f)
-        assert "expired_intervention" not in data_loaded
+        # Verify file was updated (expired removed)
+        with open(TEST_SUPPRESSIONS_FILE, 'r') as f:
+            data_loaded = json.load(f)
+            assert "expired_intervention" not in data_loaded

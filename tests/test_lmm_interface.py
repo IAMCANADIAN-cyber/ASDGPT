@@ -82,7 +82,8 @@ def test_process_data_retry_and_fallback(mock_post, lmm_interface):
     # Speed up retry by mocking sleep
     with patch('time.sleep', return_value=None):
         # Fallback is DISABLED by default in test fixture (config.LMM_FALLBACK_ENABLED = False)
-        result = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.8}})
+        with patch('core.lmm_interface.config.LMM_FALLBACK_ENABLED', False):
+            result = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.8}})
 
     assert result is None
 
@@ -125,7 +126,8 @@ def test_process_data_all_retries_fail(mock_post, lmm_interface):
     mock_post.side_effect = requests.exceptions.ConnectionError("Fail")
 
     with patch('time.sleep', return_value=None):
-        result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
+        with patch('core.lmm_interface.config.LMM_FALLBACK_ENABLED', False):
+            result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
 
     assert result is None
 
@@ -137,7 +139,8 @@ def test_circuit_breaker(lmm_interface):
 
     # Should not call process logic
     with patch.object(lmm_interface, '_send_request_with_retry') as mock_send:
-        result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
+        with patch('core.lmm_interface.config.LMM_FALLBACK_ENABLED', False):
+            result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
         assert result is None
         mock_send.assert_not_called()
 

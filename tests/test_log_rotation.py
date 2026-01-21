@@ -6,6 +6,7 @@ import json
 import logging
 from core.data_logger import DataLogger
 import config
+from unittest.mock import patch
 
 class TestLogRotation(unittest.TestCase):
     def setUp(self):
@@ -14,11 +15,6 @@ class TestLogRotation(unittest.TestCase):
 
         # Cleanup previous test files
         self._cleanup()
-
-        # Override config for testing
-        config.LOG_MAX_BYTES = 1000  # 1KB
-        config.LOG_BACKUP_COUNT = 3
-        config.LOG_LEVEL = "DEBUG"
 
     def tearDown(self):
         # Close handlers explicitly to release file locks (important on Windows, good practice generally)
@@ -39,7 +35,9 @@ class TestLogRotation(unittest.TestCase):
 
     def test_app_log_rotation(self):
         print("\n--- Testing App Log Rotation ---")
-        self.logger = DataLogger(log_file_path=self.test_log_file, events_file_path=self.test_events_file)
+        with patch('core.data_logger.config.LOG_MAX_BYTES', 1000), \
+             patch('core.data_logger.config.LOG_BACKUP_COUNT', 3):
+            self.logger = DataLogger(log_file_path=self.test_log_file, events_file_path=self.test_events_file)
 
         # Generate enough logs to rotate
         # Each line is approx 80-100 bytes. 1000 bytes limit -> ~10-15 lines.
@@ -58,11 +56,14 @@ class TestLogRotation(unittest.TestCase):
 
         # Verify content limit respected (roughly)
         size = os.path.getsize(f"{self.test_log_file}.1")
-        self.assertTrue(size <= config.LOG_MAX_BYTES + 200, f"Rotated file size {size} too large")
+        # patched LOG_MAX_BYTES is 1000
+        self.assertTrue(size <= 1000 + 200, f"Rotated file size {size} too large")
 
     def test_events_log_rotation(self):
         print("\n--- Testing Events Log Rotation ---")
-        self.logger = DataLogger(log_file_path=self.test_log_file, events_file_path=self.test_events_file)
+        with patch('core.data_logger.config.LOG_MAX_BYTES', 1000), \
+             patch('core.data_logger.config.LOG_BACKUP_COUNT', 3):
+            self.logger = DataLogger(log_file_path=self.test_log_file, events_file_path=self.test_events_file)
 
         payload = {"data": "Y" * 50} # JSON overhead + timestamp + 50 chars
 
