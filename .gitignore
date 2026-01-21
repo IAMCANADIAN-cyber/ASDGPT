@@ -32,3 +32,4 @@ replay_log.txt*
 # Test Artifacts
 .coverage
 htmlcov/
+acr_app.log

@@ -69,6 +69,12 @@ class LogicEngine:
         self.last_offline_trigger_time: float = 0
         self.offline_trigger_interval: int = 30 # Seconds between offline interventions
 
+        # Meeting Mode Heuristics
+        self.last_user_input_time: float = time.time()
+        self.input_tracking_enabled: bool = False
+        self.continuous_speech_start_time: float = 0
+        self.auto_dnd_active: bool = False
+
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
@@ -92,6 +98,18 @@ class LogicEngine:
         if mode == old_mode and not from_snooze_expiry:
             if not (mode == "active" and from_snooze_expiry and old_mode == "snoozed"):
                 return
+
+        # Reset auto-dnd flag if manual change (or any change not explicitly preserving it)
+        # We rely on the caller to set auto_dnd_active = True AFTER calling set_mode if it was an auto switch,
+        # OR we handle it here.
+        # Actually, simpler: Any mode change resets auto_dnd_active UNLESS we are about to set it.
+        # But if the USER changes mode, we want to clear it.
+        # If the SYSTEM changes mode (to DND), we want to set it.
+        # Let's just clear it here. If it's an auto-switch, the update loop will set it back to True immediately after.
+        # WAIT: If I clear it here, and then set_mode("dnd"), I need to re-set it.
+        # Better: LogicEngine.update calls set_mode("dnd"), then sets self.auto_dnd_active = True.
+        # But if user cycles mode, set_mode is called. So clearing here is correct for manual overrides.
+        self.auto_dnd_active = False
 
         self.logger.log_info(f"LogicEngine: Changing mode from {old_mode} to {mode}")
 
@@ -139,6 +157,15 @@ class LogicEngine:
     def set_intervention_engine(self, intervention_engine: InterventionEngine) -> None:
         """Sets the intervention engine for the logic engine to use."""
         self.intervention_engine = intervention_engine
+
+    def register_user_input(self) -> None:
+        """
+        Registers that user input (keyboard/mouse) has occurred.
+        Updates the last input timestamp and enables tracking.
+        """
+        # Updates are atomic enough for our resolution
+        self.last_user_input_time = time.time()
+        self.input_tracking_enabled = True
 
     def _notify_mode_change(self, old_mode: str, new_mode: str, from_snooze_expiry: bool = False) -> None:
         self.logger.log_info(f"LogicEngine Notification: Mode changed from {old_mode} to {new_mode}{' (due to snooze expiry)' if from_snooze_expiry else ''}")
@@ -487,7 +514,48 @@ class LogicEngine:
                 face_detected = self.face_metrics.get("face_detected", False)
                 face_count = self.face_metrics.get("face_count", 0)
 
-            # 2. Check for Event-based Triggers
+            # 2. Check Meeting Mode Conditions (Active -> DND)
+            # Heuristic: Continuous Speech + Face Detected + No User Input for X seconds
+            if self.input_tracking_enabled: # Only trust idle time if tracking is working
+                idle_time = current_time - self.last_user_input_time
+                speech_duration_threshold = getattr(config, 'MEETING_MODE_SPEECH_DURATION_THRESHOLD', 3.0)
+                idle_threshold = getattr(config, 'MEETING_MODE_IDLE_KEYBOARD_THRESHOLD', 10.0)
+
+                # Track speech duration
+                if is_speech and face_detected:
+                    if self.continuous_speech_start_time == 0:
+                        self.continuous_speech_start_time = current_time
+                else:
+                    self.continuous_speech_start_time = 0
+
+                # Check thresholds
+                speech_duration = 0
+                if self.continuous_speech_start_time > 0:
+                    speech_duration = current_time - self.continuous_speech_start_time
+
+                if (speech_duration >= speech_duration_threshold and
+                    idle_time >= idle_threshold and
+                    face_detected):
+
+                    if self.current_mode == "active": # Only switch if currently active
+                        self.logger.log_info(f"Meeting Mode Detected! (Speech: {speech_duration:.1f}s, Idle: {idle_time:.1f}s). Switching to DND.")
+                        self.set_mode("dnd")
+                        self.auto_dnd_active = True # Mark as auto-switched
+                        # Optionally trigger a notification via main app (not directly accessible here easily without callback)
+                        if self.notification_callback:
+                            self.notification_callback("Meeting Detected", "Switching to Do Not Disturb mode.")
+
+            # Exit Meeting Mode (Auto-DND -> Active)
+            # If we are in DND, and it was AUTO triggered, and user interacts (idle_time < 1.0s)
+            if self.current_mode == "dnd" and self.auto_dnd_active and self.input_tracking_enabled:
+                 idle_time = current_time - self.last_user_input_time
+                 # If user types (idle < 1s), we assume they are back / override
+                 if idle_time < 1.0:
+                     self.logger.log_info("User activity detected during Auto-DND. Exiting Meeting Mode.")
+                     self.set_mode("active")
+                     # auto_dnd_active is reset in set_mode
+
+            # 3. Check for Event-based Triggers
             # Check for sudden loud noise AND it is speech-like
             # If it's just a loud bang (high RMS, no speech confidence), we ignore it to prevent false positives.
             if current_audio_level > self.audio_threshold_high:
