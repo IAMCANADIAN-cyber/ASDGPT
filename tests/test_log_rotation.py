@@ -39,14 +39,16 @@ class TestLogRotation(unittest.TestCase):
 
     def test_app_log_rotation(self):
         print("\n--- Testing App Log Rotation ---")
-        self.logger = DataLogger(log_file_path=self.test_log_file, events_file_path=self.test_events_file)
+        with unittest.mock.patch('core.data_logger.config.LOG_MAX_BYTES', 1000), \
+             unittest.mock.patch('core.data_logger.config.LOG_BACKUP_COUNT', 3):
+            self.logger = DataLogger(log_file_path=self.test_log_file, events_file_path=self.test_events_file)
 
-        # Generate enough logs to rotate
-        # Each line is approx 80-100 bytes. 1000 bytes limit -> ~10-15 lines.
-        msg = "X" * 50 # 50 chars payload
+            # Generate enough logs to rotate
+            # Each line is approx 80-100 bytes. 1000 bytes limit -> ~10-15 lines.
+            msg = "X" * 50 # 50 chars payload
 
-        for i in range(50):
-            self.logger.log_info(f"Msg {i}: {msg}")
+            for i in range(50):
+                self.logger.log_info(f"Msg {i}: {msg}")
 
         # Check if files exist
         files = glob.glob(f"{self.test_log_file}*")
@@ -62,12 +64,14 @@ class TestLogRotation(unittest.TestCase):
 
     def test_events_log_rotation(self):
         print("\n--- Testing Events Log Rotation ---")
-        self.logger = DataLogger(log_file_path=self.test_log_file, events_file_path=self.test_events_file)
+        with unittest.mock.patch('core.data_logger.config.LOG_MAX_BYTES', 1000), \
+             unittest.mock.patch('core.data_logger.config.LOG_BACKUP_COUNT', 3):
+            self.logger = DataLogger(log_file_path=self.test_log_file, events_file_path=self.test_events_file)
 
-        payload = {"data": "Y" * 50} # JSON overhead + timestamp + 50 chars
+            payload = {"data": "Y" * 50} # JSON overhead + timestamp + 50 chars
 
-        for i in range(50):
-            self.logger.log_event("test_event", payload)
+            for i in range(50):
+                self.logger.log_event("test_event", payload)
 
         files = glob.glob(f"{self.test_events_file}*")
         print(f"Event files found: {files}")

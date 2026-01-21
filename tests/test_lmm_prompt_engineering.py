@@ -53,7 +53,7 @@ class TestLMMPromptEngineering(unittest.TestCase):
                     "pitch_estimation": 150.0,
                     "pitch_variance": 60.0, # High
                     "zcr": 0.15, # High
-                    "activity_bursts": 6 # High
+                    "speech_rate": 6.0 # High
                 },
                 "video_analysis": {
                     "face_detected": True,
@@ -75,16 +75,11 @@ class TestLMMPromptEngineering(unittest.TestCase):
         user_msg_parts = next(m for m in messages if m['role'] == 'user')['content']
         user_text = next(p['text'] for p in user_msg_parts if p['type'] == 'text')
 
-        # Check System Prompt updates
-        self.assertIn("Audio Pitch Variance: High (>50)", system_msg)
-        self.assertIn("Audio ZCR: High (>0.1)", system_msg)
-        self.assertIn("Speech Rate (Burst Density): High (>5)", system_msg)
-
         # Check User Context injection
         self.assertIn("Audio Pitch (est): 150.00 Hz", user_text)
         self.assertIn("Audio Pitch Variance: 60.00", user_text)
         self.assertIn("Audio ZCR: 0.1500", user_text)
-        self.assertIn("Speech Rate (Burst Density): 6", user_text)
+        self.assertIn("Speech Rate: 6.00 syllables/sec", user_text)
 
     @patch('requests.post')
     def test_prompt_handles_missing_metrics(self, mock_post):

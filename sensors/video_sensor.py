@@ -2,26 +2,14 @@ import cv2
 import time
 import os
 import numpy as np
-import collections
 import math
-import threading
 
 class VideoSensor:
-    def __init__(self, camera_index=0, data_logger=None, history_size=5):
+    def __init__(self, camera_index=0, data_logger=None):
         self.camera_index = camera_index
         self.logger = data_logger
         self.cap = None
         self.last_frame = None
-
-        # History buffers for smoothing
-        self.history_size = history_size
-        self.history = {
-            "face_size_ratio": collections.deque(maxlen=history_size),
-            "vertical_position": collections.deque(maxlen=history_size),
-            "horizontal_position": collections.deque(maxlen=history_size)
-        }
-
-        self._lock = threading.RLock()
 
         # Error handling / Recovery state
         self.error_state = False
@@ -60,14 +48,11 @@ class VideoSensor:
                  if not self.eye_cascade.empty():
                      self._log_info(f"Loaded eye cascade from system path: {eye_cascade_path}")
                  else:
-                     self._log_warning("Failed to load eye cascade (empty classifier).")
+                     self._log_warning("Failed to load eye cascade.")
              else:
                  self._log_warning(f"Eye cascade not found at {eye_cascade_path}")
         except Exception as e:
             self._log_warning(f"Error loading eye cascade: {e}")
-
-        if self.eye_cascade is None or self.eye_cascade.empty():
-            self._log_warning("Head tilt estimation will be disabled.")
 
     def _log_info(self, message):
         if self.logger: self.logger.log_info(f"VideoSensor: {message}")
@@ -82,31 +67,30 @@ class VideoSensor:
         else: print(f"VideoSensor [ERROR]: {message}")
 
     def _initialize_camera(self):
-        with self._lock:
-            try:
-                if self.camera_index is None:
-                    # Mock or testing mode, do not open actual camera
-                    return
+        try:
+            if self.camera_index is None:
+                # Mock or testing mode, do not open actual camera
+                return
 
-                self._log_info(f"Initializing video camera {self.camera_index}...")
-                self.cap = cv2.VideoCapture(self.camera_index)
-                if not self.cap.isOpened():
-                    self._log_warning(f"Could not open video camera {self.camera_index}.")
-                    self.cap = None
-                    self.error_state = True
-                    self.last_error_message = "Camera failed to open."
-                else:
-                    self._log_info("Video camera initialized successfully.")
-                    self.error_state = False
-                    self.last_error_message = ""
-
-            except Exception as e:
-                self._log_error(f"Error initializing camera: {e}")
+            self._log_info(f"Initializing video camera {self.camera_index}...")
+            self.cap = cv2.VideoCapture(self.camera_index)
+            if not self.cap.isOpened():
+                self._log_warning(f"Could not open video camera {self.camera_index}.")
                 self.cap = None
                 self.error_state = True
-                self.last_error_message = str(e)
+                self.last_error_message = "Camera failed to open."
+            else:
+                self._log_info("Video camera initialized successfully.")
+                self.error_state = False
+                self.last_error_message = ""
 
-            self.last_retry_time = time.time()
+        except Exception as e:
+            self._log_error(f"Error initializing camera: {e}")
+            self.cap = None
+            self.error_state = True
+            self.last_error_message = str(e)
+
+        self.last_retry_time = time.time()
 
     def get_frame(self):
         """
@@ -125,35 +109,34 @@ class VideoSensor:
             if self.error_state:
                 return None, self.last_error_message
 
-        with self._lock:
-            if self.cap is None or not self.cap.isOpened():
-                 if not self.error_state:
-                     self.error_state = True
-                     self.last_error_message = "Camera not initialized or closed."
-                     self.last_retry_time = time.time()
-                 return None, self.last_error_message
-
-            try:
-                ret, frame = self.cap.read()
-                if not ret:
-                    self._log_warning("Failed to capture video frame (read returned False).")
-                    self.error_state = True
-                    self.last_error_message = "Failed to capture video frame."
-                    self.last_retry_time = time.time()
-                    return None, "Failed to capture video frame."
-
-                # If we succeed, ensure error state is clear
-                if self.error_state:
-                    self.error_state = False
-                    self.last_error_message = ""
-
-                return frame, None
-            except Exception as e:
-                 self._log_error(f"Error capturing frame: {e}")
+        if self.cap is None or not self.cap.isOpened():
+             if not self.error_state:
                  self.error_state = True
-                 self.last_error_message = str(e)
+                 self.last_error_message = "Camera not initialized or closed."
                  self.last_retry_time = time.time()
-                 return None, str(e)
+             return None, self.last_error_message
+
+        try:
+            ret, frame = self.cap.read()
+            if not ret:
+                self._log_warning("Failed to capture video frame (read returned False).")
+                self.error_state = True
+                self.last_error_message = "Failed to capture video frame."
+                self.last_retry_time = time.time()
+                return None, "Failed to capture video frame."
+
+            # If we succeed, ensure error state is clear
+            if self.error_state:
+                self.error_state = False
+                self.last_error_message = ""
+
+            return frame, None
+        except Exception as e:
+             self._log_error(f"Error capturing frame: {e}")
+             self.error_state = True
+             self.last_error_message = str(e)
+             self.last_retry_time = time.time()
+             return None, str(e)
 
     def has_error(self):
         return self.error_state
@@ -275,43 +258,6 @@ class VideoSensor:
         # Centers
         p1 = (ex1 + ew1 // 2, ey1 + eh1 // 2)
         p2 = (ex2 + ew2 // 2, ey2 + eh2 // 2)
-        if frame is None:
-            # Consistent with test expectations which might check for keys even on empty
-            # If tests expect keys, we should provide default dict
-            # But the test calls video_sensor.analyze_frame(None) and checks assertFalse(metrics['face_detected'])
-            # So returning empty dict {} would cause KeyError on 'face_detected'
-            return {
-                "face_detected": False,
-                "face_count": 0,
-                "face_locations": [],
-                "face_size_ratio": 0.0,
-                "vertical_position": 0.0,
-                "horizontal_position": 0.0
-            }
-
-        try:
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-            # Detect faces
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
-        except Exception as e:
-            if self.logger:
-                self.logger.log_error(f"Face detection error: {e}")
-            else:
-                print(f"Face detection error: {e}")
-            return {
-                "face_detected": False,
-                "face_count": 0,
-                "face_locations": [],
-                "face_size_ratio": 0.0,
-                "vertical_position": 0.0,
-                "horizontal_position": 0.0
-            }
 
         # Delta
         dx = p2[0] - p1[0]
@@ -428,34 +374,6 @@ class VideoSensor:
                 largest_face = max(faces, key=lambda f: f[2] * f[3])
                 x, y, w, h = largest_face
                 img_h, img_w = frame.shape[:2]
-
-                # Calculate raw metrics
-                raw_size_ratio = float(w) / img_w
-                raw_vert_pos = float(y + h/2) / img_h
-                raw_horiz_pos = float(x + w/2) / img_w
-
-                # Add to history
-                self.history["face_size_ratio"].append(raw_size_ratio)
-                self.history["vertical_position"].append(raw_vert_pos)
-                self.history["horizontal_position"].append(raw_horiz_pos)
-
-                # Return smoothed values
-                metrics["face_size_ratio"] = float(np.mean(self.history["face_size_ratio"]))
-                metrics["vertical_position"] = float(np.mean(self.history["vertical_position"]))
-                metrics["horizontal_position"] = float(np.mean(self.history["horizontal_position"]))
-
-                # Head Tilt Estimation
-                face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
-
-                self._calculate_posture(metrics)
-            else:
-                # If no face, we don't clear history immediately to avoid "glitches" if detection misses one frame.
-                # But we return 0.0 for current metrics as per contract.
-                # Optionally, we could return the last known smoothed value?
-                # For now, adhering to contract: no face = 0.0, but maybe we should decay history?
-                # Let's keep history for now, but return 0.0.
-                pass
                 metrics["face_size_ratio"] = float(w) / img_w
                 metrics["vertical_position"] = float(y + h/2) / img_h
                 metrics["horizontal_position"] = float(x + w/2) / img_w
@@ -472,11 +390,10 @@ class VideoSensor:
             return {}
 
     def release(self):
-        with self._lock:
-            if self.cap:
-                try:
-                    self.cap.release()
-                except Exception as e:
-                    self._log_error(f"Error releasing video capture: {e}")
-                finally:
-                    self.cap = None
+        if self.cap:
+            try:
+                self.cap.release()
+            except Exception as e:
+                self._log_error(f"Error releasing video capture: {e}")
+            finally:
+                self.cap = None

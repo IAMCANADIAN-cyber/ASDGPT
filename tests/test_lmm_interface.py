@@ -18,8 +18,9 @@ def mock_logger():
 @pytest.fixture
 def lmm_interface(mock_logger):
     # Reset config defaults for tests
-    config.LMM_FALLBACK_ENABLED = False
-    return LMMInterface(data_logger=mock_logger)
+    # Use patch to ensure it affects the module used by LMMInterface
+    with patch('core.lmm_interface.config.LMM_FALLBACK_ENABLED', False):
+        yield LMMInterface(data_logger=mock_logger)
 
 def test_initialization(lmm_interface):
     assert lmm_interface.llm_url.endswith("/v1/chat/completions")
@@ -87,7 +88,7 @@ def test_process_data_retry_and_fallback(mock_post, lmm_interface):
     assert result is None
 
     # Now enable it
-    with patch('config.LMM_FALLBACK_ENABLED', True):
+    with patch('core.lmm_interface.config.LMM_FALLBACK_ENABLED', True):
          # Also patch the fallback method used to ensure it returns what we want
          with patch.object(lmm_interface, '_get_fallback_response', return_value={"fallback": True, "state_estimation": {}}):
              result = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.8}})
@@ -132,7 +133,7 @@ def test_process_data_all_retries_fail(mock_post, lmm_interface):
 def test_circuit_breaker(lmm_interface):
     lmm_interface.circuit_max_failures = 2
     lmm_interface.circuit_failures = 2
-    lmm_interface.circuit_open_time = time.time()
+    lmm_interface.circuit_open_time = time.time() + 60  # Set to future
     lmm_interface.circuit_cooldown = 60
 
     # Should not call process logic
@@ -153,12 +154,11 @@ def test_circuit_breaker(lmm_interface):
 
 @patch('requests.post')
 def test_fallback_logic(mock_post, lmm_interface):
-    config.LMM_FALLBACK_ENABLED = True
-
     # Make request fail
     mock_post.side_effect = requests.exceptions.ConnectionError("Fail")
 
-    with patch('time.sleep', return_value=None):
+    with patch('time.sleep', return_value=None), \
+         patch('core.lmm_interface.config.LMM_FALLBACK_ENABLED', True):
         result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
 
     assert result is not None
