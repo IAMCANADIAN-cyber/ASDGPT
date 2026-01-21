@@ -54,18 +54,23 @@ class TestFaceDetection(unittest.TestCase):
 
     def test_analyze_frame_with_none(self):
         metrics = self.video_sensor.analyze_frame(None)
-        # Expect empty dict
-        self.assertEqual(metrics, {})
+        # Expect default metrics dict, not empty
+        self.assertFalse(metrics['face_detected'])
+        self.assertEqual(metrics['face_count'], 0)
+        self.assertEqual(metrics['face_locations'], [])
 
     def test_analyze_frame_exception(self):
         # Make detectMultiScale raise an exception
+        # We need to patch process_frame or make detectMultiScale fail.
+        # process_frame calls detectMultiScale.
         self.mock_cascade_instance.detectMultiScale.side_effect = Exception("OpenCV Error")
 
         frame = np.zeros((100, 100, 3), dtype=np.uint8)
         metrics = self.video_sensor.analyze_frame(frame)
 
-        # Should handle exception gracefully and return default empty metrics or similar
-        self.assertEqual(metrics, {})
+        # Should handle exception gracefully and return default metrics
+        self.assertFalse(metrics['face_detected'])
+        self.assertEqual(metrics['face_count'], 0)
         # Should have logged error
         self.mock_logger.log_error.assert_called()
 

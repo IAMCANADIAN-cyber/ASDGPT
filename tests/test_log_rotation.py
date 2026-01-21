@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 import os
 import glob
 import time
@@ -15,13 +16,22 @@ class TestLogRotation(unittest.TestCase):
         # Cleanup previous test files
         self._cleanup()
 
-        # Override config for testing
-        config.LOG_MAX_BYTES = 1000  # 1KB
-        config.LOG_BACKUP_COUNT = 3
-        config.LOG_LEVEL = "DEBUG"
+        # Override config for testing using patch to prevent pollution
+        # We patch core.data_logger.config to ensure the class sees the change
+        self.patchers = [
+            patch('core.data_logger.config.LOG_MAX_BYTES', 1000),
+            patch('core.data_logger.config.LOG_BACKUP_COUNT', 3),
+            patch('core.data_logger.config.LOG_LEVEL', "DEBUG")
+        ]
+        for p in self.patchers:
+            p.start()
 
     def tearDown(self):
-        # Close handlers explicitly to release file locks (important on Windows, good practice generally)
+        # Stop patches
+        for p in self.patchers:
+            p.stop()
+
+        # Close handlers explicitly to release file locks
         if hasattr(self, 'logger'):
             for handler in self.logger.app_logger.handlers:
                 handler.close()
@@ -58,7 +68,8 @@ class TestLogRotation(unittest.TestCase):
 
         # Verify content limit respected (roughly)
         size = os.path.getsize(f"{self.test_log_file}.1")
-        self.assertTrue(size <= config.LOG_MAX_BYTES + 200, f"Rotated file size {size} too large")
+        # Accessing config via module to check constant
+        self.assertTrue(size <= 1200, f"Rotated file size {size} too large (limit 1000 + margin)")
 
     def test_events_log_rotation(self):
         print("\n--- Testing Events Log Rotation ---")
