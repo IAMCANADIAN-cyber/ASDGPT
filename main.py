@@ -75,6 +75,16 @@ class Application:
             # Quit hotkey
             keyboard.add_hotkey("esc", self.quit_application_hotkey_wrapper, suppress=True)
 
+            # Global activity hook for Meeting Mode detection (requires root often)
+            try:
+                # We hook all events. We throttle updates inside LogicEngine if needed,
+                # but LogicEngine.register_user_input is just a float set, so it's cheap.
+                # Note: keyboard.hook runs in a separate thread.
+                keyboard.hook(lambda e: self.logic_engine.register_user_input())
+                self.data_logger.log_info("Global keyboard hook registered for activity tracking.")
+            except Exception as hook_err:
+                 self.data_logger.log_warning(f"Could not register global keyboard hook: {hook_err}. Meeting Mode auto-detection may be limited.")
+
             self.data_logger.log_info("Hotkeys registered successfully (Mode, Feedback, Quit).")
         except ImportError:
              self.data_logger.log_warning("Keyboard library not found. Hotkeys disabled.")

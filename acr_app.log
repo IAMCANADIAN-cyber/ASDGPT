@@ -18,3 +18,28 @@
 2026-01-04T18:10:05.033139 [INFO] LMM analysis complete and state updated.
 2026-01-04T18:10:05.033207 [EVENT] Event: state_update | Payload: {'arousal': 53, 'overload': 6, 'focus': 56, 'energy': 77, 'mood': 53}
 2026-01-04T18:10:05.033391 [INFO] LMM suggested intervention: {'type': 'test_intervention', 'message': 'Test'}
+2026-01-21T11:07:06.%f [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-21T11:07:06.%f [INFO] LogicEngine initialized. Mode: active
+2026-01-21T11:07:06.%f [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-21T11:07:06.%f [INFO] LogicEngine initialized. Mode: active
+2026-01-21T11:07:06.%f [INFO] Triggering LMM analysis (Reason: high_audio_level)...
+2026-01-21T11:07:06.%f [INFO] Event: lmm_trigger | Payload: {'reason': 'high_audio_level', 'metrics': {'audio_level': 0.8, 'video_activity': 0.0, 'face_detected': False, 'face_count': 0, 'video_analysis': {}, 'audio_analysis': {'rms': 0.8, 'is_speech': True, 'speech_confidence': 0.9}}}
+2026-01-21T11:07:06.%f [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 2, 'focus': 52, 'energy': 79, 'mood': 51}
+2026-01-21T11:07:06.%f [INFO] LMM analysis complete and state updated.
+2026-01-21T11:07:06.%f [INFO] Event: state_update | Payload: {'arousal': 50, 'overload': 2, 'focus': 52, 'energy': 79, 'mood': 51}
+2026-01-21T11:07:06.%f [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-21T11:07:06.%f [INFO] LogicEngine initialized. Mode: active
+2026-01-21T11:07:06.%f [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-21T11:07:06.%f [INFO] LogicEngine initialized. Mode: active
+2026-01-21T11:07:06.%f [INFO] Triggering LMM analysis (Reason: high_video_activity)...
+2026-01-21T11:07:06.%f [INFO] Event: lmm_trigger | Payload: {'reason': 'high_video_activity', 'metrics': {'audio_level': 0.0, 'video_activity': 20.0, 'face_detected': True, 'face_count': 1, 'video_analysis': {'face_detected': True, 'face_count': 1}, 'audio_analysis': {'rms': 0.0, 'is_speech': False}}}
+2026-01-21T11:07:06.%f [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 2, 'focus': 52, 'energy': 79, 'mood': 51}
+2026-01-21T11:07:06.%f [INFO] LMM analysis complete and state updated.
+2026-01-21T11:07:06.%f [INFO] Event: state_update | Payload: {'arousal': 50, 'overload': 2, 'focus': 52, 'energy': 79, 'mood': 51}
+2026-01-21T11:07:06.%f [INFO] DataLogger initialized. Log level: INFO. Log file: acr_app.log
+2026-01-21T11:07:06.%f [INFO] LogicEngine initialized. Mode: active
+2026-01-21T11:07:06.%f [INFO] Triggering LMM analysis (Reason: periodic_check)...
+2026-01-21T11:07:06.%f [INFO] Event: lmm_trigger | Payload: {'reason': 'periodic_check', 'metrics': {'audio_level': 0.0, 'video_activity': 0.0, 'face_detected': False, 'face_count': 0, 'video_analysis': {}, 'audio_analysis': {}}}
+2026-01-21T11:07:06.%f [INFO] StateEngine: Updated state to {'arousal': 50, 'overload': 2, 'focus': 52, 'energy': 79, 'mood': 51}
+2026-01-21T11:07:06.%f [INFO] LMM analysis complete and state updated.
+2026-01-21T11:07:06.%f [INFO] Event: state_update | Payload: {'arousal': 50, 'overload': 2, 'focus': 52, 'energy': 79, 'mood': 51}
