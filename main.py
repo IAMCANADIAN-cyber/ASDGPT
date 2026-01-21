@@ -75,11 +75,14 @@ class Application:
             # Quit hotkey
             keyboard.add_hotkey("esc", self.quit_application_hotkey_wrapper, suppress=True)
 
-            self.data_logger.log_info("Hotkeys registered successfully (Mode, Feedback, Quit).")
+            # Global hook for activity tracking
+            keyboard.hook(lambda e: self.logic_engine.register_user_input())
+
+            self.data_logger.log_info("Hotkeys registered successfully (Mode, Feedback, Quit, Activity Tracking).")
         except ImportError:
-             self.data_logger.log_warning("Keyboard library not found. Hotkeys disabled.")
+             self.data_logger.log_warning("Keyboard library not found. Hotkeys and Activity Tracking disabled.")
         except Exception as e:
-            log_msg = f"Error setting up hotkeys: {e}. This might require admin/sudo rights."
+            log_msg = f"Error setting up hotkeys/hooks: {e}. This might require admin/sudo rights. Activity Tracking disabled."
             self.data_logger.log_error(log_msg)
 
     # --- Feedback Hotkey Handlers (Task 4.4) ---

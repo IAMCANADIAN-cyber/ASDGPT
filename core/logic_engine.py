@@ -73,7 +73,25 @@ class LogicEngine:
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
 
+        # Meeting Mode Heuristics
+        self.input_tracking_enabled: bool = False # Prevents DND trap if no hook is active
+        self.last_user_input_time: float = time.time()
+        self.speech_start_time: float = 0
+        self.meeting_mode_speech_threshold = config.MEETING_MODE_SPEECH_DURATION_THRESHOLD
+        self.meeting_mode_idle_threshold = config.MEETING_MODE_IDLE_KEYBOARD_THRESHOLD
+
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
+
+    def register_user_input(self) -> None:
+        """
+        Called by main application when keyboard/mouse activity is detected.
+        Updates the idle timer for Meeting Mode detection.
+        """
+        with self._lock:
+            self.last_user_input_time = time.time()
+            if not self.input_tracking_enabled:
+                self.input_tracking_enabled = True
+                self.logger.log_info("User input tracking enabled (activity detected).")
 
     def get_mode(self) -> str:
         with self._lock:
@@ -488,6 +506,30 @@ class LogicEngine:
                 face_count = self.face_metrics.get("face_count", 0)
 
             # 2. Check for Event-based Triggers
+
+            # Meeting Mode Detection
+            # Conditions: Continuous Speech + Face Detected + Idle Input -> Auto-DND
+            if is_speech:
+                if self.speech_start_time == 0:
+                    self.speech_start_time = current_time
+            else:
+                self.speech_start_time = 0
+
+            is_speaking_continuously = False
+            if self.speech_start_time > 0 and (current_time - self.speech_start_time > self.meeting_mode_speech_threshold):
+                is_speaking_continuously = True
+
+            if is_speaking_continuously and self.input_tracking_enabled:
+                time_since_input = current_time - self.last_user_input_time
+                if time_since_input > self.meeting_mode_idle_threshold:
+                    if (face_detected or face_count > 0):
+                        if current_mode == "active":
+                             self.logger.log_info(f"Meeting Mode Detected: Continuous speech ({current_time - self.speech_start_time:.1f}s), Face present, Idle ({time_since_input:.1f}s). Switching to DND.")
+                             self.set_mode("dnd")
+                             if self.tray_callback:
+                                 self.notification_callback("Meeting Mode Detected", "Switching to Do Not Disturb to prevent interruptions.")
+                             return # Skip further trigger checks
+
             # Check for sudden loud noise AND it is speech-like
             # If it's just a loud bang (high RMS, no speech confidence), we ignore it to prevent false positives.
             if current_audio_level > self.audio_threshold_high:
