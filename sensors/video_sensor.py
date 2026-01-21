@@ -194,19 +194,8 @@ class VideoSensor:
 
         try:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            # Resize for performance consistency if needed, but analyze_frame uses full size?
-            # Let's keep it consistent. If we resize here, we should resize for everything.
-            # LogicEngine used full size or didn't specify.
-            # analyze_frame uses full size for face detection.
-            # We'll use full size for now to be accurate, or small resize for speed.
-            # Previous implementation resized to 100x100. Let's stick to that for 'activity' to match expected values.
-
             gray_small = cv2.resize(gray, (100, 100))
-
             raw_score = self.calculate_raw_activity(gray_small)
-
-            # Normalize (arbitrary scaling factor based on testing)
-            # Previous logic: min(1.0, score / 50.0)
             return min(1.0, raw_score / 50.0)
 
         except Exception as e:
@@ -217,7 +206,7 @@ class VideoSensor:
         """
         Convenience method to get frame and calculate activity.
         """
-        frame = self.get_frame()
+        frame, err = self.get_frame() # get_frame returns tuple
         return self.calculate_activity(frame)
 
     def _calculate_posture(self, metrics):
@@ -260,7 +249,7 @@ class VideoSensor:
         Estimates head tilt (roll) in degrees based on eye positions.
         Returns: float (degrees, positive = right tilt, negative = left tilt)
         """
-        if self.eye_cascade.empty():
+        if self.eye_cascade is None or self.eye_cascade.empty():
             return 0.0
 
         eyes = self.eye_cascade.detectMultiScale(face_gray)
@@ -275,43 +264,6 @@ class VideoSensor:
         # Centers
         p1 = (ex1 + ew1 // 2, ey1 + eh1 // 2)
         p2 = (ex2 + ew2 // 2, ey2 + eh2 // 2)
-        if frame is None:
-            # Consistent with test expectations which might check for keys even on empty
-            # If tests expect keys, we should provide default dict
-            # But the test calls video_sensor.analyze_frame(None) and checks assertFalse(metrics['face_detected'])
-            # So returning empty dict {} would cause KeyError on 'face_detected'
-            return {
-                "face_detected": False,
-                "face_count": 0,
-                "face_locations": [],
-                "face_size_ratio": 0.0,
-                "vertical_position": 0.0,
-                "horizontal_position": 0.0
-            }
-
-        try:
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-            # Detect faces
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
-        except Exception as e:
-            if self.logger:
-                self.logger.log_error(f"Face detection error: {e}")
-            else:
-                print(f"Face detection error: {e}")
-            return {
-                "face_detected": False,
-                "face_count": 0,
-                "face_locations": [],
-                "face_size_ratio": 0.0,
-                "vertical_position": 0.0,
-                "horizontal_position": 0.0
-            }
 
         # Delta
         dx = p2[0] - p1[0]
@@ -339,6 +291,7 @@ class VideoSensor:
             "vertical_position": 0.0,
             "horizontal_position": 0.0,
             "face_roll_angle": 0.0,
+            "posture_state": "neutral",
             "timestamp": time.time()
         }
 
@@ -349,9 +302,7 @@ class VideoSensor:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
             # 1. Activity Calculation
-            # We use a downscaled version for activity to match historical behavior/performance
             gray_small = cv2.resize(gray, (100, 100))
-
             raw_activity = self.calculate_raw_activity(gray_small)
             metrics["video_activity"] = float(raw_activity)
             metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
@@ -392,84 +343,27 @@ class VideoSensor:
 
     def analyze_frame(self, frame):
         """
-        Legacy wrapper for backward compatibility if needed,
-        or just for face detection specifically.
+        Legacy wrapper for backward compatibility.
         """
-        # We can implement this by calling process_frame and filtering keys,
-        # but process_frame updates state (last_frame).
-        # If analyze_frame is called separately, it might mess up activity diff if not careful.
-        # But generally, LogicEngine should assume 'process_frame' is the main entry.
-        # For now, we keep the original logic for analyze_frame to be safe,
-        # BUT note that it doesn't touch 'last_frame'.
+        default_metrics = {
+            "face_detected": False,
+            "face_count": 0,
+            "face_locations": [],
+            "face_size_ratio": 0.0,
+            "vertical_position": 0.0,
+            "horizontal_position": 0.0
+        }
 
         if frame is None:
-            return {}
+            return default_metrics
 
         try:
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
-
-            metrics = {
-                "face_detected": len(faces) > 0,
-                "face_count": len(faces),
-                "face_locations": [list(f) for f in faces],
-                "face_size_ratio": 0.0,
-                "vertical_position": 0.0,
-                "horizontal_position": 0.0
-            }
-
-            if len(faces) > 0:
-                largest_face = max(faces, key=lambda f: f[2] * f[3])
-                x, y, w, h = largest_face
-                img_h, img_w = frame.shape[:2]
-
-                # Calculate raw metrics
-                raw_size_ratio = float(w) / img_w
-                raw_vert_pos = float(y + h/2) / img_h
-                raw_horiz_pos = float(x + w/2) / img_w
-
-                # Add to history
-                self.history["face_size_ratio"].append(raw_size_ratio)
-                self.history["vertical_position"].append(raw_vert_pos)
-                self.history["horizontal_position"].append(raw_horiz_pos)
-
-                # Return smoothed values
-                metrics["face_size_ratio"] = float(np.mean(self.history["face_size_ratio"]))
-                metrics["vertical_position"] = float(np.mean(self.history["vertical_position"]))
-                metrics["horizontal_position"] = float(np.mean(self.history["horizontal_position"]))
-
-                # Head Tilt Estimation
-                face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
-
-                self._calculate_posture(metrics)
-            else:
-                # If no face, we don't clear history immediately to avoid "glitches" if detection misses one frame.
-                # But we return 0.0 for current metrics as per contract.
-                # Optionally, we could return the last known smoothed value?
-                # For now, adhering to contract: no face = 0.0, but maybe we should decay history?
-                # Let's keep history for now, but return 0.0.
-                pass
-                metrics["face_size_ratio"] = float(w) / img_w
-                metrics["vertical_position"] = float(y + h/2) / img_h
-                metrics["horizontal_position"] = float(x + w/2) / img_w
-
-                # Head Tilt Estimation
-                face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
-
-                self._calculate_posture(metrics)
-
+            # We use process_frame to avoid duplicating logic
+            metrics = self.process_frame(frame)
             return metrics
         except Exception as e:
             self._log_error(f"Error analyzing frame: {e}")
-            return {}
+            return default_metrics
 
     def release(self):
         with self._lock:
