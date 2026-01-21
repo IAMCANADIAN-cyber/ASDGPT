@@ -24,3 +24,8 @@
 ## 2026-01-16 - [Coverage & Hygiene]
 **Learning:** `core/intervention_library.py` contained significant untested logic in an `if __name__ == "__main__":` block, bypassing unit tests. Also, `pytest-cov` generates a binary `.coverage` file which is not ignored by default, posing a repo hygiene risk.
 **Action:** Refactored `intervention_library` to use a proper `unittest` suite (`tests/test_intervention_library.py`) and updated `.gitignore` to exclude coverage artifacts.
+
+## 2026-01-22 - [LMM Timeout & Repo Hygiene]
+**Learning:** `tools/generate_timeline.py` and `sensors/video_sensor.py` contained severe duplication artifacts (concatenated file versions), causing syntax errors and crashes in unrelated tests. This indicates a recurring hygiene issue with merge resolution.
+**Action:** Cleaned up both files to strictly modular implementations. Implemented `tests/test_lmm_timeout.py` to verify LMM fallback logic, confirming that `LogicEngine` correctly handles LMM timeouts by opening the circuit breaker and triggering offline interventions.
+**Pitfall:** Python `unittest.mock.patch` decorators pass arguments in reverse order (bottom-up), which can lead to confusing test failures if mocks are swapped.
