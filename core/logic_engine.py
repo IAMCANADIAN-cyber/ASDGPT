@@ -69,11 +69,26 @@ class LogicEngine:
         self.last_offline_trigger_time: float = 0
         self.offline_trigger_interval: int = 30 # Seconds between offline interventions
 
+        # Meeting Mode / User Input Tracking
+        self.last_user_input_time: float = time.time()
+        self.input_tracking_enabled: bool = False # Enabled by main.py if hook succeeds
+        self.meeting_mode_speech_start_time: float = 0
+        self.meeting_mode_speech_threshold: float = getattr(config, 'MEETING_MODE_SPEECH_DURATION_THRESHOLD', 3.0)
+        self.meeting_mode_idle_threshold: float = getattr(config, 'MEETING_MODE_IDLE_KEYBOARD_THRESHOLD', 10.0)
+
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
+
+    def register_user_input(self) -> None:
+        """Called by main application when user keyboard/mouse activity is detected."""
+        with self._lock:
+            self.last_user_input_time = time.time()
+            if not self.input_tracking_enabled:
+                 self.input_tracking_enabled = True # Auto-enable on first input? Or just use flag.
+                 # Let's just track it.
 
     def get_mode(self) -> str:
         with self._lock:
@@ -535,7 +550,37 @@ class LogicEngine:
                 else:
                     self._trigger_lmm_analysis(reason=trigger_reason, allow_intervention=should_intervene)
 
-            # 5. Potentially change mode (e.g. error)
+            # 5. Check for "Meeting Mode" (Auto-DND)
+            # Heuristic: Continuous Speech + Face Present + No Keyboard Input (Listening/Talking)
+            # Only trigger if input tracking is actually working (enabled), to avoid false positives on systems without hooks.
+            if self.input_tracking_enabled and current_mode == "active":
+                with self._lock:
+                    if is_speech:
+                         if self.meeting_mode_speech_start_time == 0:
+                             self.meeting_mode_speech_start_time = current_time
+                    else:
+                        self.meeting_mode_speech_start_time = 0
+
+                    speech_duration = 0
+                    if self.meeting_mode_speech_start_time > 0:
+                        speech_duration = current_time - self.meeting_mode_speech_start_time
+
+                    time_since_input = current_time - self.last_user_input_time
+
+                # Check criteria
+                if (speech_duration >= self.meeting_mode_speech_threshold and
+                    face_detected and
+                    time_since_input >= self.meeting_mode_idle_threshold):
+
+                    self.logger.log_info(f"Meeting Mode Detected (Speech: {speech_duration:.1f}s, Face: Yes, Idle: {time_since_input:.1f}s). Switching to DND.")
+                    # We use _set_mode_unlocked inside update if we hold lock, but update() releases lock mostly.
+                    # set_mode takes lock.
+                    self.set_mode("dnd")
+                    # Optionally notify user via tray tooltip update or log
+                    if hasattr(self, 'intervention_engine') and self.intervention_engine:
+                        self.intervention_engine.notify_mode_change("dnd", "Meeting detected. DND activated.")
+
+            # 6. Potentially change mode (e.g. error)
             # (Note: Main application handles sensor hardware errors.
             # LogicEngine could handle logical errors, e.g., if we consistently get black frames
             # but no hardware error is reported. For now, we leave that to future expansion.)

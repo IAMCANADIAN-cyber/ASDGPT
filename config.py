@@ -111,6 +111,12 @@ VAD_SILENCE_THRESHOLD = _get_conf("VAD_SILENCE_THRESHOLD", 0.01, float)
 VAD_WEAK_THRESHOLD = _get_conf("VAD_WEAK_THRESHOLD", 0.4, float)
 VAD_STRONG_THRESHOLD = _get_conf("VAD_STRONG_THRESHOLD", 0.7, float)
 
+# --- Meeting Mode Heuristics ---
+# Duration of continuous speech to consider for meeting mode (seconds)
+MEETING_MODE_SPEECH_DURATION_THRESHOLD = _get_conf("MEETING_MODE_SPEECH_DURATION_THRESHOLD", 3.0, float)
+# Duration of no keyboard input to consider user "idle/listening" (seconds)
+MEETING_MODE_IDLE_KEYBOARD_THRESHOLD = _get_conf("MEETING_MODE_IDLE_KEYBOARD_THRESHOLD", 10.0, float)
+
 # --- State Engine Baseline ---
 # Allows personalization of the "neutral" state.
 BASELINE_STATE = _get_conf("BASELINE_STATE", {

@@ -5,6 +5,7 @@ ASDGPT is a Python application designed to act as an autonomous co-regulator. It
 ## Features
 
 *   **State Management**: Tracks user state (Active, Snoozed, Paused, DND).
+*   **Auto-DND ("Meeting Mode")**: Automatically switches to Do-Not-Disturb when you are speaking continuously in a meeting (Face + Speech + No Typing).
 *   **Sensor Input**: Captures data from camera (video) and microphone (audio).
 *   **Intervention System**: Provides notifications and interventions (TTS, audio prompts).
 *   **User Feedback**: Allows users to provide feedback on interventions via hotkeys.

@@ -75,6 +75,15 @@ class Application:
             # Quit hotkey
             keyboard.add_hotkey("esc", self.quit_application_hotkey_wrapper, suppress=True)
 
+            # Global hook for activity tracking (Meeting Mode)
+            # We use a non-blocking hook that updates the timestamp in LogicEngine
+            try:
+                keyboard.hook(lambda e: self.logic_engine.register_user_input())
+                self.logic_engine.input_tracking_enabled = True
+                self.data_logger.log_info("Global keyboard hook registered for activity tracking.")
+            except Exception as e:
+                 self.data_logger.log_warning(f"Could not register global keyboard hook: {e}. Meeting Mode auto-detection will be disabled.")
+
             self.data_logger.log_info("Hotkeys registered successfully (Mode, Feedback, Quit).")
         except ImportError:
              self.data_logger.log_warning("Keyboard library not found. Hotkeys disabled.")
