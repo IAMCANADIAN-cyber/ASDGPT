@@ -48,6 +48,10 @@ class ACRTrayIcon:
         }
         self.icons = {name: load_image(path) for name, path in self.icon_paths.items()}
 
+        # Generate feedback icons programmatically
+        self.icons["feedback_helpful"] = self.create_colored_icon("green", "OK")
+        self.icons["feedback_unhelpful"] = self.create_colored_icon("red", "NO")
+
         self.current_icon_state = "default" # e.g., "active", "paused"
 
         # Calculate snooze label
@@ -87,6 +91,18 @@ class ACRTrayIcon:
         if self.thread and self.thread.is_alive():
             self.thread.join(timeout=2) # Wait for thread to finish
         print("System tray icon stopped.")
+
+    def create_colored_icon(self, color, text):
+        """Creates a simple colored icon with text."""
+        try:
+            img = Image.new('RGB', (64, 64), color=color)
+            draw = ImageDraw.Draw(img)
+            # Centerish text
+            draw.text((10, 25), text, fill='white')
+            return img
+        except Exception as e:
+            print(f"Error creating colored icon: {e}")
+            return self.icons.get("default")
 
     def on_toggle_pause_resume(self, icon, item):
         print("Tray: Pause/Resume clicked")

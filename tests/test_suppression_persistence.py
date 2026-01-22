@@ -3,7 +3,7 @@ import time
 import json
 import os
 import shutil
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from core.intervention_engine import InterventionEngine
 import config
 
@@ -15,11 +15,22 @@ TEST_SUPPRESSIONS_FILE = os.path.join(TEST_USER_DATA_DIR, "suppressions.json")
 def setup_test_env():
     # Setup
     os.makedirs(TEST_USER_DATA_DIR, exist_ok=True)
-    # Override config paths for testing
-    config.USER_DATA_DIR = TEST_USER_DATA_DIR
-    config.SUPPRESSIONS_FILE = TEST_SUPPRESSIONS_FILE
+
+    # Patch config in core.intervention_engine
+    # We patch the module attribute where it is used.
+    # Since core.intervention_engine imports config, we can patch config attributes there.
+    # Note: If other modules also use config, we might need to patch there too or patch 'config' global if possible.
+    # But usually patching where used is best.
+    p1 = patch('core.intervention_engine.config.USER_DATA_DIR', TEST_USER_DATA_DIR)
+    p2 = patch('core.intervention_engine.config.SUPPRESSIONS_FILE', TEST_SUPPRESSIONS_FILE)
+
+    p1.start()
+    p2.start()
 
     yield
+
+    p1.stop()
+    p2.stop()
 
     # Teardown
     if os.path.exists(TEST_USER_DATA_DIR):

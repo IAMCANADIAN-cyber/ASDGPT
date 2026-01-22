@@ -4,6 +4,7 @@ import glob
 import time
 import json
 import logging
+from unittest.mock import patch
 from core.data_logger import DataLogger
 import config
 
@@ -15,10 +16,14 @@ class TestLogRotation(unittest.TestCase):
         # Cleanup previous test files
         self._cleanup()
 
-        # Override config for testing
-        config.LOG_MAX_BYTES = 1000  # 1KB
-        config.LOG_BACKUP_COUNT = 3
-        config.LOG_LEVEL = "DEBUG"
+        # Patch config in core.data_logger
+        self.patcher1 = patch('core.data_logger.config.LOG_MAX_BYTES', 1000)
+        self.patcher2 = patch('core.data_logger.config.LOG_BACKUP_COUNT', 3)
+        self.patcher3 = patch('core.data_logger.config.LOG_LEVEL', "DEBUG")
+
+        self.patcher1.start()
+        self.patcher2.start()
+        self.patcher3.start()
 
     def tearDown(self):
         # Close handlers explicitly to release file locks (important on Windows, good practice generally)
@@ -27,6 +32,10 @@ class TestLogRotation(unittest.TestCase):
                 handler.close()
             for handler in self.logger.event_logger.handlers:
                 handler.close()
+
+        self.patcher1.stop()
+        self.patcher2.stop()
+        self.patcher3.stop()
 
         self._cleanup()
 
@@ -58,7 +67,12 @@ class TestLogRotation(unittest.TestCase):
 
         # Verify content limit respected (roughly)
         size = os.path.getsize(f"{self.test_log_file}.1")
-        self.assertTrue(size <= config.LOG_MAX_BYTES + 200, f"Rotated file size {size} too large")
+
+        # We need to get the patched value, which is 1000
+        # config.LOG_MAX_BYTES might still be the original if we only patched core.data_logger.config
+        # But we want to compare against what we set.
+        expected_max = 1000
+        self.assertTrue(size <= expected_max + 200, f"Rotated file size {size} too large")
 
     def test_events_log_rotation(self):
         print("\n--- Testing Events Log Rotation ---")

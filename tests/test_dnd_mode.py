@@ -36,7 +36,13 @@ class TestDNDMode(unittest.TestCase):
         self.engine.audio_level = 0.8
         self.engine.audio_analysis = {"is_speech": True}
 
-        with patch.object(self.engine, '_prepare_lmm_data', return_value={'data': 'mock'}):
+        # Mock payload with required user_context
+        mock_payload = {
+            'data': 'mock',
+            'user_context': {'sensor_metrics': {'audio_level': 0.8}}
+        }
+
+        with patch.object(self.engine, '_prepare_lmm_data', return_value=mock_payload):
             self.engine.update()
 
         # Verify thread started with allow_intervention=True
@@ -60,7 +66,12 @@ class TestDNDMode(unittest.TestCase):
         # Reset lmm timer to avoid periodic trigger
         self.engine.last_lmm_call_time = time.time()
 
-        with patch.object(self.engine, '_prepare_lmm_data', return_value={'data': 'mock'}):
+        mock_payload = {
+            'data': 'mock',
+            'user_context': {'sensor_metrics': {'audio_level': 0.8}}
+        }
+
+        with patch.object(self.engine, '_prepare_lmm_data', return_value=mock_payload):
             self.engine.update()
 
         # Verify thread STARTED (to monitor state)
@@ -79,7 +90,12 @@ class TestDNDMode(unittest.TestCase):
         # Force periodic check
         self.engine.last_lmm_call_time = time.time() - 200
 
-        with patch.object(self.engine, '_prepare_lmm_data', return_value={'data': 'mock'}):
+        mock_payload = {
+            'data': 'mock',
+            'user_context': {'sensor_metrics': {'audio_level': 0.1}}
+        }
+
+        with patch.object(self.engine, '_prepare_lmm_data', return_value=mock_payload):
             self.engine.update()
 
         # Verify thread started with allow_intervention=False
