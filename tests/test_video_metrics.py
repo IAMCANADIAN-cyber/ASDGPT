@@ -135,5 +135,51 @@ class TestVideoMetrics(unittest.TestCase):
         self.assertEqual(analysis.get("vertical_position"), 0.8)
         self.assertEqual(analysis.get("normalized_activity"), 0.5)
 
+    def test_calibrated_posture_logic(self):
+        """
+        Verify that posture logic respects the calibrated baseline.
+        """
+        # Baseline: Tilted 10 deg right, Size 0.5, Y 0.4
+        baseline = {
+            "face_roll_angle": 10.0,
+            "face_size_ratio": 0.5,
+            "vertical_position": 0.4
+        }
+
+        # Scenario 1: Current Roll 25.0 (Diff 15).
+        # Hardcoded check: abs(25) > 20 -> True (Tilted Right)
+        # Calibrated check: abs(25 - 10) = 15 < 20 -> False (Neutral)
+
+        # We need to patch the config object inside sensors.video_sensor
+        with patch('sensors.video_sensor.config.BASELINE_POSTURE', baseline):
+
+             metrics = {
+                 "face_detected": True,
+                 "face_roll_angle": 25.0,
+                 "face_size_ratio": 0.5,
+                 "vertical_position": 0.4
+             }
+
+             self.video_sensor._calculate_posture(metrics)
+             self.assertEqual(metrics["posture_state"], "neutral")
+
+             # Scenario 2: Leaning Forward relative to baseline
+             # Baseline size 0.5. Threshold 1.3x = 0.65.
+             # Current size 0.7.
+             metrics["face_size_ratio"] = 0.7
+             self.video_sensor._calculate_posture(metrics)
+             self.assertEqual(metrics["posture_state"], "leaning_forward")
+
+             # Scenario 3: Slouching relative to baseline
+             # Baseline Y 0.4. Threshold +0.15 = 0.55.
+             # Current Y 0.6.
+             metrics["vertical_position"] = 0.6
+             # Reset previous state
+             metrics["posture_state"] = "neutral"
+             metrics["face_size_ratio"] = 0.5 # Reset size
+
+             self.video_sensor._calculate_posture(metrics)
+             self.assertEqual(metrics["posture_state"], "slouching")
+
 if __name__ == '__main__':
     unittest.main()

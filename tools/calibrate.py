@@ -40,6 +40,78 @@ class CalibrationEngine:
             json.dump(current, f, indent=4)
         print(f"Configuration saved to {self.config_path}")
 
+    def calibrate_audio_limits(self, duration: int = 10) -> float:
+        print(f"\n--- Audio High Limit Calibration ---")
+        print("Please speak or create typical loud noise for your environment.")
+        print("This sets the threshold for 'too loud' / overload.")
+        print(f"Recording for {duration} seconds...")
+        time.sleep(2)
+        print("Go!")
+
+        rms_values = []
+        start_time = time.time()
+
+        while time.time() - start_time < duration:
+            chunk, err = self.audio_sensor.get_chunk()
+            if chunk is not None and len(chunk) > 0:
+                metrics = self.audio_sensor.analyze_chunk(chunk)
+                rms = metrics.get('rms', 0.0)
+                rms_values.append(rms)
+                print(f"\rRMS: {rms:.4f}", end="", flush=True)
+            time.sleep(0.1)
+
+        print("\nComplete.")
+
+        if not rms_values:
+            return getattr(config, 'AUDIO_THRESHOLD_HIGH', 0.5)
+
+        a_mean = statistics.mean(rms_values)
+        a_std = statistics.stdev(rms_values) if len(rms_values) > 1 else 0.0
+        a_max = max(rms_values)
+
+        # Threshold: Mean + 4*StdDev, but at least 20% above Max
+        rec_audio = max(a_mean + (4 * a_std), a_max * 1.2)
+        rec_audio = max(0.01, min(0.9, rec_audio))
+
+        print(f"Recommended Audio High Threshold: {rec_audio:.4f}")
+        return rec_audio
+
+    def calibrate_video_activity(self, duration: int = 10) -> float:
+        print(f"\n--- Video Activity Limit Calibration ---")
+        print("Please move normally/actively (e.g. typing, shifting).")
+        print("This sets the threshold for 'high physical activity'.")
+        print(f"Recording for {duration} seconds...")
+        time.sleep(2)
+        print("Go!")
+
+        activity_values = []
+        start_time = time.time()
+
+        while time.time() - start_time < duration:
+            frame, err = self.video_sensor.get_frame()
+            if frame is not None:
+                metrics = self.video_sensor.process_frame(frame)
+                # Use raw activity (0-255)
+                act = metrics.get('video_activity', 0.0)
+                activity_values.append(act)
+                print(f"\rActivity: {act:.2f}", end="", flush=True)
+            time.sleep(0.1)
+
+        print("\nComplete.")
+
+        if not activity_values:
+            return getattr(config, 'VIDEO_ACTIVITY_THRESHOLD_HIGH', 20.0)
+
+        v_mean = statistics.mean(activity_values)
+        v_std = statistics.stdev(activity_values) if len(activity_values) > 1 else 0.0
+        v_max = max(activity_values)
+
+        # Threshold: Mean + 4*StdDev, or 1.5x Max. Floor of 5.0.
+        rec_video = max(v_mean + (4 * v_std), v_max * 1.5, 5.0)
+
+        print(f"Recommended Video Activity Threshold: {rec_video:.2f}")
+        return rec_video
+
     def calibrate_audio_silence(self, duration: int = 10) -> float:
         print(f"\n--- Audio Silence Calibration ---")
         print(f"Please remain silent for {duration} seconds...")
@@ -156,21 +228,40 @@ class CalibrationEngine:
         print("=== ASDGPT Calibration Wizard ===")
 
         try:
-            input("Press Enter to start Audio Calibration (or Ctrl+C to quit)...")
+            print("\nStep 1: Audio Silence (Background Noise)")
+            input("Press Enter to start...")
             silence_threshold = self.calibrate_audio_silence()
 
-            input("\nPress Enter to start Video Calibration...")
+            print("\nStep 2: Audio Limits (Loudness)")
+            input("Press Enter to start...")
+            audio_high_threshold = self.calibrate_audio_limits()
+
+            print("\nStep 3: Video Posture (Neutral)")
+            input("Press Enter to start...")
             baseline_posture = self.calibrate_video_posture()
+
+            print("\nStep 4: Video Activity (Movement)")
+            input("Press Enter to start...")
+            video_activity_threshold = self.calibrate_video_activity()
 
             print("\n--- Summary ---")
             new_config = {}
+
             if silence_threshold:
                 new_config["VAD_SILENCE_THRESHOLD"] = round(silence_threshold, 4)
                 print(f"VAD_SILENCE_THRESHOLD: {new_config['VAD_SILENCE_THRESHOLD']}")
 
+            if audio_high_threshold:
+                new_config["AUDIO_THRESHOLD_HIGH"] = round(audio_high_threshold, 4)
+                print(f"AUDIO_THRESHOLD_HIGH: {new_config['AUDIO_THRESHOLD_HIGH']}")
+
             if baseline_posture:
                 new_config["BASELINE_POSTURE"] = baseline_posture
                 print(f"BASELINE_POSTURE: {json.dumps(baseline_posture, indent=2)}")
+
+            if video_activity_threshold:
+                new_config["VIDEO_ACTIVITY_THRESHOLD_HIGH"] = round(video_activity_threshold, 2)
+                print(f"VIDEO_ACTIVITY_THRESHOLD_HIGH: {new_config['VIDEO_ACTIVITY_THRESHOLD_HIGH']}")
 
             if new_config:
                 response = input("\nSave these settings to user_data/config.json? (y/n): ").strip().lower()

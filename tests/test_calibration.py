@@ -115,16 +115,56 @@ class TestCalibration(unittest.TestCase):
                     self.assertEqual(saved_dict["EXISTING"], "VAL")
                     self.assertEqual(saved_dict["TEST_KEY"], "TEST_VAL")
 
+    def test_calibrate_audio_limits(self):
+        engine = CalibrationEngine()
+
+        def mock_get_chunk():
+             return np.array([0]), None
+
+        def mock_analyze_chunk(chunk):
+             return {"rms": 0.5} # Loud
+
+        self.mock_audio.get_chunk.side_effect = mock_get_chunk
+        self.mock_audio.analyze_chunk.side_effect = mock_analyze_chunk
+
+        with patch('time.time', side_effect=[0, 0, 11]):
+             threshold = engine.calibrate_audio_limits(duration=10)
+
+        # Mean 0.5, Max 0.5, Std 0
+        # Threshold: Max(0.5 + 0, 0.5 * 1.2) = 0.6
+        self.assertAlmostEqual(threshold, 0.6)
+
+    def test_calibrate_video_activity(self):
+        engine = CalibrationEngine()
+
+        def mock_get_frame():
+             return np.array([0]), None
+
+        def mock_process_frame(frame):
+             return {"video_activity": 10.0}
+
+        self.mock_video.get_frame.side_effect = mock_get_frame
+        self.mock_video.process_frame.side_effect = mock_process_frame
+
+        with patch('time.time', side_effect=[0, 0, 11]):
+             threshold = engine.calibrate_video_activity(duration=10)
+
+        # Mean 10, Max 10, Std 0
+        # Threshold: Max(10, 10*1.5, 5.0) = 15.0
+        self.assertEqual(threshold, 15.0)
+
     def test_full_run_flow(self):
         engine = CalibrationEngine()
 
         # Mock methods to return immediately
         engine.calibrate_audio_silence = MagicMock(return_value=0.05)
+        engine.calibrate_audio_limits = MagicMock(return_value=0.6)
         engine.calibrate_video_posture = MagicMock(return_value={"posture": "neutral"})
+        engine.calibrate_video_activity = MagicMock(return_value=15.0)
         engine.save_config = MagicMock()
 
-        # Mock user input to 'y' for save
-        self.mock_input.side_effect = ["", "", "y"]
+        # Mock user input to 'y' for save. Now 4 steps + 1 save prompt = 5 inputs
+        self.mock_input.side_effect = ["", "", "", "", "y"]
 
         engine.run()
 
