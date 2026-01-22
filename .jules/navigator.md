@@ -29,3 +29,7 @@
 **Learning:** `tools/generate_timeline.py` and `sensors/video_sensor.py` contained severe duplication artifacts (concatenated file versions), causing syntax errors and crashes in unrelated tests. This indicates a recurring hygiene issue with merge resolution.
 **Action:** Cleaned up both files to strictly modular implementations. Implemented `tests/test_lmm_timeout.py` to verify LMM fallback logic, confirming that `LogicEngine` correctly handles LMM timeouts by opening the circuit breaker and triggering offline interventions.
 **Pitfall:** Python `unittest.mock.patch` decorators pass arguments in reverse order (bottom-up), which can lead to confusing test failures if mocks are swapped.
+
+## 2026-01-23 - [Visual Feedback Loop]
+**Learning:** `ACRTrayIcon` (based on `pystray`) allows dynamic icon generation using `PIL`. This enables visual feedback (like flashing "OK" or "NO") without needing to manage static asset files for every state.
+**Action:** Implemented `create_colored_icon` in `core/system_tray.py` and updated `main.py` to flash green/red icons on feedback hotkeys. Added `tests/test_tray_feedback.py` to verify the logic.
