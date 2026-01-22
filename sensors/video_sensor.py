@@ -5,6 +5,7 @@ import numpy as np
 import collections
 import math
 import threading
+import config
 
 class VideoSensor:
     def __init__(self, camera_index=0, data_logger=None, history_size=5):
@@ -220,29 +221,75 @@ class VideoSensor:
         if not metrics.get("face_detected", False):
             return
 
-        # Posture Heuristics
-        # Note: These are simple 2D estimates and require calibration for accuracy.
-        # Assumptions: Camera is roughly eye-level and centered.
+        # Check for calibration data
+        baseline = getattr(config, 'BASELINE_POSTURE', {})
 
-        # Head Tilt
-        if abs(metrics.get("face_roll_angle", 0)) > 20:
-             if metrics["face_roll_angle"] > 0:
+        # --- Legacy / Default Heuristics (Fallback) ---
+        if not baseline:
+            # Head Tilt
+            if abs(metrics.get("face_roll_angle", 0)) > 20:
+                if metrics["face_roll_angle"] > 0:
+                    metrics["posture_state"] = "tilted_right"
+                else:
+                    metrics["posture_state"] = "tilted_left"
+            # Leaning Forward: Face becomes significantly larger
+            # Thresholds should ideally be calibrated (e.g., normal ratio ~0.3-0.4)
+            elif metrics.get("face_size_ratio", 0) > 0.45:
+                metrics["posture_state"] = "leaning_forward"
+            # Leaning Back: Face becomes small
+            elif metrics.get("face_size_ratio", 0) < 0.15:
+                metrics["posture_state"] = "leaning_back"
+            # Slouching: Face center moves down significantly
+            # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
+            elif metrics.get("vertical_position", 0) > 0.65:
+                metrics["posture_state"] = "slouching"
+            else:
+                metrics["posture_state"] = "neutral"
+            return
+
+        # --- Calibrated Heuristics ---
+
+        # 1. Head Tilt (Roll)
+        # Compare absolute difference from baseline tilt.
+        current_roll = metrics.get("face_roll_angle", 0)
+        base_roll = baseline.get("face_roll_angle", 0)
+
+        if abs(current_roll - base_roll) > 20:
+             if (current_roll - base_roll) > 0:
                  metrics["posture_state"] = "tilted_right"
              else:
                  metrics["posture_state"] = "tilted_left"
-        # Leaning Forward: Face becomes significantly larger
-        # Thresholds should ideally be calibrated (e.g., normal ratio ~0.3-0.4)
-        elif metrics.get("face_size_ratio", 0) > 0.45:
+             return
+
+        # 2. Leaning (Size Ratio)
+        current_size = metrics.get("face_size_ratio", 0)
+        base_size = baseline.get("face_size_ratio", 0.3) # Default 0.3 if key missing or zero
+        if base_size < 0.01: base_size = 0.3
+
+        ratio_diff = current_size / base_size
+
+        # If current is 1.5x baseline -> leaning forward
+        if ratio_diff > 1.5:
             metrics["posture_state"] = "leaning_forward"
-        # Leaning Back: Face becomes small
-        elif metrics.get("face_size_ratio", 0) < 0.15:
+            return
+
+        # If current is 0.6x baseline -> leaning back
+        if ratio_diff < 0.6:
             metrics["posture_state"] = "leaning_back"
-        # Slouching: Face center moves down significantly
-        # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
-        elif metrics.get("vertical_position", 0) > 0.65:
-            metrics["posture_state"] = "slouching"
-        else:
-            metrics["posture_state"] = "neutral"
+            return
+
+        # 3. Slouching (Vertical Position)
+        # 0.0 is top, 1.0 is bottom.
+        # If current > baseline + threshold (face moved down)
+        current_y = metrics.get("vertical_position", 0)
+        base_y = baseline.get("vertical_position", 0.4)
+
+        # If face moves down by 15% of screen height
+        if current_y > (base_y + 0.15):
+             metrics["posture_state"] = "slouching"
+             return
+
+        metrics["posture_state"] = "neutral"
 
     def _calculate_head_tilt(self, face_gray, face_w, face_h):
         """
