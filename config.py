@@ -115,6 +115,10 @@ BASELINE_STATE = _get_conf("BASELINE_STATE", {
     "mood": 50
 }, dict)
 
+# --- Video Sensor Baseline ---
+# Stores the "neutral" posture metrics (loaded from calibration).
+BASELINE_POSTURE = _get_conf("BASELINE_POSTURE", {}, dict)
+
 # --- Intervention Engine ---
 MIN_TIME_BETWEEN_INTERVENTIONS = _get_conf("MIN_TIME_BETWEEN_INTERVENTIONS", 300, int)
 DEFAULT_INTERVENTION_DURATION = _get_conf("DEFAULT_INTERVENTION_DURATION", 30, int)

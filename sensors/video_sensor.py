@@ -5,6 +5,7 @@ import numpy as np
 import collections
 import math
 import threading
+import config
 
 class VideoSensor:
     def __init__(self, camera_index=0, data_logger=None, history_size=5):
@@ -224,25 +225,58 @@ class VideoSensor:
         # Note: These are simple 2D estimates and require calibration for accuracy.
         # Assumptions: Camera is roughly eye-level and centered.
 
-        # Head Tilt
-        if abs(metrics.get("face_roll_angle", 0)) > 20:
-             if metrics["face_roll_angle"] > 0:
-                 metrics["posture_state"] = "tilted_right"
-             else:
-                 metrics["posture_state"] = "tilted_left"
-        # Leaning Forward: Face becomes significantly larger
-        # Thresholds should ideally be calibrated (e.g., normal ratio ~0.3-0.4)
-        elif metrics.get("face_size_ratio", 0) > 0.45:
-            metrics["posture_state"] = "leaning_forward"
-        # Leaning Back: Face becomes small
-        elif metrics.get("face_size_ratio", 0) < 0.15:
-            metrics["posture_state"] = "leaning_back"
-        # Slouching: Face center moves down significantly
-        # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
-        elif metrics.get("vertical_position", 0) > 0.65:
-            metrics["posture_state"] = "slouching"
+        # Check for calibrated baseline
+        baseline = getattr(config, 'BASELINE_POSTURE', {})
+
+        # Use relative thresholds if baseline is available and valid
+        if baseline and all(k in baseline for k in ["face_roll_angle", "face_size_ratio", "vertical_position"]):
+            # 1. Head Tilt (Delta)
+            roll_delta = metrics.get("face_roll_angle", 0) - baseline.get("face_roll_angle", 0)
+            if abs(roll_delta) > 15: # Calibrated tilt threshold (degrees)
+                 if roll_delta > 0:
+                     metrics["posture_state"] = "tilted_right"
+                 else:
+                     metrics["posture_state"] = "tilted_left"
+
+            # 2. Leaning Forward / Back (Size Ratio Delta)
+            # Use ratio: current / baseline
+            baseline_size = max(baseline.get("face_size_ratio", 0.1), 0.01) # Avoid div by zero
+            current_size = metrics.get("face_size_ratio", 0)
+            size_ratio = current_size / baseline_size
+
+            if size_ratio > 1.3: # 30% larger
+                metrics["posture_state"] = "leaning_forward"
+            elif size_ratio < 0.7: # 30% smaller
+                metrics["posture_state"] = "leaning_back"
+
+            # 3. Slouching (Vertical Delta)
+            # Positive delta means moving down (since y=0 is top)
+            vertical_delta = metrics.get("vertical_position", 0) - baseline.get("vertical_position", 0)
+
+            if vertical_delta > 0.15: # Significant downward movement
+                 metrics["posture_state"] = "slouching"
+
         else:
-            metrics["posture_state"] = "neutral"
+            # Fallback to absolute thresholds
+            # Head Tilt
+            if abs(metrics.get("face_roll_angle", 0)) > 20:
+                 if metrics["face_roll_angle"] > 0:
+                     metrics["posture_state"] = "tilted_right"
+                 else:
+                     metrics["posture_state"] = "tilted_left"
+            # Leaning Forward: Face becomes significantly larger
+            # Thresholds should ideally be calibrated (e.g., normal ratio ~0.3-0.4)
+            elif metrics.get("face_size_ratio", 0) > 0.45:
+                metrics["posture_state"] = "leaning_forward"
+            # Leaning Back: Face becomes small
+            elif metrics.get("face_size_ratio", 0) < 0.15:
+                metrics["posture_state"] = "leaning_back"
+            # Slouching: Face center moves down significantly
+            # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
+            elif metrics.get("vertical_position", 0) > 0.65:
+                metrics["posture_state"] = "slouching"
+            else:
+                metrics["posture_state"] = "neutral"
 
     def _calculate_head_tilt(self, face_gray, face_w, face_h):
         """
