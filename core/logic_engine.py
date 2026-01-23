@@ -74,6 +74,7 @@ class LogicEngine:
         self.input_tracking_enabled: bool = False
         self.continuous_speech_start_time: float = 0
         self.auto_dnd_active: bool = False
+        self.speech_grace_end_time: float = 0
 
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
@@ -520,13 +521,28 @@ class LogicEngine:
                 idle_time = current_time - self.last_user_input_time
                 speech_duration_threshold = getattr(config, 'MEETING_MODE_SPEECH_DURATION_THRESHOLD', 3.0)
                 idle_threshold = getattr(config, 'MEETING_MODE_IDLE_KEYBOARD_THRESHOLD', 10.0)
+                speech_grace_period = getattr(config, 'MEETING_MODE_SPEECH_GRACE_PERIOD', 2.0)
 
                 # Track speech duration
                 if is_speech and face_detected:
                     if self.continuous_speech_start_time == 0:
                         self.continuous_speech_start_time = current_time
+                    self.speech_grace_end_time = 0  # Reset grace timer on valid speech
                 else:
-                    self.continuous_speech_start_time = 0
+                    # Speech stopped (or face lost)
+                    if self.continuous_speech_start_time > 0:
+                        if self.speech_grace_end_time == 0:
+                            # Start grace period
+                            self.speech_grace_end_time = current_time + speech_grace_period
+
+                        if current_time > self.speech_grace_end_time:
+                            # Grace period expired
+                            self.continuous_speech_start_time = 0
+                            self.speech_grace_end_time = 0
+                        # Else: Within grace period, keep continuous_speech_start_time active
+                    else:
+                        self.continuous_speech_start_time = 0
+                        self.speech_grace_end_time = 0
 
                 # Check thresholds
                 speech_duration = 0
