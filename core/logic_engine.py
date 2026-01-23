@@ -73,6 +73,7 @@ class LogicEngine:
         self.last_user_input_time: float = time.time()
         self.input_tracking_enabled: bool = False
         self.continuous_speech_start_time: float = 0
+        self.meeting_mode_grace_period_end_time: float = 0
         self.auto_dnd_active: bool = False
 
         # Context Persistence (for specialized triggers like Doom Scrolling)
@@ -520,13 +521,27 @@ class LogicEngine:
                 idle_time = current_time - self.last_user_input_time
                 speech_duration_threshold = getattr(config, 'MEETING_MODE_SPEECH_DURATION_THRESHOLD', 3.0)
                 idle_threshold = getattr(config, 'MEETING_MODE_IDLE_KEYBOARD_THRESHOLD', 10.0)
+                speech_grace_period = getattr(config, 'MEETING_MODE_SPEECH_GRACE_PERIOD', 2.0)
 
-                # Track speech duration
+                # Track speech duration with grace period
                 if is_speech and face_detected:
                     if self.continuous_speech_start_time == 0:
                         self.continuous_speech_start_time = current_time
+                    # Reset grace period as we are currently valid
+                    self.meeting_mode_grace_period_end_time = 0
                 else:
-                    self.continuous_speech_start_time = 0
+                    # If we WERE tracking speech, check/start grace period
+                    if self.continuous_speech_start_time > 0:
+                        if self.meeting_mode_grace_period_end_time == 0:
+                            # Start grace period
+                            self.meeting_mode_grace_period_end_time = current_time + speech_grace_period
+                        elif current_time > self.meeting_mode_grace_period_end_time:
+                            # Grace period expired, reset
+                            self.continuous_speech_start_time = 0
+                            self.meeting_mode_grace_period_end_time = 0
+                    else:
+                        # Not tracking, ensure clean state
+                        self.meeting_mode_grace_period_end_time = 0
 
                 # Check thresholds
                 speech_duration = 0

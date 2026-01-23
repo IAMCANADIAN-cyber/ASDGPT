@@ -1,6 +1,6 @@
-import time
 import unittest
 from unittest.mock import MagicMock, patch
+import time
 from core.logic_engine import LogicEngine
 import config
 
@@ -9,153 +9,140 @@ class TestMeetingMode(unittest.TestCase):
         self.mock_logger = MagicMock()
         self.mock_audio = MagicMock()
         self.mock_video = MagicMock()
-        self.mock_lmm = MagicMock()
 
-        # Instantiate LogicEngine with mocks
+        # Patch config values for predictable testing
+        self.config_patcher = patch.multiple(
+            'core.logic_engine.config',
+            MEETING_MODE_SPEECH_DURATION_THRESHOLD=3.0,
+            MEETING_MODE_IDLE_KEYBOARD_THRESHOLD=5.0,
+            MEETING_MODE_SPEECH_GRACE_PERIOD=2.0
+        )
+        self.config_patcher.start()
+
         self.engine = LogicEngine(
             audio_sensor=self.mock_audio,
             video_sensor=self.mock_video,
-            logger=self.mock_logger,
-            lmm_interface=self.mock_lmm
+            logger=self.mock_logger
         )
-
-        # Override config thresholds for faster testing
-        self.original_speech_threshold = getattr(config, 'MEETING_MODE_SPEECH_DURATION_THRESHOLD', 3.0)
-        self.original_idle_threshold = getattr(config, 'MEETING_MODE_IDLE_KEYBOARD_THRESHOLD', 10.0)
-
-        # Set short thresholds
-        config.MEETING_MODE_SPEECH_DURATION_THRESHOLD = 0.5
-        config.MEETING_MODE_IDLE_KEYBOARD_THRESHOLD = 1.0
+        self.engine.input_tracking_enabled = True # Simulate keyboard hook active
 
     def tearDown(self):
-        # Restore config
-        config.MEETING_MODE_SPEECH_DURATION_THRESHOLD = self.original_speech_threshold
-        config.MEETING_MODE_IDLE_KEYBOARD_THRESHOLD = self.original_idle_threshold
+        self.config_patcher.stop()
 
-    def test_meeting_mode_triggers(self):
-        """Test that meeting mode triggers when all conditions are met."""
-        self.engine.current_mode = "active"
+    @patch('core.logic_engine.time.time')
+    def test_meeting_mode_trigger(self, mock_time):
+        """Test basic triggering of Meeting Mode (Auto-DND)."""
+        start_time = 1000.0
+        mock_time.return_value = start_time
 
-        # 1. Simulate "User Input Tracking Enabled" (hook worked)
-        self.engine.input_tracking_enabled = True
-        # Simulate idle time (last input was 2 seconds ago) -> Idle Threshold (1.0s) met
-        self.engine.last_user_input_time = time.time() - 2.0
+        # Initial state
+        self.engine.last_user_input_time = start_time - 10.0 # Idle enough (10s > 5s)
 
-        # 2. Simulate Sensor Data
-        # Audio: Speech detected
-        self.engine.audio_analysis = {"is_speech": True, "rms": 0.5}
-        # Video: Face detected
-        self.engine.face_metrics = {"face_detected": True, "face_count": 1}
-
-        # 3. First Update: Starts speech timer
-        self.engine.update()
-        self.assertNotEqual(self.engine.continuous_speech_start_time, 0, "Speech timer should start")
-        self.assertEqual(self.engine.get_mode(), "active", "Should not trigger immediately")
-
-        # 4. Wait for Speech Threshold (0.5s)
-        time.sleep(0.6)
-
-        # 5. Second Update: Should trigger Meeting Mode
-        self.engine.update()
-
-        # Assertions
-        self.assertEqual(self.engine.get_mode(), "dnd")
-        self.mock_logger.log_info.assert_any_call(
-            unittest.mock.ANY # "Meeting Mode Detected..."
-        )
-
-    def test_meeting_mode_no_face(self):
-        """Test that meeting mode does NOT trigger if face is not detected."""
-        self.engine.current_mode = "active"
-        self.engine.input_tracking_enabled = True
-        self.engine.last_user_input_time = time.time() - 2.0
-
-        # Audio: Speech detected
-        self.engine.audio_analysis = {"is_speech": True}
-        # Video: NO Face
-        self.engine.face_metrics = {"face_detected": False}
-
-        self.engine.update()
-        time.sleep(0.6)
-        self.engine.update()
-
-        self.assertEqual(self.engine.get_mode(), "active")
-
-    def test_meeting_mode_user_typing(self):
-        """Test that meeting mode does NOT trigger if user is active (typing)."""
-        self.engine.current_mode = "active"
-        self.engine.input_tracking_enabled = True
-        # User typed just now
-        self.engine.last_user_input_time = time.time()
-
+        # 1. Start Speech
+        # Update 1: Speech starts
         self.engine.audio_analysis = {"is_speech": True}
         self.engine.face_metrics = {"face_detected": True}
-
-        self.engine.update()
-        time.sleep(0.6)
         self.engine.update()
 
-        self.assertEqual(self.engine.get_mode(), "active")
+        self.assertEqual(self.engine.continuous_speech_start_time, start_time)
+        self.assertEqual(self.engine.current_mode, "active")
 
-    def test_meeting_mode_broken_speech(self):
-        """Test that speech must be continuous."""
-        self.engine.current_mode = "active"
-        self.engine.input_tracking_enabled = True
-        self.engine.last_user_input_time = time.time() - 2.0
-
-        # Start Speech
-        self.engine.audio_analysis = {"is_speech": True}
-        self.engine.face_metrics = {"face_detected": True}
-        self.engine.update() # Timer starts
-
-        # Break Speech
-        self.engine.audio_analysis = {"is_speech": False}
-        self.engine.update() # Timer resets
-        self.assertEqual(self.engine.continuous_speech_start_time, 0)
-
-        # Resume Speech
-        self.engine.audio_analysis = {"is_speech": True}
-        self.engine.update() # Timer restarts
-
-        # Not enough time yet
-        self.assertEqual(self.engine.get_mode(), "active")
-
-    def test_meeting_mode_disabled_tracking(self):
-        """Test that it doesn't trigger if input tracking is disabled (safety fallback)."""
-        self.engine.current_mode = "active"
-        self.engine.input_tracking_enabled = False # Default state if hook fails
-        self.engine.last_user_input_time = 0 # Unix Epoch (Very old)
-
-        self.engine.audio_analysis = {"is_speech": True}
-        self.engine.face_metrics = {"face_detected": True}
-
+        # 2. Continue Speech (2 seconds later)
+        mock_time.return_value = start_time + 2.0
         self.engine.update()
-        time.sleep(0.6)
+        self.assertEqual(self.engine.current_mode, "active") # Not yet 3s
+
+        # 3. Hit Threshold (3.5 seconds later)
+        mock_time.return_value = start_time + 3.5
         self.engine.update()
 
-        self.assertEqual(self.engine.get_mode(), "active")
-
-    def test_meeting_mode_exit(self):
-        """Test that meeting mode exits when user activity resumes."""
-        self.engine.current_mode = "active"
-        self.engine.input_tracking_enabled = True
-        self.engine.last_user_input_time = time.time() - 2.0
-
-        # Trigger DND
-        self.engine.audio_analysis = {"is_speech": True}
-        self.engine.face_metrics = {"face_detected": True}
-        self.engine.update() # Start timer
-        time.sleep(0.6)
-        self.engine.update() # Trigger
-
-        self.assertEqual(self.engine.get_mode(), "dnd")
+        # Should switch to DND
+        self.assertEqual(self.engine.current_mode, "dnd")
         self.assertTrue(self.engine.auto_dnd_active)
 
-        # Resume User Activity (User types)
-        self.engine.last_user_input_time = time.time() # Just now
+    @patch('core.logic_engine.time.time')
+    def test_speech_grace_period(self, mock_time):
+        """Test that short gaps in speech do not reset the timer."""
+        start_time = 1000.0
+        mock_time.return_value = start_time
+
+        self.engine.last_user_input_time = start_time - 10.0
+
+        # 1. Speech Starts
+        self.engine.audio_analysis = {"is_speech": True}
+        self.engine.face_metrics = {"face_detected": True}
         self.engine.update()
 
-        self.assertEqual(self.engine.get_mode(), "active")
+        # 2. Speech Stops (1s later) - Grace period should start
+        mock_time.return_value = start_time + 1.0
+        self.engine.audio_analysis = {"is_speech": False} # Silence
+        self.engine.update()
+
+        self.assertEqual(self.engine.continuous_speech_start_time, start_time)
+        self.assertGreater(self.engine.meeting_mode_grace_period_end_time, 0)
+
+        # 3. Speech Resumes (1.5s later, so 0.5s gap < 2.0s grace)
+        mock_time.return_value = start_time + 1.5
+        self.engine.audio_analysis = {"is_speech": True}
+        self.engine.update()
+
+        self.assertEqual(self.engine.continuous_speech_start_time, start_time) # Should NOT have reset
+        self.assertEqual(self.engine.meeting_mode_grace_period_end_time, 0) # Should reset grace period
+
+        # 4. Trigger Threshold (3.5s total time)
+        mock_time.return_value = start_time + 3.5
+        self.engine.update()
+        self.assertEqual(self.engine.current_mode, "dnd")
+
+    @patch('core.logic_engine.time.time')
+    def test_speech_timeout(self, mock_time):
+        """Test that long gaps reset the timer."""
+        start_time = 1000.0
+        mock_time.return_value = start_time
+
+        self.engine.last_user_input_time = start_time - 10.0
+
+        # 1. Speech Starts
+        self.engine.audio_analysis = {"is_speech": True}
+        self.engine.face_metrics = {"face_detected": True}
+        self.engine.update()
+
+        # 2. Speech Stops
+        mock_time.return_value = start_time + 1.0
+        self.engine.audio_analysis = {"is_speech": False}
+        self.engine.update()
+
+        # 3. Long Gap (3.5s later -> 2.5s gap > 2.0s grace)
+        mock_time.return_value = start_time + 3.5
+        self.engine.update()
+
+        self.assertEqual(self.engine.continuous_speech_start_time, 0)
+        self.assertEqual(self.engine.meeting_mode_grace_period_end_time, 0)
+        self.assertEqual(self.engine.current_mode, "active")
+
+    @patch('core.logic_engine.time.time')
+    def test_meeting_mode_exit(self, mock_time):
+        """Test exiting DND mode via user input."""
+        start_time = 1000.0
+        mock_time.return_value = start_time
+
+        # Force into Auto-DND
+        self.engine.current_mode = "dnd"
+        self.engine.auto_dnd_active = True
+        self.engine.last_user_input_time = start_time - 10.0 # Idle
+
+        # 1. Update (Idle) -> Stay in DND
+        self.engine.update()
+        self.assertEqual(self.engine.current_mode, "dnd")
+
+        # 2. User Input (Simulate keypress updating timestamp)
+        # In real app, keyboard hook calls register_user_input()
+        self.engine.last_user_input_time = start_time + 1.0
+        mock_time.return_value = start_time + 1.5 # 0.5s idle
+
+        self.engine.update()
+
+        self.assertEqual(self.engine.current_mode, "active")
         self.assertFalse(self.engine.auto_dnd_active)
 
 if __name__ == '__main__':
