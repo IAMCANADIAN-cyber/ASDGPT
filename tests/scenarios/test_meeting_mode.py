@@ -22,15 +22,18 @@ class TestMeetingMode(unittest.TestCase):
         # Override config thresholds for faster testing
         self.original_speech_threshold = getattr(config, 'MEETING_MODE_SPEECH_DURATION_THRESHOLD', 3.0)
         self.original_idle_threshold = getattr(config, 'MEETING_MODE_IDLE_KEYBOARD_THRESHOLD', 10.0)
+        self.original_grace_period = getattr(config, 'MEETING_MODE_SPEECH_GRACE_PERIOD', 2.0)
 
         # Set short thresholds
         config.MEETING_MODE_SPEECH_DURATION_THRESHOLD = 0.5
         config.MEETING_MODE_IDLE_KEYBOARD_THRESHOLD = 1.0
+        config.MEETING_MODE_SPEECH_GRACE_PERIOD = 0.2 # 200ms grace period
 
     def tearDown(self):
         # Restore config
         config.MEETING_MODE_SPEECH_DURATION_THRESHOLD = self.original_speech_threshold
         config.MEETING_MODE_IDLE_KEYBOARD_THRESHOLD = self.original_idle_threshold
+        config.MEETING_MODE_SPEECH_GRACE_PERIOD = self.original_grace_period
 
     def test_meeting_mode_triggers(self):
         """Test that meeting mode triggers when all conditions are met."""
@@ -97,28 +100,54 @@ class TestMeetingMode(unittest.TestCase):
 
         self.assertEqual(self.engine.get_mode(), "active")
 
-    def test_meeting_mode_broken_speech(self):
-        """Test that speech must be continuous."""
+    @patch('core.logic_engine.time.time')
+    def test_meeting_mode_speech_grace_period(self, mock_time):
+        """Test that speech timer persists through short gaps (grace period)."""
+        # Setup base time
+        current_t = 1000.0
+        mock_time.return_value = current_t
+
         self.engine.current_mode = "active"
         self.engine.input_tracking_enabled = True
-        self.engine.last_user_input_time = time.time() - 2.0
+        self.engine.last_user_input_time = current_t - 2.0
 
-        # Start Speech
+        # 1. Start Speech
         self.engine.audio_analysis = {"is_speech": True}
         self.engine.face_metrics = {"face_detected": True}
         self.engine.update() # Timer starts
+        start_time = self.engine.continuous_speech_start_time
+        self.assertEqual(start_time, current_t)
 
-        # Break Speech
+        # 2. Break Speech (Short gap)
+        # Advance time by 0.1s (less than grace 0.2s)
+        current_t += 0.1
+        mock_time.return_value = current_t
+
         self.engine.audio_analysis = {"is_speech": False}
-        self.engine.update() # Timer resets
-        self.assertEqual(self.engine.continuous_speech_start_time, 0)
+        self.engine.update()
 
-        # Resume Speech
+        # Assert Timer NOT reset
+        self.assertEqual(self.engine.continuous_speech_start_time, start_time, "Timer should persist during grace period")
+
+        # 3. Resume Speech
+        # Advance time
+        current_t += 0.05
+        mock_time.return_value = current_t
+
         self.engine.audio_analysis = {"is_speech": True}
-        self.engine.update() # Timer restarts
+        self.engine.update()
+        self.assertEqual(self.engine.continuous_speech_start_time, start_time, "Timer should persist when speech resumes")
 
-        # Not enough time yet
-        self.assertEqual(self.engine.get_mode(), "active")
+        # 4. Break Speech (Long gap)
+        # Advance time by 0.3s (more than grace 0.2s)
+        current_t += 0.3
+        mock_time.return_value = current_t
+
+        self.engine.audio_analysis = {"is_speech": False}
+        self.engine.update()
+
+        # Assert Timer RESET
+        self.assertEqual(self.engine.continuous_speech_start_time, 0, "Timer should reset after grace period")
 
     def test_meeting_mode_disabled_tracking(self):
         """Test that it doesn't trigger if input tracking is disabled (safety fallback)."""
