@@ -1,4 +1,5 @@
 import pytest
+import unittest
 import time
 import json
 import os
@@ -15,11 +16,13 @@ TEST_SUPPRESSIONS_FILE = os.path.join(TEST_USER_DATA_DIR, "suppressions.json")
 def setup_test_env():
     # Setup
     os.makedirs(TEST_USER_DATA_DIR, exist_ok=True)
-    # Override config paths for testing
-    config.USER_DATA_DIR = TEST_USER_DATA_DIR
-    config.SUPPRESSIONS_FILE = TEST_SUPPRESSIONS_FILE
 
-    yield
+    # Use patch to override config paths safely
+    # Note: We patch the config module where it is used, OR global config if we are sure
+    # patching the object works (it does for module-level attributes usually)
+    with unittest.mock.patch('config.USER_DATA_DIR', TEST_USER_DATA_DIR), \
+         unittest.mock.patch('config.SUPPRESSIONS_FILE', TEST_SUPPRESSIONS_FILE):
+        yield
 
     # Teardown
     if os.path.exists(TEST_USER_DATA_DIR):

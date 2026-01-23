@@ -17,9 +17,9 @@ def mock_logger():
 
 @pytest.fixture
 def lmm_interface(mock_logger):
-    # Reset config defaults for tests
-    config.LMM_FALLBACK_ENABLED = False
-    return LMMInterface(data_logger=mock_logger)
+    # Reset config defaults for tests using patch
+    with patch('config.LMM_FALLBACK_ENABLED', False):
+        yield LMMInterface(data_logger=mock_logger)
 
 def test_initialization(lmm_interface):
     assert lmm_interface.llm_url.endswith("/v1/chat/completions")
@@ -153,17 +153,16 @@ def test_circuit_breaker(lmm_interface):
 
 @patch('requests.post')
 def test_fallback_logic(mock_post, lmm_interface):
-    config.LMM_FALLBACK_ENABLED = True
+    with patch('config.LMM_FALLBACK_ENABLED', True):
+        # Make request fail
+        mock_post.side_effect = requests.exceptions.ConnectionError("Fail")
 
-    # Make request fail
-    mock_post.side_effect = requests.exceptions.ConnectionError("Fail")
+        with patch('time.sleep', return_value=None):
+            result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
 
-    with patch('time.sleep', return_value=None):
-        result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
-
-    assert result is not None
-    assert result.get("_meta", {}).get("is_fallback") is True
-    assert result["state_estimation"]["arousal"] == 50 # Default fallback
+        assert result is not None
+        assert result.get("_meta", {}).get("is_fallback") is True
+        assert result["state_estimation"]["arousal"] == 50 # Default fallback
 
 # --- NEW TESTS BELOW ---
 
