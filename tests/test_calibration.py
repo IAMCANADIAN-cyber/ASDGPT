@@ -36,7 +36,7 @@ class TestCalibration(unittest.TestCase):
         for patcher in reversed(self.patchers):
             patcher.stop()
 
-    def test_calibrate_audio_silence(self):
+    def test_calibrate_audio(self):
         engine = CalibrationEngine()
 
         # Simulate audio chunks with increasing RMS
@@ -64,17 +64,24 @@ class TestCalibration(unittest.TestCase):
         # Patch time.time to increment
         # start_time, loop1, loop2, loop3, end
         with patch('time.time', side_effect=[0, 0, 1, 2, 11]):
-             threshold = engine.calibrate_audio_silence(duration=10)
+             results = engine.calibrate_audio(duration=10)
+
+        # Verify results structure
+        self.assertIn("VAD_SILENCE_THRESHOLD", results)
+        self.assertIn("AUDIO_THRESHOLD_HIGH", results)
 
         # Expected: Mean ~0.0133, Max 0.02, StdDev ~0.0057
-        # Threshold logic: Max(Mean + 3*Std, Max*1.2)
-        # 0.0133 + 0.017 = 0.03
-        # 0.02 * 1.2 = 0.024
-        # Expected ~0.03
+        # VAD: Max(Mean + 3*Std, Max*1.2) -> ~0.03
+        self.assertTrue(0.02 < results["VAD_SILENCE_THRESHOLD"] < 0.04)
 
-        self.assertTrue(0.02 < threshold < 0.04)
+        # High: Max(Mean + 6*Std, Max*2.0)
+        # 0.0133 + 6*0.0057 = 0.0475
+        # 0.02 * 2.0 = 0.04
+        # Expected ~0.0475, but clamped min 0.05
+        self.assertEqual(results["AUDIO_THRESHOLD_HIGH"], 0.05)
 
-    def test_calibrate_video_posture(self):
+
+    def test_calibrate_video(self):
         engine = CalibrationEngine()
 
         # Simulate video frames
@@ -87,7 +94,8 @@ class TestCalibration(unittest.TestCase):
                  "face_roll_angle": 5.0,
                  "face_size_ratio": 0.2,
                  "vertical_position": 0.4,
-                 "horizontal_position": 0.5
+                 "horizontal_position": 0.5,
+                 "video_activity": 10.0
              }
 
         self.mock_video.get_frame.side_effect = mock_get_frame
@@ -95,10 +103,18 @@ class TestCalibration(unittest.TestCase):
 
         # start, loop1, loop2, end
         with patch('time.time', side_effect=[0, 0, 1, 6]):
-             baseline = engine.calibrate_video_posture(duration=5)
+             results = engine.calibrate_video(duration=5)
 
+        self.assertIn("BASELINE_POSTURE", results)
+        self.assertIn("VIDEO_ACTIVITY_THRESHOLD_HIGH", results)
+
+        baseline = results["BASELINE_POSTURE"]
         self.assertEqual(baseline["face_roll_angle"], 5.0)
         self.assertEqual(baseline["face_size_ratio"], 0.2)
+
+        # Activity: Mean 10, Std 0, Max 10.
+        # Threshold: Max(10+0, 10*1.5, 5.0) = 15.0
+        self.assertEqual(results["VIDEO_ACTIVITY_THRESHOLD_HIGH"], 15.0)
 
     def test_save_config(self):
         engine = CalibrationEngine()
@@ -119,8 +135,8 @@ class TestCalibration(unittest.TestCase):
         engine = CalibrationEngine()
 
         # Mock methods to return immediately
-        engine.calibrate_audio_silence = MagicMock(return_value=0.05)
-        engine.calibrate_video_posture = MagicMock(return_value={"posture": "neutral"})
+        engine.calibrate_audio = MagicMock(return_value={"VAD": 0.1})
+        engine.calibrate_video = MagicMock(return_value={"BASELINE": {}})
         engine.save_config = MagicMock()
 
         # Mock user input to 'y' for save

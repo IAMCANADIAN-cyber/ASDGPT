@@ -1,10 +1,22 @@
 import cv2
 import time
 import os
+import sys
 import numpy as np
 import collections
 import math
 import threading
+
+# Add project root to path if needed (for direct execution/testing)
+try:
+    import config
+except ImportError:
+    # Attempt to add parent directory
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    try:
+        import config
+    except ImportError:
+        config = None # Fallback or handle gracefully
 
 class VideoSensor:
     def __init__(self, camera_index=0, data_logger=None, history_size=5):
@@ -212,7 +224,7 @@ class VideoSensor:
     def _calculate_posture(self, metrics):
         """
         Calculates posture state based on face metrics.
-        This is a heuristic estimation.
+        Uses calibrated baseline from config if available, otherwise falls back to hardcoded heuristics.
         """
         # Default to neutral if no face detected or calculation fails
         metrics["posture_state"] = "neutral"
@@ -220,29 +232,58 @@ class VideoSensor:
         if not metrics.get("face_detected", False):
             return
 
-        # Posture Heuristics
-        # Note: These are simple 2D estimates and require calibration for accuracy.
-        # Assumptions: Camera is roughly eye-level and centered.
+        # Get Baseline from Config
+        baseline = getattr(config, 'BASELINE_POSTURE', {}) if config else {}
 
-        # Head Tilt
-        if abs(metrics.get("face_roll_angle", 0)) > 20:
-             if metrics["face_roll_angle"] > 0:
+        # --- 1. Head Tilt (Absolute Delta) ---
+        # If baseline exists, we subtract it (assuming baseline is "neutral" tilt, usually 0)
+        # If no baseline, we assume 0.
+        curr_roll = metrics.get("face_roll_angle", 0)
+        base_roll = baseline.get("face_roll_angle", 0)
+
+        # We check deviation from baseline
+        if abs(curr_roll - base_roll) > 20:
+             if curr_roll > base_roll:
                  metrics["posture_state"] = "tilted_right"
              else:
                  metrics["posture_state"] = "tilted_left"
-        # Leaning Forward: Face becomes significantly larger
-        # Thresholds should ideally be calibrated (e.g., normal ratio ~0.3-0.4)
-        elif metrics.get("face_size_ratio", 0) > 0.45:
-            metrics["posture_state"] = "leaning_forward"
-        # Leaning Back: Face becomes small
-        elif metrics.get("face_size_ratio", 0) < 0.15:
-            metrics["posture_state"] = "leaning_back"
-        # Slouching: Face center moves down significantly
-        # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
-        elif metrics.get("vertical_position", 0) > 0.65:
-            metrics["posture_state"] = "slouching"
+             return # Tilt takes precedence as it's a clear state
+
+        # --- 2. Leaning (Ratio relative to baseline) ---
+        curr_size = metrics.get("face_size_ratio", 0)
+        base_size = baseline.get("face_size_ratio", 0)
+
+        # If we have a valid baseline size
+        if base_size > 0:
+            ratio = curr_size / base_size
+            if ratio > 1.3:
+                 metrics["posture_state"] = "leaning_forward"
+                 return
+            elif ratio < 0.7:
+                 metrics["posture_state"] = "leaning_back"
+                 return
         else:
-            metrics["posture_state"] = "neutral"
+            # Fallback: Hardcoded thresholds
+            if curr_size > 0.45:
+                metrics["posture_state"] = "leaning_forward"
+                return
+            elif curr_size < 0.15:
+                metrics["posture_state"] = "leaning_back"
+                return
+
+        # --- 3. Slouching (Vertical Delta) ---
+        # Positive delta means moving down (image coordinates 0 at top)
+        curr_vert = metrics.get("vertical_position", 0)
+        base_vert = baseline.get("vertical_position", 0)
+
+        if base_vert > 0:
+            # If we have a baseline, check if we dropped significantly below it
+            if (curr_vert - base_vert) > 0.15:
+                metrics["posture_state"] = "slouching"
+        else:
+            # Fallback: Hardcoded threshold
+            if curr_vert > 0.65:
+                metrics["posture_state"] = "slouching"
 
     def _calculate_head_tilt(self, face_gray, face_w, face_h):
         """
