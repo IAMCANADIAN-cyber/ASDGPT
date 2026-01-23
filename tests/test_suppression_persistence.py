@@ -3,23 +3,23 @@ import time
 import json
 import os
 import shutil
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from core.intervention_engine import InterventionEngine
 import config
 
 # Create a temporary test directory for user data
-TEST_USER_DATA_DIR = "test_user_data"
+TEST_USER_DATA_DIR = os.path.abspath("test_user_data")
 TEST_SUPPRESSIONS_FILE = os.path.join(TEST_USER_DATA_DIR, "suppressions.json")
 
 @pytest.fixture
 def setup_test_env():
     # Setup
     os.makedirs(TEST_USER_DATA_DIR, exist_ok=True)
-    # Override config paths for testing
-    config.USER_DATA_DIR = TEST_USER_DATA_DIR
-    config.SUPPRESSIONS_FILE = TEST_SUPPRESSIONS_FILE
 
-    yield
+    # Use patch context managers to prevent test pollution
+    with patch('config.USER_DATA_DIR', TEST_USER_DATA_DIR), \
+         patch('config.SUPPRESSIONS_FILE', TEST_SUPPRESSIONS_FILE):
+        yield
 
     # Teardown
     if os.path.exists(TEST_USER_DATA_DIR):
