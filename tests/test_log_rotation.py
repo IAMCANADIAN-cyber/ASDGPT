@@ -4,6 +4,7 @@ import glob
 import time
 import json
 import logging
+from unittest.mock import patch
 from core.data_logger import DataLogger
 import config
 
@@ -15,12 +16,20 @@ class TestLogRotation(unittest.TestCase):
         # Cleanup previous test files
         self._cleanup()
 
-        # Override config for testing
-        config.LOG_MAX_BYTES = 1000  # 1KB
-        config.LOG_BACKUP_COUNT = 3
-        config.LOG_LEVEL = "DEBUG"
+        # Use patches for config to avoid pollution
+        self.patchers = [
+            patch('config.LOG_MAX_BYTES', 1000),
+            patch('config.LOG_BACKUP_COUNT', 3),
+            patch('config.LOG_LEVEL', "DEBUG")
+        ]
+        for p in self.patchers:
+            p.start()
 
     def tearDown(self):
+        # Stop patches
+        for p in reversed(self.patchers):
+            p.stop()
+
         # Close handlers explicitly to release file locks (important on Windows, good practice generally)
         if hasattr(self, 'logger'):
             for handler in self.logger.app_logger.handlers:
