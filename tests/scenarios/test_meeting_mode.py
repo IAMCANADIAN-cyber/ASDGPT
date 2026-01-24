@@ -22,15 +22,18 @@ class TestMeetingMode(unittest.TestCase):
         # Override config thresholds for faster testing
         self.original_speech_threshold = getattr(config, 'MEETING_MODE_SPEECH_DURATION_THRESHOLD', 3.0)
         self.original_idle_threshold = getattr(config, 'MEETING_MODE_IDLE_KEYBOARD_THRESHOLD', 10.0)
+        self.original_grace_period = getattr(config, 'MEETING_MODE_SPEECH_GRACE_PERIOD', 2.0)
 
         # Set short thresholds
         config.MEETING_MODE_SPEECH_DURATION_THRESHOLD = 0.5
         config.MEETING_MODE_IDLE_KEYBOARD_THRESHOLD = 1.0
+        config.MEETING_MODE_SPEECH_GRACE_PERIOD = 0.2
 
     def tearDown(self):
         # Restore config
         config.MEETING_MODE_SPEECH_DURATION_THRESHOLD = self.original_speech_threshold
         config.MEETING_MODE_IDLE_KEYBOARD_THRESHOLD = self.original_idle_threshold
+        config.MEETING_MODE_SPEECH_GRACE_PERIOD = self.original_grace_period
 
     def test_meeting_mode_triggers(self):
         """Test that meeting mode triggers when all conditions are met."""
@@ -97,8 +100,8 @@ class TestMeetingMode(unittest.TestCase):
 
         self.assertEqual(self.engine.get_mode(), "active")
 
-    def test_meeting_mode_broken_speech(self):
-        """Test that speech must be continuous."""
+    def test_meeting_mode_broken_speech_within_grace(self):
+        """Test that speech timer persists during short breaks (within grace period)."""
         self.engine.current_mode = "active"
         self.engine.input_tracking_enabled = True
         self.engine.last_user_input_time = time.time() - 2.0
@@ -107,18 +110,52 @@ class TestMeetingMode(unittest.TestCase):
         self.engine.audio_analysis = {"is_speech": True}
         self.engine.face_metrics = {"face_detected": True}
         self.engine.update() # Timer starts
+        start_time = self.engine.continuous_speech_start_time
+        self.assertNotEqual(start_time, 0)
 
-        # Break Speech
+        # Break Speech (Short)
         self.engine.audio_analysis = {"is_speech": False}
-        self.engine.update() # Timer resets
-        self.assertEqual(self.engine.continuous_speech_start_time, 0)
+        time.sleep(0.1) # Less than grace period (0.2)
+        self.engine.update()
+
+        # Timer should NOT reset
+        self.assertEqual(self.engine.continuous_speech_start_time, start_time)
 
         # Resume Speech
         self.engine.audio_analysis = {"is_speech": True}
-        self.engine.update() # Timer restarts
+        time.sleep(0.5) # Wait for duration threshold (0.5 total since start?)
+        # Wait remainder
+        self.engine.update()
 
-        # Not enough time yet
-        self.assertEqual(self.engine.get_mode(), "active")
+        # Should eventually trigger if total duration (start to now) is > threshold
+        # LogicEngine calculates duration as current_time - continuous_speech_start_time.
+        # So even if we had a gap, the start time is preserved, so duration keeps increasing.
+        # We need to wait enough total time.
+        time.sleep(0.1) # Ensure we cross 0.5s from original start
+        self.engine.update()
+
+        self.assertEqual(self.engine.get_mode(), "dnd")
+
+    def test_meeting_mode_speech_timeout(self):
+        """Test that speech timer resets after grace period expires."""
+        self.engine.current_mode = "active"
+        self.engine.input_tracking_enabled = True
+        self.engine.last_user_input_time = time.time() - 2.0
+
+        # Start Speech
+        self.engine.audio_analysis = {"is_speech": True}
+        self.engine.face_metrics = {"face_detected": True}
+        self.engine.update() # Timer starts
+        start_time = self.engine.continuous_speech_start_time
+        self.assertNotEqual(start_time, 0)
+
+        # Break Speech (Long)
+        self.engine.audio_analysis = {"is_speech": False}
+        time.sleep(0.3) # More than grace period (0.2)
+        self.engine.update()
+
+        # Timer SHOULD reset
+        self.assertEqual(self.engine.continuous_speech_start_time, 0)
 
     def test_meeting_mode_disabled_tracking(self):
         """Test that it doesn't trigger if input tracking is disabled (safety fallback)."""
