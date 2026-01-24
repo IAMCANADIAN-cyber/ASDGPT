@@ -74,7 +74,6 @@ class LogicEngine:
         self.input_tracking_enabled: bool = False
         self.continuous_speech_start_time: float = 0
         self.auto_dnd_active: bool = False
-        self.last_speech_time: float = 0
 
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
@@ -524,16 +523,10 @@ class LogicEngine:
 
                 # Track speech duration
                 if is_speech and face_detected:
-                    self.last_speech_time = current_time
                     if self.continuous_speech_start_time == 0:
                         self.continuous_speech_start_time = current_time
                 else:
-                    grace_period = getattr(config, 'MEETING_MODE_SPEECH_GRACE_PERIOD', 2.0)
-                    if self.continuous_speech_start_time > 0:
-                        if current_time - self.last_speech_time > grace_period:
-                            self.continuous_speech_start_time = 0
-                    else:
-                        self.continuous_speech_start_time = 0
+                    self.continuous_speech_start_time = 0
 
                 # Check thresholds
                 speech_duration = 0
