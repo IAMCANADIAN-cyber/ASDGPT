@@ -91,6 +91,32 @@ You can also create a `user_data/config.json` file to persist your settings:
 }
 ```
 
+### Sensor Calibration
+
+To ensure accurate noise detection and posture monitoring, it is recommended to run the calibration wizard before first use.
+
+```bash
+python tools/calibrate.py
+```
+
+This tool will:
+1. Measure ambient noise to set `VAD_SILENCE_THRESHOLD`.
+2. Capture your neutral posture to set `BASELINE_POSTURE` (for relative leaning/slouching detection).
+3. Save settings to `user_data/config.json`.
+
+**Manual Posture Configuration**
+If you prefer to manually configure posture baselines in `user_data/config.json`:
+
+```json
+{
+  "BASELINE_POSTURE": {
+    "face_size_ratio": 0.3,       // Width of face / Width of frame
+    "vertical_position": 0.5,     // Y-center of face / Height of frame (0.0=top, 1.0=bottom)
+    "face_roll_angle": 0.0        // Tilt in degrees
+  }
+}
+```
+
 ## Running the Application
 
 Execute the `main.py` script from the project root:

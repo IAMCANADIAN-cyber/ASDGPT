@@ -95,6 +95,9 @@ AUDIO_THRESHOLD_HIGH = _get_conf("AUDIO_THRESHOLD_HIGH", _calibration_data.get("
 VIDEO_ACTIVITY_THRESHOLD_HIGH = _get_conf("VIDEO_ACTIVITY_THRESHOLD_HIGH", _calibration_data.get("video_activity_threshold", 20.0), float)
 DOOM_SCROLL_THRESHOLD = _get_conf("DOOM_SCROLL_THRESHOLD", 3, int)
 
+# Posture Baselines (from Calibration)
+BASELINE_POSTURE = _get_conf("BASELINE_POSTURE", _calibration_data.get("baseline_posture", {}), dict)
+
 # --- Meeting Mode ---
 MEETING_MODE_SPEECH_DURATION_THRESHOLD = _get_conf("MEETING_MODE_SPEECH_DURATION_THRESHOLD", 3.0, float)
 MEETING_MODE_IDLE_KEYBOARD_THRESHOLD = _get_conf("MEETING_MODE_IDLE_KEYBOARD_THRESHOLD", 10.0, float)

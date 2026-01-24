@@ -5,6 +5,7 @@ import numpy as np
 import collections
 import math
 import threading
+import config
 
 class VideoSensor:
     def __init__(self, camera_index=0, data_logger=None, history_size=5):
@@ -220,29 +221,50 @@ class VideoSensor:
         if not metrics.get("face_detected", False):
             return
 
-        # Posture Heuristics
-        # Note: These are simple 2D estimates and require calibration for accuracy.
-        # Assumptions: Camera is roughly eye-level and centered.
+        # Check for user-specific baseline from config
+        baseline = getattr(config, 'BASELINE_POSTURE', {})
 
-        # Head Tilt
-        if abs(metrics.get("face_roll_angle", 0)) > 20:
-             if metrics["face_roll_angle"] > 0:
-                 metrics["posture_state"] = "tilted_right"
+        if baseline and isinstance(baseline, dict) and "face_size_ratio" in baseline:
+             # Relative Heuristics (Personalized)
+             # Leaning Forward: Face becomes significantly larger (> 1.3x)
+             if metrics.get("face_size_ratio", 0) / (baseline["face_size_ratio"] + 1e-6) > 1.3:
+                 metrics["posture_state"] = "leaning_forward"
+             # Leaning Back: Face becomes small (< 0.7x)
+             elif metrics.get("face_size_ratio", 0) / (baseline["face_size_ratio"] + 1e-6) < 0.7:
+                 metrics["posture_state"] = "leaning_back"
+             # Slouching: Face center moves down (> 0.15 lower)
+             elif metrics.get("vertical_position", 0) - baseline.get("vertical_position", 0) > 0.15:
+                 metrics["posture_state"] = "slouching"
+             # Head Tilt (Absolute deviation > 20 degrees)
+             elif abs(metrics.get("face_roll_angle", 0)) > 20:
+                 if metrics["face_roll_angle"] > 0:
+                     metrics["posture_state"] = "tilted_right"
+                 else:
+                     metrics["posture_state"] = "tilted_left"
              else:
-                 metrics["posture_state"] = "tilted_left"
-        # Leaning Forward: Face becomes significantly larger
-        # Thresholds should ideally be calibrated (e.g., normal ratio ~0.3-0.4)
-        elif metrics.get("face_size_ratio", 0) > 0.45:
-            metrics["posture_state"] = "leaning_forward"
-        # Leaning Back: Face becomes small
-        elif metrics.get("face_size_ratio", 0) < 0.15:
-            metrics["posture_state"] = "leaning_back"
-        # Slouching: Face center moves down significantly
-        # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
-        elif metrics.get("vertical_position", 0) > 0.65:
-            metrics["posture_state"] = "slouching"
+                 metrics["posture_state"] = "neutral"
+
         else:
-            metrics["posture_state"] = "neutral"
+            # Fallback to Hardcoded Heuristics (Legacy)
+            # Head Tilt
+            if abs(metrics.get("face_roll_angle", 0)) > 20:
+                 if metrics["face_roll_angle"] > 0:
+                     metrics["posture_state"] = "tilted_right"
+                 else:
+                     metrics["posture_state"] = "tilted_left"
+            # Leaning Forward: Face becomes significantly larger
+            # Thresholds should ideally be calibrated (e.g., normal ratio ~0.3-0.4)
+            elif metrics.get("face_size_ratio", 0) > 0.45:
+                metrics["posture_state"] = "leaning_forward"
+            # Leaning Back: Face becomes small
+            elif metrics.get("face_size_ratio", 0) < 0.15:
+                metrics["posture_state"] = "leaning_back"
+            # Slouching: Face center moves down significantly
+            # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
+            elif metrics.get("vertical_position", 0) > 0.65:
+                metrics["posture_state"] = "slouching"
+            else:
+                metrics["posture_state"] = "neutral"
 
     def _calculate_head_tilt(self, face_gray, face_w, face_h):
         """
