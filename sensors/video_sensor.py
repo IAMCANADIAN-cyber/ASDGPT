@@ -5,6 +5,8 @@ import numpy as np
 import collections
 import math
 import threading
+from typing import Optional, Callable, Dict, Any
+import config
 
 class VideoSensor:
     def __init__(self, camera_index=0, data_logger=None, history_size=5):
@@ -209,10 +211,59 @@ class VideoSensor:
         frame, err = self.get_frame() # get_frame returns tuple
         return self.calculate_activity(frame)
 
+    def calibrate(self, duration: float = 5.0, progress_callback: Optional[Callable[[str], None]] = None) -> Dict[str, float]:
+        """
+        Captures video frames for a specified duration to calculate a baseline posture.
+        Returns a dictionary of baseline metrics.
+        """
+        self._log_info(f"Starting video calibration for {duration}s...")
+
+        posture_samples = {
+            "face_roll_angle": [],
+            "face_size_ratio": [],
+            "vertical_position": [],
+            "horizontal_position": []
+        }
+
+        start_time = time.time()
+        frames_captured = 0
+
+        while time.time() - start_time < duration:
+            frame, err = self.get_frame()
+            if frame is not None:
+                metrics = self.process_frame(frame)
+                if metrics.get("face_detected"):
+                    for key in posture_samples:
+                        posture_samples[key].append(metrics.get(key, 0))
+                    frames_captured += 1
+                    if progress_callback:
+                        progress_callback(f"Face detected. Samples: {frames_captured}")
+                else:
+                    if progress_callback:
+                        progress_callback("No face detected...")
+            elif err:
+                 self._log_warning(f"Calibration video error: {err}")
+
+            time.sleep(0.1)
+
+        if frames_captured == 0:
+            self._log_warning("No valid face samples collected. Returning empty baseline.")
+            return {}
+
+        baseline = {
+            "face_roll_angle": float(np.mean(posture_samples["face_roll_angle"])),
+            "face_size_ratio": float(np.mean(posture_samples["face_size_ratio"])),
+            "vertical_position": float(np.mean(posture_samples["vertical_position"])),
+            "horizontal_position": float(np.mean(posture_samples["horizontal_position"]))
+        }
+
+        self._log_info(f"Baseline Posture Calculated: {baseline}")
+        return baseline
+
     def _calculate_posture(self, metrics):
         """
         Calculates posture state based on face metrics.
-        This is a heuristic estimation.
+        Uses config.BASELINE_POSTURE if available for relative comparison.
         """
         # Default to neutral if no face detected or calculation fails
         metrics["posture_state"] = "neutral"
@@ -220,29 +271,49 @@ class VideoSensor:
         if not metrics.get("face_detected", False):
             return
 
-        # Posture Heuristics
-        # Note: These are simple 2D estimates and require calibration for accuracy.
-        # Assumptions: Camera is roughly eye-level and centered.
+        baseline = getattr(config, 'BASELINE_POSTURE', {})
+        if not baseline:
+            baseline = {}
 
-        # Head Tilt
-        if abs(metrics.get("face_roll_angle", 0)) > 20:
-             if metrics["face_roll_angle"] > 0:
+        # Posture Heuristics
+
+        # 1. Head Tilt
+        current_roll = metrics.get("face_roll_angle", 0)
+        baseline_roll = baseline.get("face_roll_angle", 0)
+
+        if abs(current_roll - baseline_roll) > 20:
+             if current_roll - baseline_roll > 0:
                  metrics["posture_state"] = "tilted_right"
              else:
                  metrics["posture_state"] = "tilted_left"
-        # Leaning Forward: Face becomes significantly larger
-        # Thresholds should ideally be calibrated (e.g., normal ratio ~0.3-0.4)
+
+        # 2. Leaning Forward/Back
+        elif baseline.get("face_size_ratio"):
+             # Relative comparison
+             current_size = metrics.get("face_size_ratio", 0)
+             base_size = baseline["face_size_ratio"]
+             if base_size > 0:
+                 ratio = current_size / base_size
+                 if ratio > 1.3:
+                     metrics["posture_state"] = "leaning_forward"
+                 elif ratio < 0.7:
+                     metrics["posture_state"] = "leaning_back"
+        # Fallback absolute thresholds for leaning
         elif metrics.get("face_size_ratio", 0) > 0.45:
             metrics["posture_state"] = "leaning_forward"
-        # Leaning Back: Face becomes small
         elif metrics.get("face_size_ratio", 0) < 0.15:
             metrics["posture_state"] = "leaning_back"
-        # Slouching: Face center moves down significantly
-        # Assuming 0.0 is top, 1.0 is bottom. Normal eye level ~0.3-0.5
-        elif metrics.get("vertical_position", 0) > 0.65:
-            metrics["posture_state"] = "slouching"
-        else:
-            metrics["posture_state"] = "neutral"
+
+        # 3. Slouching (Vertical Position)
+        # Check if we already found a state, if so skip?
+        # Original code was if/elif structure, so yes.
+        if metrics["posture_state"] == "neutral":
+            current_y = metrics.get("vertical_position", 0)
+            baseline_y = baseline.get("vertical_position", 0.4) # Default approx center
+
+            # Slouching = moving down (y increases)
+            if current_y - baseline_y > 0.15:
+                metrics["posture_state"] = "slouching"
 
     def _calculate_head_tilt(self, face_gray, face_w, face_h):
         """
