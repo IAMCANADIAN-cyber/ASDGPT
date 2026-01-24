@@ -5,21 +5,7 @@ import threading
 import time
 import sys
 
-# Mock config before imports
-sys.modules['config'] = MagicMock()
-sys.modules['config'].DEFAULT_MODE = "active"
-sys.modules['config'].AUDIO_THRESHOLD_HIGH = 0.5
-sys.modules['config'].VIDEO_ACTIVITY_THRESHOLD_HIGH = 10.0
-sys.modules['config'].LMM_CIRCUIT_BREAKER_MAX_FAILURES = 3
-sys.modules['config'].LMM_CIRCUIT_BREAKER_COOLDOWN = 10
-sys.modules['config'].SNOOZE_DURATION = 60
-sys.modules['config'].DOOM_SCROLL_THRESHOLD = 3
-sys.modules['config'].LOG_FILE = "test.log"
-sys.modules['config'].EVENTS_FILE = "events.jsonl"
-sys.modules['config'].LOG_MAX_BYTES = 1024
-sys.modules['config'].LOG_BACKUP_COUNT = 1
-sys.modules['config'].LOG_LEVEL = "INFO"
-
+import config
 from core.logic_engine import LogicEngine
 
 class TestLogicEngineCoverage:
@@ -40,7 +26,11 @@ class TestLogicEngineCoverage:
     def logic_engine(self, mock_lmm, mock_intervention_engine):
         # We need to mock DataLogger inside logic_engine init or handle its dependencies
         with patch('core.logic_engine.DataLogger') as MockLogger, \
-             patch('core.logic_engine.StateEngine') as MockStateEngine:
+             patch('core.logic_engine.StateEngine') as MockStateEngine, \
+             patch('core.logic_engine.config.LMM_CIRCUIT_BREAKER_MAX_FAILURES', 3), \
+             patch('core.logic_engine.config.LMM_CIRCUIT_BREAKER_COOLDOWN', 10), \
+             patch('core.logic_engine.config.DOOM_SCROLL_THRESHOLD', 3), \
+             patch('core.logic_engine.config.DEFAULT_MODE', "active"):
 
             # Setup Mock State Engine
             mock_se = MockStateEngine.return_value
