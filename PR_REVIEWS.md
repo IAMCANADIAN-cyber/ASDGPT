@@ -4,11 +4,13 @@ Here are the reviews and recommendations for the open Pull Requests (branches) a
 **Update:** All PRs have been processed/verified as of 2026-01-23.
 
 ## 1. `origin/navigator/fix-video-sensor-init-redundancy-11728158637017467784`
+*   **Status:** **Closed**
 *   **Status:** **Closed (Already Merged)**
 *   **Recommendation:** **4: Or no longer needed / close PR**
 *   **Reasoning:** The file `sensors/video_sensor.py` is identical to `main`. The fix appears to be already merged or the branch is stale.
 
 ## 2. `origin/navigator/unit-test-coverage-logic-engine-recovery-13853738622416227728`
+*   **Status:** **Closed**
 *   **Status:** **Closed (Already Merged)**
 *   **Recommendation:** **4: Or no longer needed / close PR**
 *   **Reasoning:** The file `tests/test_logic_engine_recovery.py` is identical to `main`.
@@ -19,6 +21,7 @@ Here are the reviews and recommendations for the open Pull Requests (branches) a
 *   **Reasoning:** Updates `ROADMAP.md` with new milestones (Calibration, Fallback, Meeting Mode) and status updates. The content is newer and valid. **Verified content is in HEAD.**
 
 ## 4. `origin/scribe-architecture-doc-17114646078900512588`
+*   **Status:** **Closed**
 *   **Status:** **Closed (Already Merged)**
 *   **Recommendation:** **4: Or no longer needed / close PR**
 *   **Reasoning:** `docs/ARCHITECTURE.md` is identical to `main`.
