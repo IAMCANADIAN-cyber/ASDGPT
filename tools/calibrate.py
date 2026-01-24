@@ -51,46 +51,16 @@ class CalibrationEngine:
         time.sleep(1)
         print("Recording...")
 
-        rms_values = []
-        start_time = time.time()
+        def progress_callback(rms):
+            print(f"\rCurrent RMS: {rms:.4f}", end="", flush=True)
 
-        # Clear initial buffer
-        self.audio_sensor.get_chunk()
-
-        while time.time() - start_time < duration:
-            chunk, err = self.audio_sensor.get_chunk()
-            if chunk is not None and len(chunk) > 0:
-                metrics = self.audio_sensor.analyze_chunk(chunk)
-                rms = metrics.get('rms', 0.0)
-                rms_values.append(rms)
-                print(f"\rCurrent RMS: {rms:.4f}", end="", flush=True)
-            elif err:
-                print(f"\nWarning: Audio error: {err}")
-            time.sleep(0.1)
-
-        print("\nComplete.")
-
-        if not rms_values:
-            print("No audio data collected. Using default.")
+        try:
+            suggested_threshold = self.audio_sensor.calibrate(duration=float(duration), progress_callback=progress_callback)
+            print("\nComplete.")
+            return suggested_threshold
+        except Exception as e:
+            print(f"\nError during calibration: {e}")
             return getattr(config, 'VAD_SILENCE_THRESHOLD', 0.01)
-
-        mean_rms = statistics.mean(rms_values)
-        max_rms = max(rms_values)
-        std_dev = statistics.stdev(rms_values) if len(rms_values) > 1 else 0.0
-
-        print(f"Mean RMS: {mean_rms:.4f}")
-        print(f"Max RMS: {max_rms:.4f}")
-        print(f"Std Dev: {std_dev:.4f}")
-
-        # Calculate threshold: Mean + 3 StdDevs, or Max + 20% margin
-        # We want to be safely above the noise floor
-        suggested_threshold = max(mean_rms + (3 * std_dev), max_rms * 1.2)
-
-        # Clamp to reasonable minimum
-        suggested_threshold = max(suggested_threshold, 0.005)
-
-        print(f"Suggested VAD Silence Threshold: {suggested_threshold:.4f}")
-        return suggested_threshold
 
     def calibrate_video_posture(self, duration: int = 5) -> Dict[str, Any]:
         print(f"\n--- Video Posture Calibration ---")
@@ -105,52 +75,26 @@ class CalibrationEngine:
         time.sleep(1)
         print("Capturing...")
 
-        posture_samples = {
-            "face_roll_angle": [],
-            "face_size_ratio": [],
-            "vertical_position": [],
-            "horizontal_position": []
-        }
+        def progress_callback(msg):
+            print(f"\r{msg}", end="", flush=True)
 
-        start_time = time.time()
-        frames_captured = 0
+        try:
+            baseline = self.video_sensor.calibrate(duration=float(duration), progress_callback=progress_callback)
+            print("\nComplete.")
 
-        while time.time() - start_time < duration:
-            frame, err = self.video_sensor.get_frame()
-            if frame is not None:
-                metrics = self.video_sensor.process_frame(frame)
-                if metrics.get("face_detected"):
-                    posture_samples["face_roll_angle"].append(metrics.get("face_roll_angle", 0))
-                    posture_samples["face_size_ratio"].append(metrics.get("face_size_ratio", 0))
-                    posture_samples["vertical_position"].append(metrics.get("vertical_position", 0))
-                    posture_samples["horizontal_position"].append(metrics.get("horizontal_position", 0))
-                    frames_captured += 1
-                    print(f"\rFace detected. Samples: {frames_captured}", end="", flush=True)
-                else:
-                    print("\rNo face detected...", end="", flush=True)
-            elif err:
-                 print(f"\nWarning: Video error: {err}")
+            if not baseline:
+                print("No valid face samples collected. Skipping posture calibration.")
+                return {}
 
-            time.sleep(0.1)
+            print("Baseline Posture Calculated:")
+            for k, v in baseline.items():
+                print(f"  {k}: {v:.4f}")
 
-        print("\nComplete.")
+            return baseline
 
-        if frames_captured == 0:
-            print("No valid face samples collected. Skipping posture calibration.")
+        except Exception as e:
+            print(f"\nError during video calibration: {e}")
             return {}
-
-        baseline = {
-            "face_roll_angle": statistics.mean(posture_samples["face_roll_angle"]),
-            "face_size_ratio": statistics.mean(posture_samples["face_size_ratio"]),
-            "vertical_position": statistics.mean(posture_samples["vertical_position"]),
-            "horizontal_position": statistics.mean(posture_samples["horizontal_position"])
-        }
-
-        print("Baseline Posture Calculated:")
-        for k, v in baseline.items():
-            print(f"  {k}: {v:.4f}")
-
-        return baseline
 
     def run(self):
         print("=== ASDGPT Calibration Wizard ===")

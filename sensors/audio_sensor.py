@@ -4,6 +4,7 @@ import time
 import collections
 import threading
 import config
+from typing import Optional, Callable, Any
 
 class AudioSensor:
     def __init__(self, data_logger=None, sample_rate=44100, chunk_duration=1.0, channels=1, history_seconds=5):
@@ -260,6 +261,54 @@ class AudioSensor:
         except Exception as e:
             self._log_error(f"Error calculating speech rate: {e}")
             return 0.0
+
+    def calibrate(self, duration: float = 5.0, progress_callback: Optional[Callable[[float], None]] = None) -> float:
+        """
+        Records audio for a specified duration to calculate a personalized VAD silence threshold.
+        Returns the suggested threshold (float).
+        """
+        self._log_info(f"Starting audio calibration for {duration}s...")
+        start_time = time.time()
+        rms_values = []
+
+        # Clear initial buffer
+        self.get_chunk()
+
+        while time.time() - start_time < duration:
+            chunk, err = self.get_chunk()
+            if chunk is not None and len(chunk) > 0:
+                metrics = self.analyze_chunk(chunk)
+                rms = metrics.get('rms', 0.0)
+                rms_values.append(rms)
+                if progress_callback:
+                    progress_callback(rms)
+            elif err:
+                self._log_warning(f"Calibration audio error: {err}")
+
+            # Sleep slightly less than chunk duration to ensure we poll fast enough,
+            # but relies on get_chunk blocking or returning None if not ready.
+            # Here we sleep short to allow loop responsiveness.
+            time.sleep(0.1)
+
+        if not rms_values:
+            self._log_warning("No audio data collected during calibration. returning default.")
+            return getattr(config, 'VAD_SILENCE_THRESHOLD', 0.01)
+
+        mean_rms = float(np.mean(rms_values))
+        max_rms = float(np.max(rms_values))
+        std_dev = float(np.std(rms_values)) if len(rms_values) > 1 else 0.0
+
+        self._log_info(f"Calibration Stats - Mean: {mean_rms:.4f}, Max: {max_rms:.4f}, Std: {std_dev:.4f}")
+
+        # Calculate threshold: Mean + 4 * StdDev (robust), or Max * 1.2 (safety margin)
+        # Using 4 sigma to ensure we stay above the noise floor 99.9% of time.
+        suggested_threshold = max(mean_rms + (4 * std_dev), max_rms * 1.2)
+
+        # Clamp to reasonable minimum
+        suggested_threshold = max(suggested_threshold, 0.005)
+
+        self._log_info(f"Suggested VAD Silence Threshold: {suggested_threshold:.4f}")
+        return suggested_threshold
 
     def analyze_chunk(self, chunk):
         """
