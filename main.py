@@ -278,62 +278,64 @@ class Application:
         last_known_mode = self.logic_engine.get_mode()
         loop_counter = 0
 
-        while self.running:
-            print(f"Main loop iteration: {loop_counter}")
-            loop_counter += 1
-            if loop_counter % 10 == 0: # Check sensors slightly less often than main loop spins
-                 self._check_sensors()
+        try:
+            while self.running:
+                print(f"Main loop iteration: {loop_counter}")
+                loop_counter += 1
+                if loop_counter % 10 == 0: # Check sensors slightly less often than main loop spins
+                     self._check_sensors()
 
-            current_mode = self.logic_engine.get_mode()
+                current_mode = self.logic_engine.get_mode()
 
-            if current_mode != last_known_mode:
-                if self.sensor_error_active:
-                    if self.tray_icon: self.tray_icon.update_icon_status("error")
+                if current_mode != last_known_mode:
+                    if self.sensor_error_active:
+                        if self.tray_icon: self.tray_icon.update_icon_status("error")
+                    else:
+                        if self.tray_icon: self.tray_icon.update_icon_status(current_mode)
+                    last_known_mode = current_mode
+
+                video_data_processed = False
+                audio_data_processed = False
+
+                if current_mode == "active" and not self.sensor_error_active:
+                    # Process video queue
+                    try:
+                        frame, video_err = self.video_queue.get_nowait()
+                        if video_err:
+                            self.data_logger.log_warning(f"Video frame read error from queue: {video_err}")
+                        # Process frame if not None (e.g., pass to logic engine)
+                        if frame is not None:
+                            self.logic_engine.process_video_data(frame)
+                            self.data_logger.log_debug(f"Dequeued video frame. Shape: {frame.shape}")
+                        video_data_processed = True
+                        self.video_queue.task_done() # Signal that item processing is complete
+                    except queue.Empty:
+                        pass # No new video frame
+
+                    # Process audio queue
+                    try:
+                        audio_chunk, audio_err = self.audio_queue.get_nowait()
+                        if audio_err:
+                            self.data_logger.log_warning(f"Audio chunk read error from queue: {audio_err}")
+                        if audio_chunk is not None:
+                            self.logic_engine.process_audio_data(audio_chunk)
+                            self.data_logger.log_debug(f"Dequeued audio chunk. Shape: {audio_chunk.shape}")
+                        audio_data_processed = True
+                        self.audio_queue.task_done()
+                    except queue.Empty:
+                        pass # No new audio chunk
+
+                # Let the logic engine handle its own periodic updates, including LMM calls
+                self.logic_engine.update()
+
+                # Adjust sleep time based on whether we processed sensor data
+                if not video_data_processed and not audio_data_processed:
+                    time.sleep(0.05)
                 else:
-                    if self.tray_icon: self.tray_icon.update_icon_status(current_mode)
-                last_known_mode = current_mode
+                    time.sleep(0.01)
 
-            video_data_processed = False
-            audio_data_processed = False
-
-            if current_mode == "active" and not self.sensor_error_active:
-                # Process video queue
-                try:
-                    frame, video_err = self.video_queue.get_nowait()
-                    if video_err:
-                        self.data_logger.log_warning(f"Video frame read error from queue: {video_err}")
-                    # Process frame if not None (e.g., pass to logic engine)
-                    if frame is not None:
-                        self.logic_engine.process_video_data(frame)
-                        self.data_logger.log_debug(f"Dequeued video frame. Shape: {frame.shape}")
-                    video_data_processed = True
-                    self.video_queue.task_done() # Signal that item processing is complete
-                except queue.Empty:
-                    pass # No new video frame
-
-                # Process audio queue
-                try:
-                    audio_chunk, audio_err = self.audio_queue.get_nowait()
-                    if audio_err:
-                        self.data_logger.log_warning(f"Audio chunk read error from queue: {audio_err}")
-                    if audio_chunk is not None:
-                        self.logic_engine.process_audio_data(audio_chunk)
-                        self.data_logger.log_debug(f"Dequeued audio chunk. Shape: {audio_chunk.shape}")
-                    audio_data_processed = True
-                    self.audio_queue.task_done()
-                except queue.Empty:
-                    pass # No new audio chunk
-
-            # Let the logic engine handle its own periodic updates, including LMM calls
-            self.logic_engine.update()
-
-            # Adjust sleep time based on whether we processed sensor data
-            if not video_data_processed and not audio_data_processed:
-                time.sleep(0.05)
-            else:
-                time.sleep(0.01)
-
-        self._shutdown()
+        finally:
+            self._shutdown()
 
     def _shutdown(self) -> None:
         self.data_logger.log_info("Application shutting down...")
