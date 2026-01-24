@@ -4,7 +4,6 @@ import os
 import sys
 import numpy as np
 from typing import Dict, Any, List
-import statistics
 
 # Ensure project root is in path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -41,7 +40,7 @@ class CalibrationEngine:
         print(f"Configuration saved to {self.config_path}")
 
     def calibrate_audio_silence(self, duration: int = 10) -> float:
-        print(f"\n--- Audio Silence Calibration ---")
+        print(f"\n--- Audio Silence Calibration (VAD) ---")
         print(f"Please remain silent for {duration} seconds...")
         print("Starting in 3...")
         time.sleep(1)
@@ -74,11 +73,11 @@ class CalibrationEngine:
             print("No audio data collected. Using default.")
             return getattr(config, 'VAD_SILENCE_THRESHOLD', 0.01)
 
-        mean_rms = statistics.mean(rms_values)
-        max_rms = max(rms_values)
-        std_dev = statistics.stdev(rms_values) if len(rms_values) > 1 else 0.0
+        mean_rms = np.mean(rms_values)
+        max_rms = np.max(rms_values)
+        std_dev = np.std(rms_values) if len(rms_values) > 1 else 0.0
 
-        print(f"Mean RMS: {mean_rms:.4f}")
+        print(f"\nMean RMS: {mean_rms:.4f}")
         print(f"Max RMS: {max_rms:.4f}")
         print(f"Std Dev: {std_dev:.4f}")
 
@@ -90,10 +89,80 @@ class CalibrationEngine:
         suggested_threshold = max(suggested_threshold, 0.005)
 
         print(f"Suggested VAD Silence Threshold: {suggested_threshold:.4f}")
-        return suggested_threshold
+        return float(suggested_threshold)
+
+    def calibrate_activity_thresholds(self, duration: int = 10) -> Dict[str, float]:
+        print(f"\n--- Activity Threshold Calibration (High Noise/Movement) ---")
+        print("1. Keep the room in its 'normal' background state (fan on, ambient noise, etc).")
+        print("2. Do not speak directly into the microphone.")
+        print("3. Sit normally or keep the camera pointed at the usual background.")
+        print(f"Measuring for {duration} seconds...")
+        print("Starting in 3...")
+        time.sleep(3)
+
+        audio_samples = []
+        video_samples = []
+        start_time = time.time()
+
+        while time.time() - start_time < duration:
+            # Audio
+            chunk, err = self.audio_sensor.get_chunk()
+            if chunk is not None and len(chunk) > 0:
+                metrics = self.audio_sensor.analyze_chunk(chunk)
+                rms = metrics.get('rms', 0.0)
+                audio_samples.append(rms)
+
+            # Video
+            frame, err = self.video_sensor.get_frame()
+            if frame is not None:
+                metrics = self.video_sensor.process_frame(frame)
+                act = metrics.get('video_activity', 0.0)
+                video_samples.append(act)
+
+            # Progress
+            elapsed = time.time() - start_time
+            print(f"\rMeasuring... {elapsed:.1f}/{duration}s | Audio: {len(audio_samples)} | Video: {len(video_samples)}", end="", flush=True)
+            time.sleep(0.1)
+
+        print("\nComplete.")
+        results = {}
+
+        # Audio Analysis
+        if audio_samples:
+            a_mean = np.mean(audio_samples)
+            a_std = np.std(audio_samples)
+            a_max = np.max(audio_samples)
+
+            # Threshold: Mean + 4*StdDev, but at least 20% above Max
+            rec_audio = max(a_mean + (4 * a_std), a_max * 1.2)
+            # Enforce sanity floor (0.01) and ceiling (0.9)
+            rec_audio = max(0.01, min(0.9, rec_audio))
+
+            print(f"\nAudio (RMS): Mean={a_mean:.4f}, Max={a_max:.4f}, Std={a_std:.4f}")
+            print(f"Suggested AUDIO_THRESHOLD_HIGH: {rec_audio:.4f}")
+            results["AUDIO_THRESHOLD_HIGH"] = float(rec_audio)
+        else:
+            print("Audio: No data collected.")
+
+        # Video Analysis
+        if video_samples:
+            v_mean = np.mean(video_samples)
+            v_std = np.std(video_samples)
+            v_max = np.max(video_samples)
+
+            # Threshold: Mean + 4*StdDev, or 1.5x Max. Floor of 5.0.
+            rec_video = max(v_mean + (4 * v_std), v_max * 1.5, 5.0)
+
+            print(f"Video (Activity): Mean={v_mean:.2f}, Max={v_max:.2f}, Std={v_std:.2f}")
+            print(f"Suggested VIDEO_ACTIVITY_THRESHOLD_HIGH: {rec_video:.2f}")
+            results["VIDEO_ACTIVITY_THRESHOLD_HIGH"] = float(rec_video)
+        else:
+            print("Video: No data collected.")
+
+        return results
 
     def calibrate_video_posture(self, duration: int = 5) -> Dict[str, Any]:
-        print(f"\n--- Video Posture Calibration ---")
+        print(f"\n--- Video Posture Calibration (Baseline) ---")
         print("Please sit in your normal, neutral working posture.")
         print("Look at the screen naturally.")
         print(f"Hold this position for {duration} seconds...")
@@ -140,10 +209,10 @@ class CalibrationEngine:
             return {}
 
         baseline = {
-            "face_roll_angle": statistics.mean(posture_samples["face_roll_angle"]),
-            "face_size_ratio": statistics.mean(posture_samples["face_size_ratio"]),
-            "vertical_position": statistics.mean(posture_samples["vertical_position"]),
-            "horizontal_position": statistics.mean(posture_samples["horizontal_position"])
+            "face_roll_angle": float(np.mean(posture_samples["face_roll_angle"])),
+            "face_size_ratio": float(np.mean(posture_samples["face_size_ratio"])),
+            "vertical_position": float(np.mean(posture_samples["vertical_position"])),
+            "horizontal_position": float(np.mean(posture_samples["horizontal_position"]))
         }
 
         print("Baseline Posture Calculated:")
@@ -159,7 +228,10 @@ class CalibrationEngine:
             input("Press Enter to start Audio Calibration (or Ctrl+C to quit)...")
             silence_threshold = self.calibrate_audio_silence()
 
-            input("\nPress Enter to start Video Calibration...")
+            input("\nPress Enter to start Activity Threshold Calibration (High Noise/Movement)...")
+            activity_thresholds = self.calibrate_activity_thresholds()
+
+            input("\nPress Enter to start Video Posture Calibration...")
             baseline_posture = self.calibrate_video_posture()
 
             print("\n--- Summary ---")
@@ -167,6 +239,11 @@ class CalibrationEngine:
             if silence_threshold:
                 new_config["VAD_SILENCE_THRESHOLD"] = round(silence_threshold, 4)
                 print(f"VAD_SILENCE_THRESHOLD: {new_config['VAD_SILENCE_THRESHOLD']}")
+
+            if activity_thresholds:
+                new_config.update(activity_thresholds)
+                for k, v in activity_thresholds.items():
+                    print(f"{k}: {v}")
 
             if baseline_posture:
                 new_config["BASELINE_POSTURE"] = baseline_posture
