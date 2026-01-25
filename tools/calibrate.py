@@ -9,6 +9,8 @@ import statistics
 # Ensure project root is in path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+# Replaces legacy tools/calibrate_sensors.py
+# This wizard calibrates VAD (Silence) and Posture (Neutral State)
 from sensors.audio_sensor import AudioSensor
 from sensors.video_sensor import VideoSensor
 import config

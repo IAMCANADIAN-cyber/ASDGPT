@@ -62,7 +62,6 @@ USER_DATA_DIR = _get_conf("USER_DATA_DIR", "user_data")
 SUPPRESSIONS_FILE = os.path.join(USER_DATA_DIR, "suppressions.json")
 PREFERENCES_FILE = os.path.join(USER_DATA_DIR, "preferences.json")
 EVENTS_FILE = os.path.join(USER_DATA_DIR, "events.jsonl")
-CALIBRATION_FILE = os.path.join(USER_DATA_DIR, "calibration.json")
 
 # --- Application Mode ---
 DEFAULT_MODE = _get_conf("DEFAULT_MODE", "active")
@@ -81,18 +80,9 @@ FEEDBACK_SUPPRESSION_MINUTES = _get_conf("FEEDBACK_SUPPRESSION_MINUTES", 240, in
 # --- Sensors ---
 CAMERA_INDEX = _get_conf("CAMERA_INDEX", 0, int)
 
-# Load Calibration if available
-_calibration_data = {}
-if os.path.exists(CALIBRATION_FILE):
-    try:
-        with open(CALIBRATION_FILE, 'r') as f:
-            _calibration_data = json.load(f)
-    except:
-        pass
-
-# Thresholds (Priority: Env -> User Config -> Calibration File -> Default)
-AUDIO_THRESHOLD_HIGH = _get_conf("AUDIO_THRESHOLD_HIGH", _calibration_data.get("audio_rms_threshold", 0.5), float)
-VIDEO_ACTIVITY_THRESHOLD_HIGH = _get_conf("VIDEO_ACTIVITY_THRESHOLD_HIGH", _calibration_data.get("video_activity_threshold", 20.0), float)
+# Thresholds
+AUDIO_THRESHOLD_HIGH = _get_conf("AUDIO_THRESHOLD_HIGH", 0.5, float)
+VIDEO_ACTIVITY_THRESHOLD_HIGH = _get_conf("VIDEO_ACTIVITY_THRESHOLD_HIGH", 20.0, float)
 DOOM_SCROLL_THRESHOLD = _get_conf("DOOM_SCROLL_THRESHOLD", 3, int)
 
 # --- Meeting Mode ---
@@ -115,6 +105,10 @@ BASELINE_STATE = _get_conf("BASELINE_STATE", {
     "energy": 80,
     "mood": 50
 }, dict)
+
+# --- Video Sensor Baseline ---
+# Personal calibration data for posture (tilt, position, etc.)
+BASELINE_POSTURE = _get_conf("BASELINE_POSTURE", {}, dict)
 
 # --- Intervention Engine ---
 MIN_TIME_BETWEEN_INTERVENTIONS = _get_conf("MIN_TIME_BETWEEN_INTERVENTIONS", 300, int)
