@@ -12,12 +12,13 @@ TEST_USER_DATA_DIR = "test_user_data"
 TEST_SUPPRESSIONS_FILE = os.path.join(TEST_USER_DATA_DIR, "suppressions.json")
 
 @pytest.fixture
-def setup_test_env():
+def setup_test_env(monkeypatch):
     # Setup
     os.makedirs(TEST_USER_DATA_DIR, exist_ok=True)
-    # Override config paths for testing
-    config.USER_DATA_DIR = TEST_USER_DATA_DIR
-    config.SUPPRESSIONS_FILE = TEST_SUPPRESSIONS_FILE
+
+    # Use monkeypatch to safely override config values
+    monkeypatch.setattr(config, "USER_DATA_DIR", TEST_USER_DATA_DIR)
+    monkeypatch.setattr(config, "SUPPRESSIONS_FILE", TEST_SUPPRESSIONS_FILE)
 
     yield
 

@@ -1,37 +1,43 @@
 # Pull Request Reviews
 
-Here are the reviews and recommendations for the open Pull Requests (branches) as of 2026-01-18.
-**Update:** All PRs have been processed/verified as of 2026-01-23.
+Here are the reviews and recommendations for the open Pull Requests (branches) as of 2026-01-29.
 
-## 1. `origin/navigator/fix-video-sensor-init-redundancy-11728158637017467784`
-*   **Status:** **Closed**
-*   **Status:** **Closed (Already Merged)**
-*   **Recommendation:** **4: Or no longer needed / close PR**
-*   **Reasoning:** The file `sensors/video_sensor.py` is identical to `main`. The fix appears to be already merged or the branch is stale.
-
-## 2. `origin/navigator/unit-test-coverage-logic-engine-recovery-13853738622416227728`
-*   **Status:** **Closed**
-*   **Status:** **Closed (Already Merged)**
-*   **Recommendation:** **4: Or no longer needed / close PR**
-*   **Reasoning:** The file `tests/test_logic_engine_recovery.py` is identical to `main`.
-
-## 3. `origin/roadmapper/weekly-refresh-jan-22-8516151469706892438`
+## 1. `origin/roadmapper/weekly-refresh-jan-29-3747202026440890670`
 *   **Status:** **Merged**
 *   **Recommendation:** **2: Accept Incoming**
-*   **Reasoning:** Updates `ROADMAP.md` with new milestones (Calibration, Fallback, Meeting Mode) and status updates. The content is newer and valid. **Verified content is in HEAD.**
+*   **Reasoning:** Updates `ROADMAP.md` and `.jules/roadmapper.md` with the latest status (Jan 29). This aligns the roadmap with the current codebase state (Calibration, Offline Fallback, Meeting Mode). **Action: Merged into HEAD.**
 
-## 4. `origin/scribe-architecture-doc-17114646078900512588`
-*   **Status:** **Closed**
+## 2. `origin/scribe-meeting-mode-docs-16627115566403867244`
 *   **Status:** **Closed (Already Merged)**
-*   **Recommendation:** **4: Or no longer needed / close PR**
-*   **Reasoning:** `docs/ARCHITECTURE.md` is identical to `main`.
+*   **Recommendation:** **4: Close PR**
+*   **Reasoning:** The changes (Meeting Mode documentation in `README.md`) are already present in `HEAD`. The branch diff is empty relative to the current state.
 
-## 5. `origin/improve-core-coverage-15235029121080813401`
-*   **Status:** **Merged**
-*   **Recommendation:** **2: Accept Incoming**
-*   **Reasoning:** Adds a new test file `tests/test_logic_engine_lifecycle.py` which provides valuable coverage for `LogicEngine` time-dependent behaviors (snooze, recovery loops). Verified that tests pass. **Verified content is in HEAD and tests pass.**
+## 3. `origin/navigator/unified-calibration-wizard-7470060179192194416`
+*   **Status:** **Stale / Regressive**
+*   **Recommendation:** **4: Close PR**
+*   **Reasoning:** This branch appears to be based on an older state. It deletes `tests/test_calibration_tool.py` (which exists in HEAD) and removes functionality from `core/system_tray.py` (`create_colored_icon`). Merging would cause regressions.
 
-## 6. `origin/navigator/lmm-coverage-5507577810706643876`
+## 4. `origin/sentinel-shutdown-fix-15068037267083795403`
+*   **Status:** **Stale**
+*   **Recommendation:** **4: Close PR**
+*   **Reasoning:** Diff analysis shows it would delete multiple test files (`tests/test_calibration_tool.py`, `tests/test_sensor_calibration.py`) that are present in HEAD. The fix is likely already incorporated or superseded.
+
+## 5. `origin/navigator/visual-feedback-loop-12004144412844922599`
+*   **Status:** **Stale**
+*   **Recommendation:** **4: Close PR**
+*   **Reasoning:** Similar to other navigator branches, this one is behind HEAD on test coverage and file existence.
+
+---
+**Previous Reviews (Archived)**
+
+## `origin/roadmapper/weekly-refresh-jan-22-8516151469706892438`
 *   **Status:** **Merged**
-*   **Recommendation:** **2: Accept Incoming**
-*   **Reasoning:** Adds `tests/test_lmm_interface_coverage.py` using `unittest.TestCase` structure, which covers many edge cases for `LMMInterface`. Verified that tests pass. This file supersedes `tests/test_lmm_interface_extended_coverage.py` in quality/adherence to standards. **Verified content is in HEAD and tests pass.**
+*   **Reasoning:** Superseded by Jan 29 refresh, but content was valid.
+
+## `origin/improve-core-coverage-15235029121080813401`
+*   **Status:** **Merged**
+*   **Reasoning:** Added `tests/test_logic_engine_lifecycle.py`.
+
+## `origin/navigator/lmm-coverage-5507577810706643876`
+*   **Status:** **Merged**
+*   **Reasoning:** Added `tests/test_lmm_interface_coverage.py`.
