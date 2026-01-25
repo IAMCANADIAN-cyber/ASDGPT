@@ -79,6 +79,15 @@ Create a `.env` file in the project root to set these:
 *   `HOTKEY_FEEDBACK_HELPFUL`: Rate intervention helpful (Default: "ctrl+alt+up")
 *   `HOTKEY_FEEDBACK_UNHELPFUL`: Rate intervention unhelpful (Default: "ctrl+alt+down")
 
+**Meeting Mode**
+*   `MEETING_MODE_SPEECH_DURATION_THRESHOLD`: Seconds of continuous speech to trigger (Default: 3.0)
+*   `MEETING_MODE_IDLE_KEYBOARD_THRESHOLD`: Seconds of idle keyboard before allowing trigger (Default: 10.0)
+*   `MEETING_MODE_SPEECH_GRACE_PERIOD`: Seconds allowed between words before speech is considered stopped (Default: 2.0)
+
+**Resilience**
+*   `LMM_FALLBACK_ENABLED`: Enable offline heuristics if LMM is unreachable (Default: True)
+*   `LMM_CIRCUIT_BREAKER_MAX_FAILURES`: Failures before pausing LMM calls (Default: 5)
+
 ### User Config File
 
 You can also create a `user_data/config.json` file to persist your settings:
@@ -106,11 +115,25 @@ The application will start, and a system tray icon should appear.
 *   **Active**: The application is actively monitoring sensor data and may provide interventions.
 *   **Snoozed**: Interventions are suppressed for a set duration (`SNOOZE_DURATION`). Returns to "Active" automatically.
 *   **DND (Do Not Disturb)**: Monitoring continues, but all interventions are suppressed indefinitely.
+*   **Meeting Mode (Auto-DND)**: Automatically switches to **DND** when continuous speech is detected along with a face, and the keyboard is idle. This prevents interventions during calls.
+    *   *Triggers*: Speech > 3s + Face Detected + Keyboard Idle > 10s.
+    *   *Exits*: Automatically exits to **Active** when user input (keyboard/mouse) is detected.
 *   **Paused**: All active monitoring and interventions are stopped.
 
 ## Contributing
 
 Details for contributing will be added later. For now, focus on understanding the existing structure and planned LMM integration.
+
+## How to Verify
+
+### Meeting Mode (Auto-DND)
+To verify that the system correctly identifies meetings and suppresses interventions:
+
+1.  **Ensure you are in 'Active' mode.**
+2.  **Stop typing/using the mouse** for at least 10 seconds.
+3.  **Speak continuously** for 3-5 seconds while looking at the camera.
+4.  **Observe**: The system tray icon (or logs) should indicate a switch to `DND` mode.
+5.  **Touch the keyboard**: The mode should immediately switch back to `Active`.
 
 ## Testing
 
