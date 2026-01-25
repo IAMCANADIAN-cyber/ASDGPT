@@ -29,3 +29,7 @@
 **Learning:** `tools/generate_timeline.py` and `sensors/video_sensor.py` contained severe duplication artifacts (concatenated file versions), causing syntax errors and crashes in unrelated tests. This indicates a recurring hygiene issue with merge resolution.
 **Action:** Cleaned up both files to strictly modular implementations. Implemented `tests/test_lmm_timeout.py` to verify LMM fallback logic, confirming that `LogicEngine` correctly handles LMM timeouts by opening the circuit breaker and triggering offline interventions.
 **Pitfall:** Python `unittest.mock.patch` decorators pass arguments in reverse order (bottom-up), which can lead to confusing test failures if mocks are swapped.
+
+## 2026-01-29 - [UX Feedback Loop]
+**Learning:** The visual feedback loop for "Helpful/Unhelpful" hotkeys was implemented in `core/system_tray.py` but incorrectly invoked in `main.py`, passing the *current mode* instead of the *feedback status*. This highlights the importance of integration tests for UI/Interaction logic.
+**Action:** Fixed `main.py` to pass correct "feedback_helpful/unhelpful" statuses. Added `tests/test_ux_feedback_integration.py` to verify the hotkey-to-tray interaction.

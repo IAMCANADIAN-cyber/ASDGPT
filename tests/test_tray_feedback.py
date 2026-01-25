@@ -1,7 +1,11 @@
 import unittest
 from unittest.mock import MagicMock, patch, call
 import sys
+import os
 import importlib
+
+# Ensure root directory is in path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 class TestTrayFeedback(unittest.TestCase):
     def setUp(self):
