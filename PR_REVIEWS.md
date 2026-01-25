@@ -2,6 +2,7 @@
 
 Here are the reviews and recommendations for the open Pull Requests (branches) as of 2026-01-18.
 **Update:** All PRs have been processed/verified as of 2026-01-23.
+**Update:** Processed additional PRs on 2026-01-29.
 
 ## 1. `origin/navigator/fix-video-sensor-init-redundancy-11728158637017467784`
 *   **Status:** **Closed**
@@ -35,3 +36,13 @@ Here are the reviews and recommendations for the open Pull Requests (branches) a
 *   **Status:** **Merged**
 *   **Recommendation:** **2: Accept Incoming**
 *   **Reasoning:** Adds `tests/test_lmm_interface_coverage.py` using `unittest.TestCase` structure, which covers many edge cases for `LMMInterface`. Verified that tests pass. This file supersedes `tests/test_lmm_interface_extended_coverage.py` in quality/adherence to standards. **Verified content is in HEAD and tests pass.**
+
+## 7. `origin/merge-roadmap-and-tests-jan29-201208620198976858`
+*   **Status:** **Merged**
+*   **Recommendation:** **2: Accept Incoming**
+*   **Reasoning:** Updates `ROADMAP.md` with Jan 29 refresh (Context Intelligence & Efficiency) and adds `tests/test_prompt_construction.py`. **Verified content is in HEAD and tests pass.**
+
+## 8. `origin/navigator/ux-feedback-visuals-8757744644590461555`
+*   **Status:** **Merged**
+*   **Recommendation:** **2: Accept Incoming**
+*   **Reasoning:** Implements visual feedback (green/red flash) for "Helpful"/"Unhelpful" hotkeys in `main.py`. Supersedes `origin/navigator/fix-ux-feedback-visuals-8394465718457905689`. **Verified content is in HEAD and tests pass.**
