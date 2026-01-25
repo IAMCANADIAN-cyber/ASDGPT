@@ -14,6 +14,8 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 *   **Verified**: **Reliability**: `verify_crash.py` passed 10/10 cycles; `test_doom_scroll` and `test_panic_attack` scenarios confirmed logic.
 *   **Completed**: **DND Mode**: "Do Not Disturb" is functional and testable.
 *   **Completed**: **Log Rotation**: Prevented disk fill-up issues with `RotatingFileHandler`.
+*   **Verified**: **Meeting Mode**: Heuristic detection triggers Auto-DND; `test_meeting_mode.py` passes.
+*   **Completed**: **UX Feedback**: Distinct visual feedback (Green/Red icon flash) on hotkeys.
 
 ## 2. Top Milestones (Next 7 Days)
 
@@ -26,16 +28,6 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 *   **Goal**: Ensure "basic safety" interventions work even if the LMM is down or timing out (>10s).
 *   **Deliverable**: `LogicEngine` fallback triggers (e.g., if `LMM_TIMEOUT`, use simple `High Noise -> Reduction` rule).
 *   **Success Metric**: System successfully triggers an intervention during an induced LMM timeout in tests.
-
-### 🎯 Milestone 3: "Meeting Mode" Detection (Context Awareness)
-*   **Goal**: Prevent embarrassing interruptions during calls/meetings.
-*   **Deliverable**: Heuristic detection: `Continuous Speech` + `Face Present` + `No Keyboard` = `Meeting` -> Auto-DND.
-*   **Success Metric**: New scenario `test_meeting_mode.py` passes.
-
-### 🎯 Milestone 4: UX Feedback Loop (Interaction)
-*   **Goal**: Confirm to the user that their "Helpful/Unhelpful" feedback was registered.
-*   **Deliverable**: Visual toast/notification or Tray Icon flash on hotkey press.
-*   **Success Metric**: User receives immediate visual confirmation of feedback actions.
 
 ## 3. De-risk List (Unknowns)
 
@@ -55,9 +47,6 @@ The focus for this week shifts to **Resilience** and **Personalization**. We mus
 | **LMM Fallback Trigger** | Single point of failure. | LogicEngine detects `LMM_TIMEOUT` event. | S | Med | Sentinel |
 | **Offline Intervention Logic** | Safety net when offline. | Simple noise-based intervention triggers without LMM. | M | Med | Sentinel |
 | **Test LMM Timeout** | Verify fallback works. | `tests/test_lmm_timeout.py` passes. | S | Low | Testsmith |
-| **Meeting Mode Logic** | Interruptions destroy trust. | Heuristic (Speech+Face+NoInput) defined in LogicEngine. | M | Med | Navigator |
-| **Meeting Mode Scenario** | Verify meeting logic. | `test_meeting_mode.py` passes. | S | Low | Testsmith |
-| **Visual Feedback (Toast)** | UX is opaque. | Notification shown on hotkey. | S | Low | Navigator |
 | **Token Usage Logging** | Cost/Limit visibility. | `LMMInterface` logs input/output tokens. | S | Low | Profiler |
 | **Prune Context Window** | Prevent overflow errors. | `LMMInterface` truncates history > N tokens. | M | Med | Profiler |
 | **Video Eco Mode** | CPU usage is high. | Reduce FPS to 1 when no face detected. | M | Low | Profiler |

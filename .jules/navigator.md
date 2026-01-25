@@ -29,3 +29,7 @@
 **Learning:** `tools/generate_timeline.py` and `sensors/video_sensor.py` contained severe duplication artifacts (concatenated file versions), causing syntax errors and crashes in unrelated tests. This indicates a recurring hygiene issue with merge resolution.
 **Action:** Cleaned up both files to strictly modular implementations. Implemented `tests/test_lmm_timeout.py` to verify LMM fallback logic, confirming that `LogicEngine` correctly handles LMM timeouts by opening the circuit breaker and triggering offline interventions.
 **Pitfall:** Python `unittest.mock.patch` decorators pass arguments in reverse order (bottom-up), which can lead to confusing test failures if mocks are swapped.
+
+## 2026-01-22 - [Mocking Main for Integration Tests]
+**Learning:** Testing `main.py` interactions (like hotkey handlers) requires extensive patching of `sys.modules` BEFORE import, because `main.py` and its dependencies (`sensors/\*`) import system libraries (`sounddevice`, `cv2`, `pystray`) at the top level.
+**Action:** Created `tests/test_ux_feedback_integration.py` with a robust `setUp` pattern that mocks these modules in `sys.modules` to allow safe import and testing of `Application` logic in CI environments.
