@@ -1,7 +1,7 @@
 # Pull Request Reviews
 
-Here are the reviews and recommendations for the open Pull Requests (branches) as of 2026-01-18.
-**Update:** All PRs have been processed/verified as of 2026-01-23.
+Here are the reviews and recommendations for the open Pull Requests (branches) as of 2026-01-29.
+**Update:** All PRs have been processed/verified as of 2026-01-29.
 
 ## 1. `origin/navigator/fix-video-sensor-init-redundancy-11728158637017467784`
 *   **Status:** **Closed**
@@ -35,3 +35,8 @@ Here are the reviews and recommendations for the open Pull Requests (branches) a
 *   **Status:** **Merged**
 *   **Recommendation:** **2: Accept Incoming**
 *   **Reasoning:** Adds `tests/test_lmm_interface_coverage.py` using `unittest.TestCase` structure, which covers many edge cases for `LMMInterface`. Verified that tests pass. This file supersedes `tests/test_lmm_interface_extended_coverage.py` in quality/adherence to standards. **Verified content is in HEAD and tests pass.**
+
+## 7. `origin/weekly-refresh-and-test-fixes-11073278410086138244`
+*   **Status:** **Merged**
+*   **Recommendation:** **2: Accept Incoming**
+*   **Reasoning:** Updates `ROADMAP.md` (Jan 29 refresh) and includes critical reliability fixes for `tests/test_lmm_timeout.py` (using `SynchronousThread`). Supersedes `origin/roadmapper/weekly-refresh-jan-29-3747202026440890670`. **Verified content is in HEAD and tests pass.**

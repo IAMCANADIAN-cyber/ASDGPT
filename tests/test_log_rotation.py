@@ -15,12 +15,22 @@ class TestLogRotation(unittest.TestCase):
         # Cleanup previous test files
         self._cleanup()
 
+        # Save original config
+        self.orig_max_bytes = config.LOG_MAX_BYTES
+        self.orig_backup_count = config.LOG_BACKUP_COUNT
+        self.orig_log_level = config.LOG_LEVEL
+
         # Override config for testing
         config.LOG_MAX_BYTES = 1000  # 1KB
         config.LOG_BACKUP_COUNT = 3
         config.LOG_LEVEL = "DEBUG"
 
     def tearDown(self):
+        # Restore config
+        config.LOG_MAX_BYTES = self.orig_max_bytes
+        config.LOG_BACKUP_COUNT = self.orig_backup_count
+        config.LOG_LEVEL = self.orig_log_level
+
         # Close handlers explicitly to release file locks (important on Windows, good practice generally)
         if hasattr(self, 'logger'):
             for handler in self.logger.app_logger.handlers:
