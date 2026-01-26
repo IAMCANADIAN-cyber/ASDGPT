@@ -98,14 +98,14 @@ class Application:
         self.intervention_engine.register_feedback("helpful")
         # Optionally, provide some subtle confirmation feedback (e.g., short tray flash or sound)
         if self.tray_icon: # Example: quick flash of current icon
-             self.tray_icon.flash_icon(flash_status=self.logic_engine.get_mode(), duration=0.3, flashes=1)
+             self.tray_icon.flash_icon(flash_status="feedback_helpful", duration=0.3, flashes=1)
 
 
     def on_feedback_unhelpful_pressed(self) -> None:
         self.data_logger.log_info(f"Hotkey '{config.HOTKEY_FEEDBACK_UNHELPFUL}' pressed.")
         self.intervention_engine.register_feedback("unhelpful")
         if self.tray_icon: # Example: quick flash
-             self.tray_icon.flash_icon(flash_status=self.logic_engine.get_mode(), duration=0.3, flashes=1)
+             self.tray_icon.flash_icon(flash_status="feedback_unhelpful", duration=0.3, flashes=1)
 
     def send_notification(self, title: str, message: str) -> None:
         """Sends a notification to the user via the tray icon."""
