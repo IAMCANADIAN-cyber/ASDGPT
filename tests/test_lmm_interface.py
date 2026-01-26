@@ -147,7 +147,7 @@ def test_circuit_breaker(lmm_interface):
     # Should call process logic now
     with patch.object(lmm_interface, '_send_request_with_retry') as mock_send:
         # Mock success to reset circuit
-        mock_send.return_value = {"state_estimation": {}, "suggestion": None}
+        mock_send.return_value = ({"state_estimation": {}, "suggestion": None}, {})
         lmm_interface.process_data(user_context={"sensor_metrics": {}})
         assert lmm_interface.circuit_failures == 0
 

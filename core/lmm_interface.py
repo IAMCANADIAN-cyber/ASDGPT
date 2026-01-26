@@ -171,8 +171,11 @@ class LMMInterface:
         text = re.sub(r'```$', '', text, flags=re.MULTILINE)
         return text.strip()
 
-    def _send_request_with_retry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Sends request to LMM with manual retry logic."""
+    def _send_request_with_retry(self, payload: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, Any]]:
+        """
+        Sends request to LMM with manual retry logic.
+        Returns: (parsed_result, usage_stats)
+        """
         retries = 3
         backoff = 2
         last_exception = None
@@ -200,7 +203,8 @@ class LMMInterface:
                     # If schema is invalid, we might want to retry if it's a transient generation error
                     raise ValueError(f"Schema validation failed: {parsed_result}")
 
-                return parsed_result
+                usage = response_json.get("usage", {})
+                return parsed_result, usage
 
             except (requests.exceptions.RequestException, ValueError, KeyError) as e:
                 last_exception = e
@@ -372,13 +376,21 @@ class LMMInterface:
 
         try:
             start_time = time.time()
-            result = self._send_request_with_retry(payload)
+            result, usage = self._send_request_with_retry(payload)
             latency_ms = (time.time() - start_time) * 1000
 
-            # Inject latency into _meta
+            # Inject latency and usage into _meta
             if "_meta" not in result or result["_meta"] is None:
                 result["_meta"] = {}
             result["_meta"]["latency_ms"] = latency_ms
+            result["_meta"]["usage"] = usage
+
+            # Log Token Usage
+            if usage:
+                prompt_tokens = usage.get("prompt_tokens", 0)
+                completion_tokens = usage.get("completion_tokens", 0)
+                total_tokens = usage.get("total_tokens", 0)
+                self._log_info(f"LMM Token Usage - Prompt: {prompt_tokens}, Completion: {completion_tokens}, Total: {total_tokens}")
 
             self._log_info(f"Received valid JSON from LMM. Latency: {latency_ms:.2f}ms")
             self._log_debug(f"LMM Response: {result}")
