@@ -1,0 +1,28 @@
+2026-01-27T11:55:55.%f [INFO] DataLogger initialized. Log level: DEBUG. Log file: <MagicMock name='mock.LOG_FILE' id='140628888769152'>
+2026-01-27T11:55:55.%f [INFO] ACR Application Initializing...
+2026-01-27T11:55:55.%f [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-27T11:55:55.%f [INFO] LogicEngine initialized. Mode: active
+2026-01-27T11:55:55.%f [INFO] InterventionEngine initialized.
+2026-01-27T11:55:55.%f [INFO] Setting up hotkeys...
+2026-01-27T11:55:55.%f [INFO] Global keyboard hook registered for activity tracking.
+2026-01-27T11:55:55.%f [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-27T11:55:55.%f [INFO] ACR Initialized. Mode: active.
+2026-01-27T11:55:55.%f [INFO] Press Esc to quit.
+2026-01-27T11:55:55.%f [INFO] Hotkeys: Cycle Mode (<MagicMock name='mock.HOTKEY_CYCLE_MODE' id='140628888404528'>), Pause/Resume (<MagicMock name='mock.HOTKEY_PAUSE_RESUME' id='140628888407312'>)
+2026-01-27T11:55:55.%f [INFO] Feedback Hotkeys: Helpful (<MagicMock name='mock.HOTKEY_FEEDBACK_HELPFUL' id='140628888604208'>), Unhelpful (<MagicMock name='mock.HOTKEY_FEEDBACK_UNHELPFUL' id='140628888608720'>)
+2026-01-27T11:55:55.%f [INFO] Hotkey '<MagicMock name='mock.HOTKEY_FEEDBACK_HELPFUL' id='140628888604208'>' pressed.
+2026-01-27T11:55:55.%f [INFO] Feedback received, but no recent feedback-eligible intervention to link it to.
+2026-01-27T11:55:55.%f [INFO] DataLogger initialized. Log level: DEBUG. Log file: <MagicMock name='mock.LOG_FILE' id='140628888769152'>
+2026-01-27T11:55:55.%f [INFO] ACR Application Initializing...
+2026-01-27T11:55:55.%f [INFO] LMMInterface: LMMInterface initializing with URL: http://127.0.0.1:1234/v1/chat/completions
+2026-01-27T11:55:55.%f [INFO] LogicEngine initialized. Mode: active
+2026-01-27T11:55:55.%f [INFO] InterventionEngine initialized.
+2026-01-27T11:55:55.%f [INFO] Setting up hotkeys...
+2026-01-27T11:55:55.%f [INFO] Global keyboard hook registered for activity tracking.
+2026-01-27T11:55:55.%f [INFO] Hotkeys registered successfully (Mode, Feedback, Quit).
+2026-01-27T11:55:55.%f [INFO] ACR Initialized. Mode: active.
+2026-01-27T11:55:55.%f [INFO] Press Esc to quit.
+2026-01-27T11:55:55.%f [INFO] Hotkeys: Cycle Mode (<MagicMock name='mock.HOTKEY_CYCLE_MODE' id='140628888404528'>), Pause/Resume (<MagicMock name='mock.HOTKEY_PAUSE_RESUME' id='140628888407312'>)
+2026-01-27T11:55:55.%f [INFO] Feedback Hotkeys: Helpful (<MagicMock name='mock.HOTKEY_FEEDBACK_HELPFUL' id='140628888604208'>), Unhelpful (<MagicMock name='mock.HOTKEY_FEEDBACK_UNHELPFUL' id='140628888608720'>)
+2026-01-27T11:55:55.%f [INFO] Hotkey '<MagicMock name='mock.HOTKEY_FEEDBACK_UNHELPFUL' id='140628888608720'>' pressed.
+2026-01-27T11:55:55.%f [INFO] Feedback received, but no recent feedback-eligible intervention to link it to.
