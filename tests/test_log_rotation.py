@@ -4,8 +4,9 @@ import glob
 import time
 import json
 import logging
+import core.data_logger
 from core.data_logger import DataLogger
-import config
+from unittest.mock import patch
 
 class TestLogRotation(unittest.TestCase):
     def setUp(self):
@@ -15,13 +16,18 @@ class TestLogRotation(unittest.TestCase):
         # Cleanup previous test files
         self._cleanup()
 
-        # Override config for testing
-        config.LOG_MAX_BYTES = 1000  # 1KB
-        config.LOG_BACKUP_COUNT = 3
-        config.LOG_LEVEL = "DEBUG"
+        # Patch config values on the core.data_logger.config module
+        # This ensures DataLogger sees the patched values
+        self.config_patcher = patch.multiple(core.data_logger.config,
+                                           LOG_MAX_BYTES=1000,
+                                           LOG_BACKUP_COUNT=3,
+                                           LOG_LEVEL="DEBUG")
+        self.config_patcher.start()
 
     def tearDown(self):
-        # Close handlers explicitly to release file locks (important on Windows, good practice generally)
+        self.config_patcher.stop()
+
+        # Close handlers explicitly to release file locks
         if hasattr(self, 'logger'):
             for handler in self.logger.app_logger.handlers:
                 handler.close()
@@ -41,9 +47,11 @@ class TestLogRotation(unittest.TestCase):
         print("\n--- Testing App Log Rotation ---")
         self.logger = DataLogger(log_file_path=self.test_log_file, events_file_path=self.test_events_file)
 
+        # Verify config was picked up
+        self.assertEqual(self.logger.max_bytes, 1000)
+
         # Generate enough logs to rotate
-        # Each line is approx 80-100 bytes. 1000 bytes limit -> ~10-15 lines.
-        msg = "X" * 50 # 50 chars payload
+        msg = "X" * 50 # 50 chars payload + timestamp etc ~ 80-100 bytes
 
         for i in range(50):
             self.logger.log_info(f"Msg {i}: {msg}")
@@ -54,17 +62,17 @@ class TestLogRotation(unittest.TestCase):
 
         # Should have at least the main file and .1
         self.assertTrue(os.path.exists(self.test_log_file), "Main log file missing")
-        self.assertTrue(os.path.exists(f"{self.test_log_file}.1"), "Rotated log file .1 missing")
+        self.assertTrue(os.path.exists(f"{self.test_log_file}.1"), f"Rotated log file .1 missing. Found: {files}")
 
         # Verify content limit respected (roughly)
         size = os.path.getsize(f"{self.test_log_file}.1")
-        self.assertTrue(size <= config.LOG_MAX_BYTES + 200, f"Rotated file size {size} too large")
+        self.assertTrue(size <= 1000 + 200, f"Rotated file size {size} too large")
 
     def test_events_log_rotation(self):
         print("\n--- Testing Events Log Rotation ---")
         self.logger = DataLogger(log_file_path=self.test_log_file, events_file_path=self.test_events_file)
 
-        payload = {"data": "Y" * 50} # JSON overhead + timestamp + 50 chars
+        payload = {"data": "Y" * 50}
 
         for i in range(50):
             self.logger.log_event("test_event", payload)
@@ -73,7 +81,7 @@ class TestLogRotation(unittest.TestCase):
         print(f"Event files found: {files}")
 
         self.assertTrue(os.path.exists(self.test_events_file), "Main events file missing")
-        self.assertTrue(os.path.exists(f"{self.test_events_file}.1"), "Rotated events file .1 missing")
+        self.assertTrue(os.path.exists(f"{self.test_events_file}.1"), f"Rotated events file .1 missing. Found: {files}")
 
         # Verify JSON validity of the main file
         with open(self.test_events_file, 'r') as f:
