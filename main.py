@@ -188,6 +188,21 @@ class Application:
             return self.sensor_error_active
 
 
+    def _calculate_video_poll_interval(self) -> float:
+        """Calculates the dynamic polling interval for video sensor (Eco Mode)."""
+        base_interval = 0.05
+
+        # Only apply Eco Mode if enabled
+        if config.VIDEO_ECO_MODE_ENABLED:
+            # Check if face is detected (LogicEngine has the latest metrics)
+            # Accessing logic_engine.face_metrics directly (atomic read of dict reference)
+            face_detected = self.logic_engine.face_metrics.get("face_detected", False)
+
+            if not face_detected:
+                return config.VIDEO_ECO_FPS_DELAY
+
+        return base_interval
+
     def _video_worker(self) -> None:
         self.data_logger.log_info("Video worker thread started.")
         while self.running:
@@ -213,10 +228,9 @@ class Application:
                          # For now, _check_sensors will handle persistent errors.
                          pass
 
-                    # Slow down polling if sensor is fine but no frame, or to control CPU.
-                    # If get_frame() is truly blocking, this sleep might be less critical
-                    # but good for when get_frame() might return quickly with None.
-                    time.sleep(0.05) # Poll at ~20 FPS max if sensor is fast
+                    # Dynamic polling interval for Eco Mode
+                    sleep_duration = self._calculate_video_poll_interval()
+                    time.sleep(sleep_duration)
 
                 except Exception as e:
                     # Ignore errors if we are shutting down
