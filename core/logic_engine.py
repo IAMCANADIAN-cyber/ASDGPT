@@ -86,6 +86,11 @@ class LogicEngine:
         with self._lock:
             return self.current_mode
 
+    def is_face_detected(self) -> bool:
+        """Returns True if a face is currently detected in the video stream."""
+        with self._lock:
+            return self.face_metrics.get("face_detected", False)
+
     def set_mode(self, mode: str, from_snooze_expiry: bool = False) -> None:
         with self._lock:
             self._set_mode_unlocked(mode, from_snooze_expiry)

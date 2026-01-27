@@ -164,6 +164,19 @@ class Application:
                 sensor_error = self.sensor_error_active
             self.tray_icon.update_icon_status("error" if sensor_error and new_mode != "paused" else new_mode)
 
+    def _get_video_poll_delay(self) -> float:
+        """
+        Determines the appropriate video polling delay based on Eco Mode logic.
+        Returns:
+            float: Delay in seconds.
+        """
+        # If LogicEngine detects a face, we want high FPS (active mode).
+        # If no face, we can slow down to save CPU (Eco Mode).
+        if self.logic_engine.is_face_detected():
+            return config.VIDEO_ACTIVE_DELAY
+        else:
+            return config.VIDEO_ECO_MODE_DELAY
+
     def _check_sensors(self) -> bool:
         with self._sensor_lock:
             video_had_error = self.video_sensor.has_error()
@@ -190,9 +203,14 @@ class Application:
 
     def _video_worker(self) -> None:
         self.data_logger.log_info("Video worker thread started.")
+        current_delay = 0.05
         while self.running:
             with self._sensor_lock:
                 sensor_error = self.sensor_error_active
+
+            # _sensor_lock is RELEASED here. The following operations (get_frame, sleep)
+            # do NOT hold the lock, preventing blocking of other threads.
+
             if self.logic_engine.get_mode() == "active" and not sensor_error:
                 try:
                     frame, error = self.video_sensor.get_frame()
@@ -216,7 +234,16 @@ class Application:
                     # Slow down polling if sensor is fine but no frame, or to control CPU.
                     # If get_frame() is truly blocking, this sleep might be less critical
                     # but good for when get_frame() might return quickly with None.
-                    time.sleep(0.05) # Poll at ~20 FPS max if sensor is fast
+
+                    # Video Eco Mode: Dynamic delay
+                    new_delay = self._get_video_poll_delay()
+                    if new_delay != current_delay:
+                        # Only log if change is significant (float comparison)
+                        if abs(new_delay - current_delay) > 0.001:
+                             self.data_logger.log_debug(f"Video Poll Delay changed from {current_delay}s to {new_delay}s")
+                        current_delay = new_delay
+
+                    time.sleep(current_delay)
 
                 except Exception as e:
                     # Ignore errors if we are shutting down
