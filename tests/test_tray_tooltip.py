@@ -5,18 +5,21 @@ import importlib
 
 class TestTrayTooltip(unittest.TestCase):
     def setUp(self):
-        # Mock dependencies in sys.modules
+        # Prepare mocks
         self.pystray_mock = MagicMock()
-        sys.modules["pystray"] = self.pystray_mock
-        sys.modules["PIL"] = MagicMock()
-        sys.modules["PIL.Image"] = MagicMock()
-        sys.modules["PIL.ImageDraw"] = MagicMock()
-
-        # Mock config
         self.config_mock = MagicMock()
         self.config_mock.APP_NAME = "ASDGPT"
-        self.config_mock.SNOOZE_DURATION = 3600  # Default value
-        sys.modules["config"] = self.config_mock
+        self.config_mock.SNOOZE_DURATION = 3600
+
+        # Patch sys.modules
+        self.modules_patcher = patch.dict(sys.modules, {
+            "pystray": self.pystray_mock,
+            "PIL": MagicMock(),
+            "PIL.Image": MagicMock(),
+            "PIL.ImageDraw": MagicMock(),
+            "config": self.config_mock
+        })
+        self.modules_patcher.start()
 
         # Import and reload the module to ensure it uses the mocked config and dependencies
         import core.system_tray
@@ -27,6 +30,19 @@ class TestTrayTooltip(unittest.TestCase):
         self.tray = self.ACRTrayIcon(self.mock_app)
         # Mock the tray_icon object itself since we mocked pystray
         self.tray.tray_icon = MagicMock()
+
+    def tearDown(self):
+        self.modules_patcher.stop()
+        # Reload core.system_tray to restore real config if needed by other tests,
+        # but patch.dict should handle restoring sys.modules['config'].
+        # However, core.system_tray module object itself might hold references to the MOCKED config if it did `from config import ...`.
+        # It does `import config`. So it holds reference to the module in sys.modules.
+        # Since patch.dict restores the original module in sys.modules,
+        # subsequent imports of core.system_tray might see the old (mocked) config if core.system_tray itself isn't reloaded.
+
+        # To be safe, we should unload core.system_tray so it gets re-imported fresh by next test
+        if 'core.system_tray' in sys.modules:
+            del sys.modules['core.system_tray']
 
     def test_tooltip_dnd_mode(self):
         self.tray.current_icon_state = "dnd"

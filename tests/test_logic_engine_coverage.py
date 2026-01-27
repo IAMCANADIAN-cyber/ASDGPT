@@ -4,25 +4,32 @@ import numpy as np
 import threading
 import time
 import sys
-
-# Mock config before imports
-sys.modules['config'] = MagicMock()
-sys.modules['config'].DEFAULT_MODE = "active"
-sys.modules['config'].AUDIO_THRESHOLD_HIGH = 0.5
-sys.modules['config'].VIDEO_ACTIVITY_THRESHOLD_HIGH = 10.0
-sys.modules['config'].LMM_CIRCUIT_BREAKER_MAX_FAILURES = 3
-sys.modules['config'].LMM_CIRCUIT_BREAKER_COOLDOWN = 10
-sys.modules['config'].SNOOZE_DURATION = 60
-sys.modules['config'].DOOM_SCROLL_THRESHOLD = 3
-sys.modules['config'].LOG_FILE = "test.log"
-sys.modules['config'].EVENTS_FILE = "events.jsonl"
-sys.modules['config'].LOG_MAX_BYTES = 1024
-sys.modules['config'].LOG_BACKUP_COUNT = 1
-sys.modules['config'].LOG_LEVEL = "INFO"
+import config
 
 from core.logic_engine import LogicEngine
 
 class TestLogicEngineCoverage:
+    def setup_method(self):
+        # Patch config values cleanly
+        self.config_patcher = patch.multiple(config,
+            DEFAULT_MODE="active",
+            AUDIO_THRESHOLD_HIGH=0.5,
+            VIDEO_ACTIVITY_THRESHOLD_HIGH=10.0,
+            LMM_CIRCUIT_BREAKER_MAX_FAILURES=3,
+            LMM_CIRCUIT_BREAKER_COOLDOWN=10,
+            SNOOZE_DURATION=60,
+            DOOM_SCROLL_THRESHOLD=3,
+            LOG_FILE="test.log",
+            EVENTS_FILE="events.jsonl",
+            LOG_MAX_BYTES=1024,
+            LOG_BACKUP_COUNT=1,
+            LOG_LEVEL="INFO"
+        )
+        self.config_patcher.start()
+
+    def teardown_method(self):
+        self.config_patcher.stop()
+
     @pytest.fixture
     def mock_lmm(self):
         lmm = MagicMock()

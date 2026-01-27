@@ -153,17 +153,21 @@ def test_circuit_breaker(lmm_interface):
 
 @patch('requests.post')
 def test_fallback_logic(mock_post, lmm_interface):
+    orig_fallback = getattr(config, 'LMM_FALLBACK_ENABLED', False)
     config.LMM_FALLBACK_ENABLED = True
 
-    # Make request fail
-    mock_post.side_effect = requests.exceptions.ConnectionError("Fail")
+    try:
+        # Make request fail
+        mock_post.side_effect = requests.exceptions.ConnectionError("Fail")
 
-    with patch('time.sleep', return_value=None):
-        result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
+        with patch('time.sleep', return_value=None):
+            result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
 
-    assert result is not None
-    assert result.get("_meta", {}).get("is_fallback") is True
-    assert result["state_estimation"]["arousal"] == 50 # Default fallback
+        assert result is not None
+        assert result.get("_meta", {}).get("is_fallback") is True
+        assert result["state_estimation"]["arousal"] == 50 # Default fallback
+    finally:
+        config.LMM_FALLBACK_ENABLED = orig_fallback
 
 # --- NEW TESTS BELOW ---
 
