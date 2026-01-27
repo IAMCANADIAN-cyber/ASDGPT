@@ -3,7 +3,7 @@ import json
 import os
 import sys
 import numpy as np
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import statistics
 
 # Ensure project root is in path
@@ -42,7 +42,7 @@ class CalibrationEngine:
             json.dump(current, f, indent=4)
         print(f"Configuration saved to {self.config_path}")
 
-    def calibrate_audio_silence(self, duration: int = 10) -> float:
+    def calibrate_audio_silence(self, duration: int = 30) -> float:
         print(f"\n--- Audio Silence Calibration ---")
         print(f"Please remain silent for {duration} seconds...")
         print("Starting in 3...")
@@ -60,11 +60,14 @@ class CalibrationEngine:
             suggested_threshold = self.audio_sensor.calibrate(duration=float(duration), progress_callback=progress_callback)
             print("\nComplete.")
             return suggested_threshold
+        except KeyboardInterrupt:
+            print("\nAudio calibration interrupted by user.")
+            return getattr(config, 'VAD_SILENCE_THRESHOLD', 0.01)
         except Exception as e:
             print(f"\nError during calibration: {e}")
             return getattr(config, 'VAD_SILENCE_THRESHOLD', 0.01)
 
-    def calibrate_video_posture(self, duration: int = 5) -> Dict[str, Any]:
+    def calibrate_video_posture(self, duration: int = 30) -> Dict[str, Any]:
         print(f"\n--- Video Posture Calibration ---")
         print("Please sit in your normal, neutral working posture.")
         print("Look at the screen naturally.")
@@ -93,7 +96,9 @@ class CalibrationEngine:
                 print(f"  {k}: {v:.4f}")
 
             return baseline
-
+        except KeyboardInterrupt:
+            print("\nVideo calibration interrupted by user.")
+            return {}
         except Exception as e:
             print(f"\nError during video calibration: {e}")
             return {}
@@ -135,9 +140,9 @@ class CalibrationEngine:
 
     def cleanup(self):
         print("Cleaning up sensors...")
-        if self.audio_sensor:
+        if hasattr(self, 'audio_sensor') and self.audio_sensor:
             self.audio_sensor.release()
-        if self.video_sensor:
+        if hasattr(self, 'video_sensor') and self.video_sensor:
             self.video_sensor.release()
 
 if __name__ == "__main__":
