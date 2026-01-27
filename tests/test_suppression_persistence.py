@@ -3,9 +3,9 @@ import time
 import json
 import os
 import shutil
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from core.intervention_engine import InterventionEngine
-import config
+import core.intervention_engine
 
 # Create a temporary test directory for user data
 TEST_USER_DATA_DIR = "test_user_data"
@@ -15,11 +15,11 @@ TEST_SUPPRESSIONS_FILE = os.path.join(TEST_USER_DATA_DIR, "suppressions.json")
 def setup_test_env():
     # Setup
     os.makedirs(TEST_USER_DATA_DIR, exist_ok=True)
-    # Override config paths for testing
-    config.USER_DATA_DIR = TEST_USER_DATA_DIR
-    config.SUPPRESSIONS_FILE = TEST_SUPPRESSIONS_FILE
 
-    yield
+    # Patch config variables on the imported module used by InterventionEngine
+    with patch.object(core.intervention_engine.config, 'USER_DATA_DIR', TEST_USER_DATA_DIR), \
+         patch.object(core.intervention_engine.config, 'SUPPRESSIONS_FILE', TEST_SUPPRESSIONS_FILE):
+        yield
 
     # Teardown
     if os.path.exists(TEST_USER_DATA_DIR):
@@ -29,13 +29,19 @@ def test_suppression_persistence(setup_test_env):
     """Test that suppressions are saved to disk and loaded back."""
 
     mock_logic = MagicMock()
+    # Ensure no existing suppression file interferes (though setup clears dir)
+    if os.path.exists(TEST_SUPPRESSIONS_FILE):
+        os.remove(TEST_SUPPRESSIONS_FILE)
+
     engine = InterventionEngine(mock_logic)
 
     # 1. Add a suppression
     engine.suppress_intervention("test_intervention", 60) # 60 minutes
 
     assert "test_intervention" in engine.suppressed_interventions
-    assert os.path.exists(TEST_SUPPRESSIONS_FILE)
+
+    # Check if file exists
+    assert os.path.exists(TEST_SUPPRESSIONS_FILE), f"File {TEST_SUPPRESSIONS_FILE} not found"
 
     # Verify file content
     with open(TEST_SUPPRESSIONS_FILE, 'r') as f:
@@ -66,6 +72,7 @@ def test_expired_suppression_cleanup(setup_test_env):
     assert "valid_intervention" in engine.suppressed_interventions
 
     # Verify file was updated (expired removed)
+    # Note: _load_suppressions calls _save_suppressions if it removes keys
     with open(TEST_SUPPRESSIONS_FILE, 'r') as f:
         data_loaded = json.load(f)
         assert "expired_intervention" not in data_loaded

@@ -2,8 +2,8 @@ import pytest
 import json
 import time
 from unittest.mock import MagicMock, patch
+import core.lmm_interface # Import module to patch config on it
 from core.lmm_interface import LMMInterface, LMMResponse
-import config
 import requests
 
 @pytest.fixture
@@ -18,8 +18,9 @@ def mock_logger():
 @pytest.fixture
 def lmm_interface(mock_logger):
     # Reset config defaults for tests
-    config.LMM_FALLBACK_ENABLED = False
-    return LMMInterface(data_logger=mock_logger)
+    # We patch the module attribute directly to ensure consistency
+    with patch.object(core.lmm_interface.config, 'LMM_FALLBACK_ENABLED', False):
+         return LMMInterface(data_logger=mock_logger)
 
 def test_initialization(lmm_interface):
     assert lmm_interface.llm_url.endswith("/v1/chat/completions")
@@ -81,18 +82,20 @@ def test_process_data_retry_and_fallback(mock_post, lmm_interface):
 
     # Speed up retry by mocking sleep
     with patch('time.sleep', return_value=None):
-        # Fallback is DISABLED by default in test fixture (config.LMM_FALLBACK_ENABLED = False)
-        result = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.8}})
-
-    assert result is None
+        # Fallback is DISABLED by default in test fixture or setup
+        # Explicitly patch config to be False here to be safe
+        with patch.object(core.lmm_interface.config, 'LMM_FALLBACK_ENABLED', False):
+             result = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.8}})
+             assert result is None
 
     # Now enable it
-    with patch('config.LMM_FALLBACK_ENABLED', True):
-         # Also patch the fallback method used to ensure it returns what we want
-         with patch.object(lmm_interface, '_get_fallback_response', return_value={"fallback": True, "state_estimation": {}}):
-             result = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.8}})
-             assert result is not None
-             assert result.get("fallback") is True
+    with patch('time.sleep', return_value=None):
+        with patch.object(core.lmm_interface.config, 'LMM_FALLBACK_ENABLED', True):
+             # Also patch the fallback method used to ensure it returns what we want
+             with patch.object(lmm_interface, '_get_fallback_response', return_value={"fallback": True, "state_estimation": {}}):
+                 result = lmm_interface.process_data(user_context={"sensor_metrics": {"audio_level": 0.8}})
+                 assert result is not None
+                 assert result.get("fallback") is True
 
 @patch('requests.post')
 def test_process_data_retry_success(mock_post, lmm_interface):
@@ -125,9 +128,10 @@ def test_process_data_all_retries_fail(mock_post, lmm_interface):
     mock_post.side_effect = requests.exceptions.ConnectionError("Fail")
 
     with patch('time.sleep', return_value=None):
-        result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
-
-    assert result is None
+        # Explicitly disable fallback
+        with patch.object(core.lmm_interface.config, 'LMM_FALLBACK_ENABLED', False):
+            result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
+            assert result is None
 
 def test_circuit_breaker(lmm_interface):
     lmm_interface.circuit_max_failures = 2
@@ -137,9 +141,11 @@ def test_circuit_breaker(lmm_interface):
 
     # Should not call process logic
     with patch.object(lmm_interface, '_send_request_with_retry') as mock_send:
-        result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
-        assert result is None
-        mock_send.assert_not_called()
+        # Explicitly disable fallback
+        with patch.object(core.lmm_interface.config, 'LMM_FALLBACK_ENABLED', False):
+             result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
+             assert result is None
+             mock_send.assert_not_called()
 
     # Fast forward time to expire cooldown
     lmm_interface.circuit_open_time = time.time() - 61
@@ -153,17 +159,17 @@ def test_circuit_breaker(lmm_interface):
 
 @patch('requests.post')
 def test_fallback_logic(mock_post, lmm_interface):
-    config.LMM_FALLBACK_ENABLED = True
+    # Enable fallback
+    with patch.object(core.lmm_interface.config, 'LMM_FALLBACK_ENABLED', True):
+        # Make request fail
+        mock_post.side_effect = requests.exceptions.ConnectionError("Fail")
 
-    # Make request fail
-    mock_post.side_effect = requests.exceptions.ConnectionError("Fail")
+        with patch('time.sleep', return_value=None):
+            result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
 
-    with patch('time.sleep', return_value=None):
-        result = lmm_interface.process_data(user_context={"sensor_metrics": {}})
-
-    assert result is not None
-    assert result.get("_meta", {}).get("is_fallback") is True
-    assert result["state_estimation"]["arousal"] == 50 # Default fallback
+        assert result is not None
+        assert result.get("_meta", {}).get("is_fallback") is True
+        assert result["state_estimation"]["arousal"] == 50 # Default fallback
 
 # --- NEW TESTS BELOW ---
 

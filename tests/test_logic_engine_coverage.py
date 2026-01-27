@@ -5,22 +5,8 @@ import threading
 import time
 import sys
 
-# Mock config before imports
-sys.modules['config'] = MagicMock()
-sys.modules['config'].DEFAULT_MODE = "active"
-sys.modules['config'].AUDIO_THRESHOLD_HIGH = 0.5
-sys.modules['config'].VIDEO_ACTIVITY_THRESHOLD_HIGH = 10.0
-sys.modules['config'].LMM_CIRCUIT_BREAKER_MAX_FAILURES = 3
-sys.modules['config'].LMM_CIRCUIT_BREAKER_COOLDOWN = 10
-sys.modules['config'].SNOOZE_DURATION = 60
-sys.modules['config'].DOOM_SCROLL_THRESHOLD = 3
-sys.modules['config'].LOG_FILE = "test.log"
-sys.modules['config'].EVENTS_FILE = "events.jsonl"
-sys.modules['config'].LOG_MAX_BYTES = 1024
-sys.modules['config'].LOG_BACKUP_COUNT = 1
-sys.modules['config'].LOG_LEVEL = "INFO"
-
-from core.logic_engine import LogicEngine
+# Remove global mock pollution
+# sys.modules['config'] = MagicMock() ...
 
 class TestLogicEngineCoverage:
     @pytest.fixture
@@ -38,17 +24,49 @@ class TestLogicEngineCoverage:
 
     @pytest.fixture
     def logic_engine(self, mock_lmm, mock_intervention_engine):
-        # We need to mock DataLogger inside logic_engine init or handle its dependencies
-        with patch('core.logic_engine.DataLogger') as MockLogger, \
-             patch('core.logic_engine.StateEngine') as MockStateEngine:
+        # Prepare the mock config
+        mock_config = MagicMock()
+        mock_config.DEFAULT_MODE = "active"
+        mock_config.AUDIO_THRESHOLD_HIGH = 0.5
+        mock_config.VIDEO_ACTIVITY_THRESHOLD_HIGH = 10.0
+        mock_config.LMM_CIRCUIT_BREAKER_MAX_FAILURES = 3
+        mock_config.LMM_CIRCUIT_BREAKER_COOLDOWN = 10
+        mock_config.SNOOZE_DURATION = 60
+        mock_config.DOOM_SCROLL_THRESHOLD = 3
+        mock_config.LOG_FILE = "test.log"
+        mock_config.EVENTS_FILE = "events.jsonl"
+        mock_config.LOG_MAX_BYTES = 1024
+        mock_config.LOG_BACKUP_COUNT = 1
+        mock_config.LOG_LEVEL = "INFO"
 
-            # Setup Mock State Engine
-            mock_se = MockStateEngine.return_value
-            mock_se.get_state.return_value = {"arousal": 50}
+        # Patch sys.modules['config'] just for this test execution
+        # We need to ensure we don't pollute other tests
+        with patch.dict(sys.modules, {'config': mock_config}):
+            # We must import LogicEngine HERE, so it uses the patched config
+            # If it was already imported, we might need to reload it,
+            # but usually in pytest fixtures, this provides isolation if modules aren't already cached globally in a bad state.
+            # To be safe, we can try to reload or just import.
+            if 'core.logic_engine' in sys.modules:
+                del sys.modules['core.logic_engine']
 
-            engine = LogicEngine(lmm_interface=mock_lmm)
-            engine.set_intervention_engine(mock_intervention_engine)
-            return engine
+            from core.logic_engine import LogicEngine
+
+            # We need to mock DataLogger inside logic_engine init or handle its dependencies
+            with patch('core.logic_engine.DataLogger') as MockLogger, \
+                 patch('core.logic_engine.StateEngine') as MockStateEngine:
+
+                # Setup Mock State Engine
+                mock_se = MockStateEngine.return_value
+                mock_se.get_state.return_value = {"arousal": 50}
+
+                engine = LogicEngine(lmm_interface=mock_lmm)
+                engine.set_intervention_engine(mock_intervention_engine)
+                yield engine
+
+            # Cleanup is handled by patch context managers, but we might want to clean sys.modules['core.logic_engine']
+            # to avoid leaving a version that refers to the mock config
+            if 'core.logic_engine' in sys.modules:
+                del sys.modules['core.logic_engine']
 
     def test_init(self, logic_engine):
         assert logic_engine.current_mode == "active"
