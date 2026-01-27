@@ -187,9 +187,19 @@ class Application:
 
             return self.sensor_error_active
 
+    def _get_video_poll_delay(self) -> float:
+        """
+        Determines the polling delay for the video worker.
+        Uses Eco Mode (slower polling) if no face is detected.
+        """
+        if self.logic_engine and self.logic_engine.face_metrics.get("face_detected", False):
+            return config.VIDEO_ACTIVE_DELAY
+        return config.VIDEO_ECO_MODE_DELAY
 
     def _video_worker(self) -> None:
         self.data_logger.log_info("Video worker thread started.")
+        last_delay = 0.0
+
         while self.running:
             with self._sensor_lock:
                 sensor_error = self.sensor_error_active
@@ -216,7 +226,15 @@ class Application:
                     # Slow down polling if sensor is fine but no frame, or to control CPU.
                     # If get_frame() is truly blocking, this sleep might be less critical
                     # but good for when get_frame() might return quickly with None.
-                    time.sleep(0.05) # Poll at ~20 FPS max if sensor is fast
+
+                    # Implement Eco Mode
+                    current_delay = self._get_video_poll_delay()
+                    if current_delay != last_delay:
+                        mode_name = "Active" if current_delay == config.VIDEO_ACTIVE_DELAY else "Eco"
+                        self.data_logger.log_debug(f"Video Worker switching to {mode_name} Mode (Delay: {current_delay}s)")
+                        last_delay = current_delay
+
+                    time.sleep(current_delay)
 
                 except Exception as e:
                     # Ignore errors if we are shutting down
