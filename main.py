@@ -12,6 +12,7 @@ from core.data_logger import DataLogger
 from core.lmm_interface import LMMInterface
 from sensors.video_sensor import VideoSensor
 from sensors.audio_sensor import AudioSensor
+from sensors.window_sensor import WindowSensor
 
 class Application:
     def __init__(self) -> None:
@@ -21,6 +22,7 @@ class Application:
         # Initialize sensors first, as they might be needed by LogicEngine
         self.video_sensor = VideoSensor(config.CAMERA_INDEX, self.data_logger)
         self.audio_sensor = AudioSensor(self.data_logger)
+        self.window_sensor = WindowSensor(self.data_logger)
 
         # Initialize LMM Interface
         self.lmm_interface = LMMInterface(self.data_logger)
@@ -29,6 +31,7 @@ class Application:
         self.logic_engine = LogicEngine(
             audio_sensor=self.audio_sensor,
             video_sensor=self.video_sensor,
+            window_sensor=self.window_sensor,
             logger=self.data_logger,
             lmm_interface=self.lmm_interface
         )
@@ -188,6 +191,28 @@ class Application:
             return self.sensor_error_active
 
 
+    def _get_video_poll_delay(self, activity: float) -> float:
+        """
+        Determines the video polling delay based on current state and activity.
+        Implements 'Eco Mode' to save resources when idle.
+        """
+        current_mode = self.logic_engine.get_mode()
+
+        if current_mode != "active":
+             return 0.2
+
+        # If face is detected, we want high FPS for responsiveness (e.g. posture check)
+        if self.logic_engine.is_face_detected():
+             return config.VIDEO_ACTIVE_DELAY
+
+        # If no face, check activity level
+        # If activity is high (movement), ramp up to catch what's happening
+        if activity > config.VIDEO_WAKE_THRESHOLD:
+             return config.VIDEO_ACTIVE_DELAY
+
+        # Otherwise, Eco Mode (low FPS)
+        return config.VIDEO_ECO_MODE_DELAY
+
     def _video_worker(self) -> None:
         self.data_logger.log_info("Video worker thread started.")
         while self.running:
@@ -213,10 +238,12 @@ class Application:
                          # For now, _check_sensors will handle persistent errors.
                          pass
 
-                    # Slow down polling if sensor is fine but no frame, or to control CPU.
-                    # If get_frame() is truly blocking, this sleep might be less critical
-                    # but good for when get_frame() might return quickly with None.
-                    time.sleep(0.05) # Poll at ~20 FPS max if sensor is fast
+                    # Determine dynamic poll delay
+                    # Use the latest activity from logic engine (which reflects the most recent PROCESSED frame)
+                    frame_activity = self.logic_engine.video_activity
+                    next_sleep_time = self._get_video_poll_delay(frame_activity)
+
+                    time.sleep(next_sleep_time)
 
                 except Exception as e:
                     # Ignore errors if we are shutting down
