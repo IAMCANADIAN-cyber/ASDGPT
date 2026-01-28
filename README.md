@@ -100,6 +100,22 @@ You can also create a `user_data/config.json` file to persist your settings:
 }
 ```
 
+## Calibration
+
+ASDGPT includes a calibration wizard to personalize sensor thresholds for your environment. This is recommended for first-time setup.
+
+To run the calibration tool:
+
+```bash
+python tools/calibrate.py
+```
+
+The wizard will guide you through:
+1.  **Audio Silence Calibration**: Measures background noise to set `VAD_SILENCE_THRESHOLD`.
+2.  **Video Posture Calibration**: Captures your neutral posture to set `BASELINE_POSTURE` for accurate posture correction.
+
+Settings are saved to `user_data/config.json`.
+
 ## Running the Application
 
 Execute the `main.py` script from the project root:
