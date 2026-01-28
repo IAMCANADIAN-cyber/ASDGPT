@@ -12,7 +12,7 @@ from .state_engine import StateEngine
 
 
 class LogicEngine:
-    def __init__(self, audio_sensor: Optional[Any] = None, video_sensor: Optional[Any] = None, logger: Optional[DataLogger] = None, lmm_interface: Optional[LMMInterface] = None) -> None:
+    def __init__(self, audio_sensor: Optional[Any] = None, video_sensor: Optional[Any] = None, window_sensor: Optional[Any] = None, logger: Optional[DataLogger] = None, lmm_interface: Optional[LMMInterface] = None) -> None:
         self.current_mode: str = config.DEFAULT_MODE
         self.snooze_end_time: float = 0
         self.previous_mode_before_pause: str = config.DEFAULT_MODE
@@ -21,6 +21,7 @@ class LogicEngine:
         self.notification_callback: Optional[Callable[[str, str], None]] = None
         self.audio_sensor: Optional[Any] = audio_sensor
         self.video_sensor: Optional[Any] = video_sensor
+        self.window_sensor: Optional[Any] = window_sensor
         self.logger: DataLogger = logger if logger else DataLogger()
         self.lmm_interface: Optional[LMMInterface] = lmm_interface
         self.intervention_engine: Optional[InterventionEngine] = None
@@ -269,6 +270,14 @@ class LogicEngine:
             if self.context_persistence.get("phone_usage", 0) >= self.doom_scroll_trigger_threshold:
                  system_alerts.append("Persistent Phone Usage Detected (Potential Doom Scrolling)")
 
+            # Active Window Context
+            active_window = {"title": "Unknown", "app_name": "Unknown"}
+            if self.window_sensor and hasattr(self.window_sensor, 'get_active_window'):
+                try:
+                    active_window = self.window_sensor.get_active_window()
+                except Exception as e:
+                    self.logger.log_debug(f"Error getting active window: {e}")
+
             context = {
                 "current_mode": self.current_mode,
                 "trigger_reason": trigger_reason,
@@ -280,6 +289,7 @@ class LogicEngine:
                     "video_analysis": self.video_analysis,
                     "audio_analysis": self.audio_analysis
                 },
+                "active_window": active_window,
                 "current_state_estimation": self.state_engine.get_state(),
                 "suppressed_interventions": suppressed_list,
                 "system_alerts": system_alerts,

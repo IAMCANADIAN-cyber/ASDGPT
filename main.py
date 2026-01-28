@@ -12,6 +12,7 @@ from core.data_logger import DataLogger
 from core.lmm_interface import LMMInterface
 from sensors.video_sensor import VideoSensor
 from sensors.audio_sensor import AudioSensor
+from sensors.window_sensor import WindowSensor
 
 class Application:
     def __init__(self) -> None:
@@ -21,6 +22,7 @@ class Application:
         # Initialize sensors first, as they might be needed by LogicEngine
         self.video_sensor = VideoSensor(config.CAMERA_INDEX, self.data_logger)
         self.audio_sensor = AudioSensor(self.data_logger)
+        self.window_sensor = WindowSensor()
 
         # Initialize LMM Interface
         self.lmm_interface = LMMInterface(self.data_logger)
@@ -29,6 +31,7 @@ class Application:
         self.logic_engine = LogicEngine(
             audio_sensor=self.audio_sensor,
             video_sensor=self.video_sensor,
+            window_sensor=self.window_sensor,
             logger=self.data_logger,
             lmm_interface=self.lmm_interface
         )
