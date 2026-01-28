@@ -39,9 +39,18 @@ class TestLogicEngineCoverage:
         mock_config.LOG_BACKUP_COUNT = 1
         mock_config.LOG_LEVEL = "INFO"
 
-        # Patch sys.modules['config'] just for this test execution
+        # Prepare mock cv2 to avoid dependency issues in test env
+        mock_cv2 = MagicMock()
+        mock_cv2.absdiff.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
+        # Return all 255s so mean calculation results in high activity for fallback test
+        mock_cv2.cvtColor.return_value = np.ones((100, 100), dtype=np.uint8) * 255
+        mock_cv2.imencode.return_value = (True, np.array([1, 2, 3]))
+        mock_cv2.COLOR_BGR2GRAY = 6
+        mock_cv2.IMWRITE_JPEG_QUALITY = 1
+
+        # Patch sys.modules['config'] and 'cv2' just for this test execution
         # We need to ensure we don't pollute other tests
-        with patch.dict(sys.modules, {'config': mock_config}):
+        with patch.dict(sys.modules, {'config': mock_config, 'cv2': mock_cv2}):
             # We must import LogicEngine HERE, so it uses the patched config
             # If it was already imported, we might need to reload it,
             # but usually in pytest fixtures, this provides isolation if modules aren't already cached globally in a bad state.
@@ -132,6 +141,20 @@ class TestLogicEngineCoverage:
         assert "audio_data" in data
         assert "user_context" in data
         assert data["user_context"]["trigger_reason"] == "test_reason"
+        # Default behavior when no window_sensor is present (fixture doesn't set it)
+        assert data["user_context"]["active_window"] == {"title": "Unknown"}
+
+    def test_prepare_lmm_data_active_window(self, logic_engine):
+        logic_engine.last_video_frame = np.zeros((10, 10, 3), dtype=np.uint8)
+        logic_engine.last_audio_chunk = np.zeros(10)
+
+        # Mock window sensor
+        mock_ws = MagicMock()
+        mock_ws.get_active_window.return_value = {"title": "VS Code"}
+        logic_engine.window_sensor = mock_ws
+
+        data = logic_engine._prepare_lmm_data("test_reason")
+        assert data["user_context"]["active_window"] == {"title": "VS Code"}
 
     def test_run_lmm_analysis_async_success(self, logic_engine, mock_lmm):
         payload = {"video_data": None, "audio_data": None, "user_context": {}}
