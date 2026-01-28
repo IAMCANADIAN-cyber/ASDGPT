@@ -187,45 +187,68 @@ class Application:
 
             return self.sensor_error_active
 
+    def _get_video_poll_delay(self, activity: float) -> float:
+        """
+        Determines the polling delay for the video worker based on activity and mode.
+        Implements Eco Mode logic: 1Hz (1.0s) when idle/no face, 20Hz (0.05s) when active/face/motion.
+        """
+        # If not in active mode (e.g. paused/snoozed), sleep longer to reduce CPU
+        if self.logic_engine.get_mode() != "active":
+             return 0.2
+
+        # If face is detected, we want high FPS to track it and posture
+        if self.logic_engine.is_face_detected():
+             return config.VIDEO_ACTIVE_DELAY
+
+        # If no face, but significant motion (activity), wake up to see if it's a user
+        if activity > config.VIDEO_WAKE_THRESHOLD:
+             return config.VIDEO_ACTIVE_DELAY
+
+        # Otherwise, Eco Mode
+        return config.VIDEO_ECO_MODE_DELAY
 
     def _video_worker(self) -> None:
         self.data_logger.log_info("Video worker thread started.")
         while self.running:
             with self._sensor_lock:
                 sensor_error = self.sensor_error_active
-            if self.logic_engine.get_mode() == "active" and not sensor_error:
+
+            # Default sleep time if loop logic is skipped (e.g. error state)
+            next_sleep_time = 0.2
+
+            if not sensor_error:
                 try:
                     frame, error = self.video_sensor.get_frame()
                     if not self.running: break # Double check after potentially blocking call
 
+                    frame_activity = 0.0
+
                     if error:
                         self.data_logger.log_warning(f"Video sensor error in worker: {error}")
-                        # We might still put an error marker or None frame in queue if needed
-                        # For now, only put valid frames or rely on _check_sensors
+
                     if frame is not None:
+                        # Calculate raw activity for Eco Mode logic (without updating history yet)
+                        frame_activity = self.video_sensor.get_frame_activity(frame)
+
                         try:
                             self.video_queue.put((frame, error), timeout=0.1) # Short timeout
                         except queue.Full:
                             self.data_logger.log_debug("Video queue full, frame discarded.")
                             pass # Frame discarded
-                    elif error: # If frame is None due to error
-                         # Potentially put an error marker in the queue if main loop needs to react instantly
-                         # For now, _check_sensors will handle persistent errors.
+                    elif error:
                          pass
 
-                    # Slow down polling if sensor is fine but no frame, or to control CPU.
-                    # If get_frame() is truly blocking, this sleep might be less critical
-                    # but good for when get_frame() might return quickly with None.
-                    time.sleep(0.05) # Poll at ~20 FPS max if sensor is fast
+                    # Determine dynamic poll delay
+                    next_sleep_time = self._get_video_poll_delay(frame_activity)
 
                 except Exception as e:
                     # Ignore errors if we are shutting down
                     if not self.running: break
                     self.data_logger.log_error(f"Exception in video worker: {e}")
-                    time.sleep(1) # Wait a bit longer after an unexpected error
-            else:
-                # If not active or sensor error, sleep longer to reduce CPU usage
-                time.sleep(0.2)
+                    next_sleep_time = 1.0 # Wait a bit longer after an unexpected error
+
+            time.sleep(next_sleep_time)
+
         self.data_logger.log_info("Video worker thread stopped.")
 
     def _audio_worker(self) -> None:

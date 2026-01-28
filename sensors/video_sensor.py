@@ -163,10 +163,10 @@ class VideoSensor:
     def get_last_error(self):
         return self.last_error_message
 
-    def calculate_raw_activity(self, gray_frame):
+    def calculate_raw_activity(self, gray_frame, update_history=True):
         """
         Calculates raw activity level (mean pixel difference) for a given grayscale frame.
-        Updates self.last_frame.
+        Updates self.last_frame if update_history is True.
         """
         if gray_frame is None:
             return 0.0
@@ -182,8 +182,25 @@ class VideoSensor:
             else:
                 self._log_warning("Frame shape mismatch in activity calculation. Resetting last_frame.")
 
-        self.last_frame = gray_frame
+        if update_history:
+            self.last_frame = gray_frame
         return activity
+
+    def get_frame_activity(self, frame):
+        """
+        Calculates raw activity for a frame without updating history (peek).
+        Used for Eco Mode decision making.
+        Returns raw activity score (float).
+        """
+        if frame is None:
+            return 0.0
+        try:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray_small = cv2.resize(gray, (100, 100))
+            return self.calculate_raw_activity(gray_small, update_history=False)
+        except Exception as e:
+            self._log_error(f"Error calculating frame activity: {e}")
+            return 0.0
 
     def calculate_activity(self, frame):
         """
@@ -374,7 +391,7 @@ class VideoSensor:
 
             # 1. Activity Calculation
             gray_small = cv2.resize(gray, (100, 100))
-            raw_activity = self.calculate_raw_activity(gray_small)
+            raw_activity = self.calculate_raw_activity(gray_small, update_history=True)
             metrics["video_activity"] = float(raw_activity)
             metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
 
