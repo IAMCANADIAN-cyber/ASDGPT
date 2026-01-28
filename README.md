@@ -55,7 +55,15 @@ The priority order is:
 
 ### Key Environment Variables
 
-Create a `.env` file in the project root to set these:
+Create a `.env` file in the project root to set these.
+**Important:** Use `KEY=VALUE` syntax (no colons or spaces around the equals sign).
+
+Example `.env` content:
+```env
+APP_NAME=MyCoRegulator
+LOG_LEVEL=DEBUG
+LOCAL_LLM_URL=http://localhost:1234/v1/chat/completions
+```
 
 **System & Logging**
 *   `APP_NAME`: Name of the application (Default: "ACR")

@@ -204,6 +204,10 @@ class LMMInterface:
 
             except (requests.exceptions.RequestException, ValueError, KeyError) as e:
                 last_exception = e
+                error_msg = str(e)
+                if isinstance(e, requests.exceptions.HTTPError) and "400" in error_msg:
+                     self._log_warning(f"LMM returned 400 Bad Request. Hint: Check if LOCAL_LLM_MODEL_ID ('{getattr(config, 'LOCAL_LLM_MODEL_ID', 'unknown')}') matches the loaded model in LM Studio. Try using 'local-model' if uncertain.")
+
                 self._log_warning(f"Attempt {attempt + 1}/{retries} failed: {e}")
                 if attempt < retries - 1:
                     time.sleep(backoff)
