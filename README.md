@@ -1,158 +1,123 @@
-# ASDGPT: Autonomous Co-Regulator
+# AC-CoRegulator (Project Sentinel/Navigator)
 
-ASDGPT is a Python application designed to act as an autonomous co-regulator. It aims to monitor user activity through video and audio sensors and provide timely interventions or suggestions to help users manage their state, focus, and well-being.
+**Project Code:** `ACR`
+**Version:** 0.5.0 (Navigator Phase)
+**Status:** In Development (See `ROADMAP.md` for current sprint)
 
-## Features
+## Overview
 
-*   **State Management**: Tracks user state (Active, Snoozed, Paused, DND).
-*   **Sensor Input**: Captures data from camera (video) and microphone (audio).
-*   **Intervention System**: Provides notifications and interventions (TTS, audio prompts).
-*   **User Feedback**: Allows users to provide feedback on interventions via hotkeys.
-*   **Hotkey Controls**: Easily manage application state and provide feedback without GUI interaction.
-*   **System Tray Icon**: Provides a visual indicator of the application's status and quick access to controls.
-*   **Data Logging**: Logs application events, errors, and sensor data for debugging and analysis.
+AC-CoRegulator is an AI-powered desktop application designed to act as a "Co-Regulator" for the user. It monitors physiological and behavioral cues (via webcam and microphone) to estimate the user's state (Focus, Arousal, Overload) and intervenes in real-time to prevent burnout or panic attacks.
 
-## How it Works
+It uses a local **Large Multimodal Model (LMM)** (running via LM Studio or similar) to analyze sensor data while preserving privacy.
 
-ASDGPT operates as a continuous loop:
-1.  **Senses**: Monitors audio (speech rate, tone) and video (posture, activity).
-2.  **Analyzes**: Sends aggregated data to a local Large Multi-modal Model (LMM).
-3.  **Updates State**: Tracks 5 internal dimensions (Arousal, Overload, Focus, Energy, Mood).
-4.  **Intervenes**: Suggests micro-regulations (breathing, breaks) if state thresholds are crossed.
-5.  **Learns**: You use hotkeys to mark interventions as "Helpful" or "Unhelpful", tuning future responses.
+## Key Features (Implemented)
 
-For a detailed breakdown of the internal architecture and data flow, see [Architecture & Data Flow](docs/ARCHITECTURE.md).
+*   **Privacy-First:** All data processing (video/audio) happens locally. No cloud uploads.
+*   **Sensor Fusion:** Combines audio prosody (volume, pitch) and video analysis (movement, face detection).
+*   **State Estimation:** Real-time estimation of Arousal and Overload levels.
+*   **Intervention Engine:** Delivers audio or visual feedback (e.g., "Breathe", "Take a break") based on state.
+*   **System Tray Integration:** Status icon and control menu.
+*   **Resilience:**
+    *   **Circuit Breaker:** Handles LMM timeouts/failures gracefully.
+    *   **Offline Fallback:** Switches to rule-based logic if LMM is unavailable.
+    *   **Self-Healing:** Automatic recovery from sensor errors.
+*   **Personalization:**
+    *   **Calibration Wizard:** Interactive tool to baseline silence and posture.
 
-## Setup and Installation
+## Prerequisities
 
-1.  **Clone the repository:**
+1.  **Python 3.10+**
+2.  **LM Studio** (or equivalent local LLM server) running an OpenAI-compatible server on port `1234`.
+    *   Recommended Model: `Llama 3.2 3B Instruct` or `Phi-3.5 Vision`.
+3.  **Webcam & Microphone**
+
+## Setup
+
+1.  **Clone the Repository:**
     ```bash
-    git clone <repository-url>
-    cd ASDGPT
+    git clone <repo_url>
+    cd <repo_name>
     ```
 
-2.  **Create a virtual environment (recommended):**
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
-    ```
-
-3.  **Install dependencies:**
-    Ensure you have Python 3.8+ installed. Dependencies are listed in `requirements.txt`.
+2.  **Install Dependencies:**
     ```bash
     pip install -r requirements.txt
     ```
-    *Note: `pystray` might have system-specific dependencies for the icon. `sounddevice` might require system audio libraries (e.g., PortAudio).*
 
-## Configuration
+3.  **Configure Environment:**
+    Copy `config.py` (defaults) or create a `.env` file to override settings.
 
-ASDGPT can be configured via environment variables (for temporary overrides or secrets), a user config file (for persistent settings), or default values.
+## Usage
+
+1.  **Start Local LLM:**
+    Launch LM Studio, load a vision-capable model, and start the server (ensure "Cross-Origin Resource Sharing (CORS)" is enabled if needed, though Python requests don't strictly require it).
+
+2.  **Calibrate (Optional but Recommended):**
+    Run the calibration tool to set your baseline.
+    ```bash
+    python tools/calibrate.py
+    ```
+    Follow the on-screen instructions.
+
+3.  **Run the App:**
+    ```bash
+    python main.py
+    ```
+
+4.  **System Tray:**
+    *   **Right-Click:** Open menu (Status, Calibration, Settings, Exit).
+    *   **Icon Color:**
+        *   Green: Active & Good State
+        *   Yellow: Moderate Arousal/Warning
+        *   Red: High Arousal/Intervention
+        *   Grey: Snoozed/Inactive
+
+## Configuration (`config.py` / `.env`)
+
+The application is configurable via `config.py`. You can override defaults using environment variables.
 
 The priority order is:
-1.  **Environment Variables** (Highest)
-2.  `user_data/config.json`
-3.  **Defaults** (Lowest)
+1.  Environment Variables (`.env`)
+2.  `config.py` Defaults
 
 ### Key Environment Variables
 
-Create a `.env` file in the project root to set these:
+Create a `.env` file in the project root to set these.
+**Important:** Use `KEY=VALUE` syntax (no colons or spaces around the equals sign).
+
+Example `.env` content:
+```env
+APP_NAME=MyCoRegulator
+LOG_LEVEL=DEBUG
+LOCAL_LLM_URL=http://localhost:1234/v1/chat/completions
+```
 
 **System & Logging**
 *   `APP_NAME`: Name of the application (Default: "ACR")
-*   `LOG_LEVEL`: Logging verbosity (Default: "INFO", options: DEBUG, INFO, WARNING, ERROR)
-*   `USER_DATA_DIR`: Directory for storing user data (Default: "user_data")
+*   `LOG_LEVEL`: Logging verbosity (DEBUG, INFO, WARNING, ERROR)
+*   `LOG_FILE`: Path to log file.
 
-**Sensors**
-*   `CAMERA_INDEX`: Index of the camera to use (Default: 0)
-*   `AUDIO_THRESHOLD_HIGH`: RMS threshold for high audio levels (Default: 0.5)
-*   `VIDEO_ACTIVITY_THRESHOLD_HIGH`: Threshold for high video activity (Default: 20.0)
-*   `VAD_SILENCE_THRESHOLD`: RMS threshold for silence (Default: 0.01)
+**LMM Settings**
+*   `LOCAL_LLM_URL`: URL of the local LLM server (Default: `http://localhost:1234/v1/chat/completions`)
+*   `LOCAL_LLM_MODEL_ID`: Model identifier string (Default: `local-model`)
 
-**LMM Integration**
-*   `LOCAL_LLM_URL`: URL for the local LLM server (Default: "http://127.0.0.1:1234")
-*   `LOCAL_LLM_MODEL_ID`: Model ID for the local LLM (Default: "deepseek/deepseek-r1-0528-qwen3-8b")
-*   `GOOGLE_API_KEY`: API key for Google services if needed (Optional)
+**Sensor Settings**
+*   `CAMERA_INDEX`: ID of the webcam to use (Default: 0)
+*   `AUDIO_SAMPLE_RATE`: Audio sample rate (Default: 16000)
 
-**Hotkeys**
-*   `HOTKEY_CYCLE_MODE`: Cycle modes (Default: "ctrl+alt+m")
-*   `HOTKEY_PAUSE_RESUME`: Toggle pause (Default: "ctrl+alt+p")
-*   `HOTKEY_FEEDBACK_HELPFUL`: Rate intervention helpful (Default: "ctrl+alt+up")
-*   `HOTKEY_FEEDBACK_UNHELPFUL`: Rate intervention unhelpful (Default: "ctrl+alt+down")
+## Development
 
-**Meeting Mode**
-*   `MEETING_MODE_SPEECH_DURATION_THRESHOLD`: Seconds of continuous speech to trigger (Default: 3.0)
-*   `MEETING_MODE_IDLE_KEYBOARD_THRESHOLD`: Seconds of idle keyboard before allowing trigger (Default: 10.0)
-*   `MEETING_MODE_SPEECH_GRACE_PERIOD`: Seconds allowed between words before speech is considered stopped (Default: 2.0)
-
-**Resilience**
-*   `LMM_FALLBACK_ENABLED`: Enable offline heuristics if LMM is unreachable (Default: True)
-*   `LMM_CIRCUIT_BREAKER_MAX_FAILURES`: Failures before pausing LMM calls (Default: 5)
-
-### User Config File
-
-You can also create a `user_data/config.json` file to persist your settings:
-
-```json
-{
-  "CAMERA_INDEX": 1,
-  "SNOOZE_DURATION": 1800,
-  "HOTKEY_CYCLE_MODE": "ctrl+shift+m"
-}
-```
-
-## Running the Application
-
-Execute the `main.py` script from the project root:
-
-```bash
-python main.py
-```
-
-The application will start, and a system tray icon should appear.
-
-## Modes of Operation
-
-*   **Active**: The application is actively monitoring sensor data and may provide interventions.
-*   **Snoozed**: Interventions are suppressed for a set duration (`SNOOZE_DURATION`). Returns to "Active" automatically.
-*   **DND (Do Not Disturb)**: Monitoring continues, but all interventions are suppressed indefinitely.
-*   **Meeting Mode (Auto-DND)**: Automatically switches to **DND** when continuous speech is detected along with a face, and the keyboard is idle. This prevents interventions during calls.
-    *   *Triggers*: Speech > 3s + Face Detected + Keyboard Idle > 10s.
-    *   *Exits*: Automatically exits to **Active** when user input (keyboard/mouse) is detected.
-*   **Paused**: All active monitoring and interventions are stopped.
+*   **Tests:** Run unit tests with `pytest`.
+    ```bash
+    pytest
+    ```
+*   **Linting:** Follow PEP 8 standards.
 
 ## Contributing
 
-Details for contributing will be added later. For now, focus on understanding the existing structure and planned LMM integration.
+See `ROADMAP.md` for current tasks and priorities.
+Please use a feature branch for all changes and submit a Pull Request.
 
-## How to Verify
+## License
 
-### Meeting Mode (Auto-DND)
-To verify that the system correctly identifies meetings and suppresses interventions:
-
-1.  **Ensure you are in 'Active' mode.**
-2.  **Stop typing/using the mouse** for at least 10 seconds.
-3.  **Speak continuously** for 3-5 seconds while looking at the camera.
-4.  **Observe**: The system tray icon (or logs) should indicate a switch to `DND` mode.
-5.  **Touch the keyboard**: The mode should immediately switch back to `Active`.
-
-## Testing
-
-Run the test suite using `pytest`:
-
-```bash
-pytest
-```
-
-### Stress Testing
-
-To verify system reliability and clean shutdown behavior:
-
-```bash
-python tools/verify_crash.py
-```
-
-## Documentation
-
-*   **[Architecture & Data Flow](docs/ARCHITECTURE.md)**: Technical overview of components and data flow.
-*   **[Mental Model & Design Specification](docs/MENTAL_MODEL.md)**: The core philosophy and design spec.
-*   **[Project Specification](docs/PROJECT_SPECIFICATION.md)**: Detailed Master Specification (v4).
+[License Name]
