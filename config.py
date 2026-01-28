@@ -79,6 +79,8 @@ FEEDBACK_SUPPRESSION_MINUTES = _get_conf("FEEDBACK_SUPPRESSION_MINUTES", 240, in
 
 # --- Sensors ---
 CAMERA_INDEX = _get_conf("CAMERA_INDEX", 0, int)
+VIDEO_ECO_MODE_DELAY = _get_conf("VIDEO_ECO_MODE_DELAY", 1.0, float)
+VIDEO_ACTIVE_DELAY = _get_conf("VIDEO_ACTIVE_DELAY", 0.05, float)
 
 # Thresholds
 AUDIO_THRESHOLD_HIGH = _get_conf("AUDIO_THRESHOLD_HIGH", 0.5, float)

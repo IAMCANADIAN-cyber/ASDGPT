@@ -187,6 +187,18 @@ class Application:
 
             return self.sensor_error_active
 
+    def _get_video_poll_delay(self) -> float:
+        """
+        Determines the appropriate sleep time for the video worker loop
+        based on the current mode and sensor state (Eco Mode).
+        """
+        if self.logic_engine.get_mode() != "active":
+            return 0.2
+
+        if self.logic_engine.is_face_detected():
+            return getattr(config, 'VIDEO_ACTIVE_DELAY', 0.05)
+        else:
+            return getattr(config, 'VIDEO_ECO_MODE_DELAY', 1.0)
 
     def _video_worker(self) -> None:
         self.data_logger.log_info("Video worker thread started.")
@@ -213,10 +225,9 @@ class Application:
                          # For now, _check_sensors will handle persistent errors.
                          pass
 
-                    # Slow down polling if sensor is fine but no frame, or to control CPU.
-                    # If get_frame() is truly blocking, this sleep might be less critical
-                    # but good for when get_frame() might return quickly with None.
-                    time.sleep(0.05) # Poll at ~20 FPS max if sensor is fast
+                    # Eco Mode: Dynamic polling rate
+                    poll_delay = self._get_video_poll_delay()
+                    time.sleep(poll_delay)
 
                 except Exception as e:
                     # Ignore errors if we are shutting down
