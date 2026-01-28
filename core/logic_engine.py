@@ -12,7 +12,7 @@ from .state_engine import StateEngine
 
 
 class LogicEngine:
-    def __init__(self, audio_sensor: Optional[Any] = None, video_sensor: Optional[Any] = None, logger: Optional[DataLogger] = None, lmm_interface: Optional[LMMInterface] = None) -> None:
+    def __init__(self, audio_sensor: Optional[Any] = None, video_sensor: Optional[Any] = None, window_sensor: Optional[Any] = None, logger: Optional[DataLogger] = None, lmm_interface: Optional[LMMInterface] = None) -> None:
         self.current_mode: str = config.DEFAULT_MODE
         self.snooze_end_time: float = 0
         self.previous_mode_before_pause: str = config.DEFAULT_MODE
@@ -21,6 +21,7 @@ class LogicEngine:
         self.notification_callback: Optional[Callable[[str, str], None]] = None
         self.audio_sensor: Optional[Any] = audio_sensor
         self.video_sensor: Optional[Any] = video_sensor
+        self.window_sensor: Optional[Any] = window_sensor
         self.logger: DataLogger = logger if logger else DataLogger()
         self.lmm_interface: Optional[LMMInterface] = lmm_interface
         self.intervention_engine: Optional[InterventionEngine] = None
@@ -85,6 +86,10 @@ class LogicEngine:
     def get_mode(self) -> str:
         with self._lock:
             return self.current_mode
+
+    def is_face_detected(self) -> bool:
+        with self._lock:
+            return self.face_metrics.get("face_detected", False)
 
     def set_mode(self, mode: str, from_snooze_expiry: bool = False) -> None:
         with self._lock:
@@ -269,9 +274,17 @@ class LogicEngine:
             if self.context_persistence.get("phone_usage", 0) >= self.doom_scroll_trigger_threshold:
                  system_alerts.append("Persistent Phone Usage Detected (Potential Doom Scrolling)")
 
+            active_window = "Unknown"
+            if self.window_sensor:
+                try:
+                    active_window = self.window_sensor.get_active_window()
+                except Exception as e:
+                    self.logger.log_debug(f"Error fetching active window: {e}")
+
             context = {
                 "current_mode": self.current_mode,
                 "trigger_reason": trigger_reason,
+                "active_window": active_window,
                 "sensor_metrics": {
                     "audio_level": float(self.audio_level),
                     "video_activity": float(self.video_activity),
