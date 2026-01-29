@@ -14,6 +14,7 @@ class TestPromptConstruction(unittest.TestCase):
         # Critical checks
         self.assertIn("Audio Pitch Variance", prompt)
         self.assertIn("Speech Rate", prompt)
+        self.assertIn("Active Window", prompt)
         self.assertIn("doom-scrolling", prompt)
         self.assertIn("{interventions_list}", lmm.BASE_SYSTEM_INSTRUCTION) # Ensure placeholder exists in base
         self.assertNotIn("{interventions_list}", prompt) # Ensure placeholder is replaced in final

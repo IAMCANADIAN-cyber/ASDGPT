@@ -12,6 +12,7 @@ Sensor Interpretations:
 - Face Size Ratio: High (>0.15) = Leaning in/High Focus. Low (<0.05) = Leaning back/Distanced.
 - Vertical Position: High (>0.6) = Slouching/Low Energy. Low (<0.4) = Upright/High Energy.
 - Horizontal Position: Approx 0.5 is centered.
+- Active Window: The title of the currently active application. Use this to infer context (Work vs. Leisure).
 
 Output a valid JSON object with the following structure:
 {
@@ -47,6 +48,8 @@ State Estimation Guidance:
 - Low Energy + Low Pitch Variance + Phone Usage -> Doom Scrolling/Dissociation.
 - High Focus + High Video Activity + High Arousal -> Flow State/Excitement (Positive).
 - High Focus + Low Video Activity + Leaning In -> Deep Work.
+- Active Window (VS Code, Word, Terminal) + High Focus -> Deep Work (Suppress interruptions unless critical).
+- Active Window (Netflix, YouTube, Games) -> Passive Consumption/Leisure.
 - High Energy + High Mood + Camera Interaction -> Content Creation Mode.
 - Low Speech Rate + Low Pitch Variance + (Low Light or Lying Down) -> Intimacy/Relaxation.
 
