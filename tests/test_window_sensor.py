@@ -107,5 +107,26 @@ class TestWindowSensor(unittest.TestCase):
         self.assertEqual(sensor._sanitize_title("Unknown"), "Unknown")
         self.assertEqual(sensor._sanitize_title(None), "Unknown")
 
+    def test_sensitive_app_redaction(self):
+        sensor = WindowSensor(self.mock_logger)
+
+        # Patch config.SENSITIVE_APP_KEYWORDS
+        test_keywords = ["SecretApp", "Incognito"]
+        with patch('sensors.window_sensor.config.SENSITIVE_APP_KEYWORDS', test_keywords):
+            # Test exact match
+            self.assertEqual(sensor._sanitize_title("SecretApp"), "[REDACTED_SENSITIVE_APP]")
+
+            # Test partial match
+            self.assertEqual(sensor._sanitize_title("Using SecretApp for work"), "[REDACTED_SENSITIVE_APP]")
+
+            # Test case insensitivity
+            self.assertEqual(sensor._sanitize_title("secretapp running"), "[REDACTED_SENSITIVE_APP]")
+
+            # Test second keyword
+            self.assertEqual(sensor._sanitize_title("Chrome Incognito"), "[REDACTED_SENSITIVE_APP]")
+
+            # Test no match
+            self.assertEqual(sensor._sanitize_title("Normal App"), "Normal App")
+
 if __name__ == '__main__':
     unittest.main()
