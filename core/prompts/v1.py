@@ -48,6 +48,11 @@ State Estimation Guidance:
 - High Focus + High Video Activity + High Arousal -> Flow State/Excitement (Positive).
 - High Focus + Low Video Activity + Leaning In -> Deep Work.
 - High Energy + High Mood + Camera Interaction -> Content Creation Mode.
+
+Active Window Context:
+- Productivity Apps (e.g., VS Code, Word, Slack): Implies "Deep Work" or "Focus". Raise intervention threshold unless Overload is high.
+- Passive Consumption (e.g., YouTube, Netflix, Games): Implies "Leisure" or "Procrastination".
+- Social Media (e.g., Twitter, Reddit): If combined with Low Energy/Mood, implies "Doom Scrolling".
 - Low Speech Rate + Low Pitch Variance + (Low Light or Lying Down) -> Intimacy/Relaxation.
 
 If no intervention is needed, set "suggestion" to null.

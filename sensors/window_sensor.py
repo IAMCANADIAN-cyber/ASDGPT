@@ -2,13 +2,19 @@ import platform
 import subprocess
 import re
 import sys
+import os
 import logging
-from typing import Optional
+from typing import Optional, List
 
 class WindowSensor:
     def __init__(self, logger: Optional[logging.Logger] = None):
         self.logger = logger
         self.os_type = platform.system()
+        # Define sensitive keywords (case-insensitive checks)
+        self.sensitive_keywords: List[str] = [
+            "password", "keepass", "bitwarden", "1password",
+            "lastpass", "vault", "private", "incognito", "tor browser"
+        ]
         self._setup_platform()
 
     def _setup_platform(self):
@@ -20,6 +26,12 @@ class WindowSensor:
                 self.user32 = None
                 if self.logger:
                     self.logger.warning("ctypes not available on Windows. WindowSensor disabled.")
+        elif self.os_type == 'Linux':
+             # Check for Wayland
+             session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
+             if "wayland" in session_type:
+                 if self.logger:
+                     self.logger.warning("Wayland detected. 'xprop' based window detection may fail or return generic values.")
 
     def get_active_window(self) -> str:
         """
@@ -129,13 +141,25 @@ class WindowSensor:
 
         return "Unknown"
 
+    def _is_sensitive_app(self, title: str) -> bool:
+        """Checks if the window title indicates a sensitive application."""
+        title_lower = title.lower()
+        for keyword in self.sensitive_keywords:
+            if keyword in title_lower:
+                return True
+        return False
+
     def _sanitize_title(self, title: str) -> str:
         if not title or title == "Unknown":
             return "Unknown"
 
+        # 0. Check for Sensitive Apps first
+        if self._is_sensitive_app(title):
+            return "[REDACTED_SENSITIVE_APP]"
+
         # 1. Redact Email Addresses
-        # Basic regex for email
-        title = re.sub(r'[\w\.-]+@[\w\.-]+\.\w+', '[EMAIL_REDACTED]', title)
+        # Improved regex for email (handles subdomains and common TLDs)
+        title = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '[EMAIL_REDACTED]', title)
 
         # 2. Redact File Paths
         # Windows paths (e.g. C:\Users\...)
