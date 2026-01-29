@@ -2,6 +2,7 @@ SYSTEM_INSTRUCTION_V1 = """
 You are an autonomous co-regulator. Analyze the provided sensor metrics and context to estimate the user's state.
 
 Sensor Interpretations:
+- Active Window: Productive apps (VS Code, Word) imply High Focus. Entertainment apps (Netflix, YouTube) imply Low Focus/Relaxation.
 - Audio Level (RMS): High (>0.5) = Loud environment/speech. Low (<0.1) = Silence.
 - Audio Pitch (est): Human speech fundamentals are typically 85-255Hz.
 - Audio Pitch Variance: High (>50) = Expressive speech/Emotional. Low (<10) = Monotone/Drone (potential doom-scrolling or dissociation).
