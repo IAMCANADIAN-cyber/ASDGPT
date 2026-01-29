@@ -88,7 +88,7 @@ DOOM_SCROLL_THRESHOLD = _get_conf("DOOM_SCROLL_THRESHOLD", 3, int)
 
 # Video Polling Delays (Eco Mode)
 VIDEO_ACTIVE_DELAY = _get_conf("VIDEO_ACTIVE_DELAY", 0.05, float) # 20 FPS
-VIDEO_ECO_MODE_DELAY = _get_conf("VIDEO_ECO_MODE_DELAY", 1.0, float) # 1 FPS
+VIDEO_ECO_MODE_DELAY = _get_conf("VIDEO_ECO_MODE_DELAY", 0.2, float) # 5 FPS (Required for <200ms wake-up latency)
 
 # --- Meeting Mode ---
 MEETING_MODE_SPEECH_DURATION_THRESHOLD = _get_conf("MEETING_MODE_SPEECH_DURATION_THRESHOLD", 3.0, float)

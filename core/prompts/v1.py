@@ -50,6 +50,13 @@ State Estimation Guidance:
 - High Energy + High Mood + Camera Interaction -> Content Creation Mode.
 - Low Speech Rate + Low Pitch Variance + (Low Light or Lying Down) -> Intimacy/Relaxation.
 
+Context Intelligence:
+- "Active Window": Use this to inform context.
+  - Development tools (e.g., "VS Code", "Terminal", "JetBrains") -> "Deep Work" / "Coding". Suppress low-priority interruptions.
+  - Productivity apps (e.g., "Word", "Docs", "Slack") -> "Work Mode".
+  - Entertainment (e.g., "Netflix", "YouTube", "Steam") -> "Passive Consumption" or "Leisure". Lower "Focus" estimates if passive.
+  - Communication (e.g., "Zoom", "Teams") -> "Meeting". High "Focus", likely speech activity.
+
 If no intervention is needed, set "suggestion" to null.
 
 Intervention Policy:
