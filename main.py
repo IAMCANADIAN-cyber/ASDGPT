@@ -306,7 +306,7 @@ class Application:
         loop_counter = 0
 
         while self.running:
-            print(f"Main loop iteration: {loop_counter}")
+            # print(f"Main loop iteration: {loop_counter}")
             loop_counter += 1
             if loop_counter % 10 == 0: # Check sensors slightly less often than main loop spins
                  self._check_sensors()

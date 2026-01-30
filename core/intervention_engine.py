@@ -638,7 +638,7 @@ class InterventionEngine:
 
         # Critical: If called from within an existing sequence or thread, this check might fail.
         # But generally start_intervention is called from LogicEngine main thread.
-        # If an intervention is active, we generally want to ignore new ones unless we have a priority system (TODO).
+        # If an intervention is active, we ignore new ones unless they have higher priority (Tier system).
         if self._intervention_active.is_set():
             # Check priority: Higher tier preempts lower tier
             current_tier = self._current_intervention_details.get("tier", 1)
