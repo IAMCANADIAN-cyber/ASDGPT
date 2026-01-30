@@ -107,5 +107,46 @@ class TestWindowSensor(unittest.TestCase):
         self.assertEqual(sensor._sanitize_title("Unknown"), "Unknown")
         self.assertEqual(sensor._sanitize_title(None), "Unknown")
 
+    def test_sensitive_app_redaction(self):
+        sensor = WindowSensor(self.mock_logger)
+
+        # Test known sensitive keywords
+        sensitive_titles = [
+            "KeePassXC - Database.kdbx",
+            "Bitwarden - My Vault",
+            "1Password - Login",
+            "Private Browsing - Firefox",
+            "Incognito Tab - Google Chrome",
+            "Tor Browser",
+            "LastPass",
+            "My Secret Vault"
+        ]
+
+        for title in sensitive_titles:
+            sanitized = sensor._sanitize_title(title)
+            self.assertEqual(sanitized, "[REDACTED_SENSITIVE_APP]", f"Failed to redact: {title}")
+
+        # Test safe titles
+        safe_titles = [
+            "Visual Studio Code",
+            "My Project - Python",
+            "Google Chrome - Search",
+            "Notepad"
+        ]
+        for title in safe_titles:
+            self.assertNotEqual(sensor._sanitize_title(title), "[REDACTED_SENSITIVE_APP]", f"Incorrectly redacted: {title}")
+
+    def test_improved_email_redaction(self):
+        sensor = WindowSensor(self.mock_logger)
+
+        # Standard
+        self.assertEqual(sensor._sanitize_title("alice@example.com"), "[EMAIL_REDACTED]")
+
+        # Subdomain + Country TLD
+        self.assertEqual(sensor._sanitize_title("bob.smith@corp.example.co.uk"), "[EMAIL_REDACTED]")
+
+        # Within text
+        self.assertEqual(sensor._sanitize_title("Compose to alice@example.com - Mail"), "Compose to [EMAIL_REDACTED] - Mail")
+
 if __name__ == '__main__':
     unittest.main()
