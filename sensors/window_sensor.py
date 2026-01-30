@@ -3,6 +3,7 @@ import subprocess
 import re
 import sys
 import logging
+import config
 from typing import Optional
 
 class WindowSensor:
@@ -87,10 +88,17 @@ class WindowSensor:
             # Output: WM_NAME(STRING) = "Title"
             # or WM_NAME(UTF8_STRING) = "Title"
             output = name_res.stdout.strip()
-            # Find the first quote
+
+            # Use regex to find content inside quotes
+            # Looks for: WM_NAME(STRING) = "Title with \"Quotes\" inside"
+            # This regex captures everything inside the outer quotes
+            match = re.search(r'WM_NAME\(.*?\)\s*=\s*"(.*)"', output)
+            if match:
+                return match.group(1)
+
+            # Fallback for simple case if regex fails or format differs
             first_quote = output.find('"')
             last_quote = output.rfind('"')
-
             if first_quote != -1 and last_quote != -1 and last_quote > first_quote:
                 return output[first_quote+1 : last_quote]
 
@@ -132,6 +140,15 @@ class WindowSensor:
     def _sanitize_title(self, title: str) -> str:
         if not title or title == "Unknown":
             return "Unknown"
+
+        # 0. Check for Sensitive App Keywords
+        # We check this first to block the whole app if needed, or after redaction?
+        # Usually checking the raw title is better to catch "Bitwarden - My Vault"
+        lower_title = title.lower()
+        if hasattr(config, 'SENSITIVE_APP_KEYWORDS') and config.SENSITIVE_APP_KEYWORDS:
+            for keyword in config.SENSITIVE_APP_KEYWORDS:
+                if keyword.lower() in lower_title:
+                    return "[REDACTED_SENSITIVE_APP]"
 
         # 1. Redact Email Addresses
         # Basic regex for email
