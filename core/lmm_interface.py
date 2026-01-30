@@ -299,6 +299,10 @@ class LMMInterface:
             context_str += f"Current Mode: {user_context.get('current_mode', 'unknown')}\n"
             context_str += f"Trigger Reason: {user_context.get('trigger_reason', 'unknown')}\n"
 
+            # Inject Active Window Context
+            active_window = user_context.get('active_window')
+            if active_window and active_window != "Unknown":
+                context_str += f"Active Window: {active_window}\n"
             # Context Intelligence: Active Window
             active_window = user_context.get('active_window', 'Unknown')
             context_str += f"Active Window: {active_window}\n"
