@@ -70,6 +70,29 @@ class TestWindowSensor(unittest.TestCase):
 
     @patch('platform.system')
     @patch('subprocess.run')
+    def test_linux_regex_parsing(self, mock_subprocess, mock_system):
+        """Test robust parsing of xprop output with quotes."""
+        mock_system.return_value = 'Linux'
+
+        mock_res_root = MagicMock()
+        mock_res_root.returncode = 0
+        mock_res_root.stdout = "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x12345"
+
+        mock_res_name = MagicMock()
+        mock_res_name.returncode = 0
+        # Simulating xprop output with escaped quotes
+        # Actual xprop behavior varies but often escapes quotes
+        mock_res_name.stdout = 'WM_NAME(STRING) = "Code - \\"hello.py\\" [Administrator]"'
+
+        mock_subprocess.side_effect = [mock_res_root, mock_res_name]
+
+        sensor = WindowSensor(self.mock_logger)
+        title = sensor.get_active_window()
+
+        self.assertEqual(title, 'Code - \\"hello.py\\" [Administrator]')
+
+    @patch('platform.system')
+    @patch('subprocess.run')
     def test_macos_success(self, mock_subprocess, mock_system):
         mock_system.return_value = 'Darwin'
 
@@ -85,10 +108,6 @@ class TestWindowSensor(unittest.TestCase):
         self.assertEqual(title, "Safari")
 
     def test_sanitization(self):
-        # We don't need to patch OS for this if we test the private method or ensure it passes through
-        # But let's test via public API by forcing the internal method return via mock?
-        # Easier to just test the private method or patch the internal fetcher.
-
         sensor = WindowSensor(self.mock_logger)
 
         # Direct test of sanitizer
@@ -106,6 +125,23 @@ class TestWindowSensor(unittest.TestCase):
         # Mixed
         self.assertEqual(sensor._sanitize_title("Unknown"), "Unknown")
         self.assertEqual(sensor._sanitize_title(None), "Unknown")
+
+    def test_sensitive_app_redaction(self):
+        sensor = WindowSensor(self.mock_logger)
+
+        # Patch config on the module where it is imported
+        with patch('sensors.window_sensor.config') as mock_config:
+            mock_config.SENSITIVE_APP_KEYWORDS = ["vault", "bank", "1password"]
+
+            # Should be redacted
+            self.assertEqual(sensor._sanitize_title("My Vault - 1Password"), "[REDACTED_SENSITIVE_APP]")
+            self.assertEqual(sensor._sanitize_title("Chase Bank Login"), "[REDACTED_SENSITIVE_APP]")
+
+            # Should NOT be redacted
+            self.assertEqual(sensor._sanitize_title("VS Code"), "VS Code")
+
+            # Case insensitive check
+            self.assertEqual(sensor._sanitize_title("MY VAULT"), "[REDACTED_SENSITIVE_APP]")
 
 if __name__ == '__main__':
     unittest.main()
