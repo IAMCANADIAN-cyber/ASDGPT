@@ -235,3 +235,41 @@ def test_validate_response_schema_edge_cases(lmm_interface):
         "suggestion": {"foo": "bar"} # Missing id/type
     }
     assert lmm_interface._validate_response_schema(bad_suggestion_obj) is False
+
+@patch('requests.post')
+def test_process_data_includes_active_window(mock_post, lmm_interface):
+    # Setup mock response
+    response_content = {
+        "state_estimation": {
+            "arousal": 50, "overload": 10, "focus": 80, "energy": 60, "mood": 70
+        },
+        "suggestion": None
+    }
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "choices": [{"message": {"content": json.dumps(response_content)}}]
+    }
+    mock_post.return_value = mock_response
+
+    # Define context with active window
+    user_context = {
+        "active_window": "Visual Studio Code - ProjectX",
+        "sensor_metrics": {}
+    }
+
+    # Call process_data
+    lmm_interface.process_data(user_context=user_context)
+
+    # Verify payload
+    assert mock_post.called
+    args, kwargs = mock_post.call_args
+    payload = kwargs['json']
+
+    # Check that messages list contains the active window string
+    messages = payload['messages']
+    user_content = messages[1]['content'] # 0 is system, 1 is user
+
+    # User content is a list of dicts
+    text_part = next(item for item in user_content if item["type"] == "text")
+    assert "Active Window: Visual Studio Code - ProjectX" in text_part["text"]
