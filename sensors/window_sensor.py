@@ -4,19 +4,13 @@ import re
 import sys
 import os
 import logging
-from typing import Optional
-import config
 from typing import Optional, List
+import config
 
 class WindowSensor:
     def __init__(self, logger: Optional[logging.Logger] = None):
         self.logger = logger
         self.os_type = platform.system()
-        # Define sensitive keywords (case-insensitive checks)
-        self.sensitive_keywords: List[str] = [
-            "password", "keepass", "bitwarden", "1password",
-            "lastpass", "vault", "private", "incognito", "tor browser"
-        ]
         self._setup_platform()
 
     def _setup_platform(self):
@@ -143,33 +137,20 @@ class WindowSensor:
 
         return "Unknown"
 
-    def _is_sensitive_app(self, title: str) -> bool:
-        """Checks if the window title indicates a sensitive application."""
-        title_lower = title.lower()
-        for keyword in self.sensitive_keywords:
-            if keyword in title_lower:
-                return True
-        return False
-
     def _sanitize_title(self, title: str) -> str:
         if not title or title == "Unknown":
             return "Unknown"
 
         # 1. Redact Sensitive App Names
-        if hasattr(config, 'SENSITIVE_APP_KEYWORDS'):
+        # Use config if available, defaults are in config.py
+        keywords = getattr(config, 'SENSITIVE_APP_KEYWORDS', [])
+        if keywords:
             title_lower = title.lower()
-            for keyword in config.SENSITIVE_APP_KEYWORDS:
+            for keyword in keywords:
                 if keyword.lower() in title_lower:
                     return "[REDACTED_SENSITIVE_APP]"
 
         # 2. Redact Email Addresses
-        # Basic regex for email
-        title = re.sub(r'[\w\.-]+@[\w\.-]+\.\w+', '[EMAIL_REDACTED]', title)
-        # 0. Check for Sensitive Apps first
-        if self._is_sensitive_app(title):
-            return "[REDACTED_SENSITIVE_APP]"
-
-        # 1. Redact Email Addresses
         # Improved regex for email (handles subdomains and common TLDs)
         title = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '[EMAIL_REDACTED]', title)
 
