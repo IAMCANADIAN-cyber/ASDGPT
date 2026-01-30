@@ -34,3 +34,8 @@
 **Learning:** `tools/generate_timeline.py` and `sensors/video_sensor.py` contained severe duplication artifacts (concatenated file versions), causing syntax errors and crashes in unrelated tests. This indicates a recurring hygiene issue with merge resolution.
 **Action:** Cleaned up both files to strictly modular implementations. Implemented `tests/test_lmm_timeout.py` to verify LMM fallback logic, confirming that `LogicEngine` correctly handles LMM timeouts by opening the circuit breaker and triggering offline interventions.
 **Pitfall:** Python `unittest.mock.patch` decorators pass arguments in reverse order (bottom-up), which can lead to confusing test failures if mocks are swapped.
+
+## 2026-01-29 - [LMM Context History]
+**Learning:** `LogicEngine` was sending only a single snapshot of user context to the LMM, limiting its ability to detect trends or persistent states (e.g. "Doom Scroll" logic relied on local counters, but LMM was blind to history). The Roadmap item "LMM Context Pruning" referred to the need for a sliding window.
+**Action:** Implemented a `deque` based sliding window (size 5) in `LogicEngine` and updated `LMMInterface` to format this history into the prompt. Verified with `tests/test_lmm_context_history.py`.
+**Pitfall:** `pytest` was not installed in the environment, requiring manual installation.

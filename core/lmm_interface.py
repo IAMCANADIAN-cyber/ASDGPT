@@ -348,6 +348,18 @@ class LMMInterface:
             if preferred:
                 context_str += f"\nPreferred Interventions (User found these helpful recently): {', '.join(preferred)}\n"
 
+            # Add History
+            history = user_context.get('context_history')
+            if history:
+                context_str += "\nRecent Context History (Last 5 updates):\n"
+                for entry in history:
+                    ts = entry.get('timestamp', 0)
+                    try:
+                        time_str = time.strftime('%H:%M:%S', time.localtime(ts))
+                    except Exception:
+                        time_str = "Unknown"
+                    context_str += f"- [{time_str}] Window: {entry.get('active_window', 'Unknown')} | Mode: {entry.get('current_mode')} | Act: {entry.get('video_activity', 0.0):.1f}\n"
+
         content_parts.append({"type": "text", "text": context_str})
 
         # 2. Image (Video Frame)
