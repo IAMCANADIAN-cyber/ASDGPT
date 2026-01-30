@@ -235,3 +235,51 @@ def test_validate_response_schema_edge_cases(lmm_interface):
         "suggestion": {"foo": "bar"} # Missing id/type
     }
     assert lmm_interface._validate_response_schema(bad_suggestion_obj) is False
+
+@patch('requests.post')
+def test_process_data_includes_active_window(mock_post, lmm_interface):
+    response_content = {
+        "state_estimation": {
+            "arousal": 50, "overload": 10, "focus": 80, "energy": 60, "mood": 70
+        },
+        "suggestion": None
+    }
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "choices": [{"message": {"content": json.dumps(response_content)}}]
+    }
+    mock_post.return_value = mock_response
+
+    user_context = {
+        "sensor_metrics": {},
+        "active_window": "Visual Studio Code"
+    }
+
+    lmm_interface.process_data(user_context=user_context)
+
+    # Verify the payload in the call args
+    call_args = mock_post.call_args
+    assert call_args is not None
+
+    # Args are (url, json=payload, ...)
+    # json is a keyword arg
+    kwargs = call_args[1]
+    payload = kwargs.get('json')
+    assert payload is not None
+
+    # Check messages
+    messages = payload.get('messages', [])
+    user_message = next((m for m in messages if m['role'] == 'user'), None)
+    assert user_message is not None
+
+    # Content is list of dicts or string
+    content = user_message['content']
+    assert isinstance(content, list)
+
+    text_part = next((c for c in content if c['type'] == 'text'), None)
+    assert text_part is not None
+
+    text = text_part['text']
+    assert "Active Window: Visual Studio Code" in text

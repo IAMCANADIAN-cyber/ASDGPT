@@ -12,6 +12,7 @@ Sensor Interpretations:
 - Face Size Ratio: High (>0.15) = Leaning in/High Focus. Low (<0.05) = Leaning back/Distanced.
 - Vertical Position: High (>0.6) = Slouching/Low Energy. Low (<0.4) = Upright/High Energy.
 - Horizontal Position: Approx 0.5 is centered.
+- Active Window: <app_name> indicates the user's current focus. Use this to infer context (e.g., 'VS Code' -> Coding, 'Netflix' -> Entertainment).
 
 Output a valid JSON object with the following structure:
 {
