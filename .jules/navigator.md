@@ -34,3 +34,8 @@
 **Learning:** `tools/generate_timeline.py` and `sensors/video_sensor.py` contained severe duplication artifacts (concatenated file versions), causing syntax errors and crashes in unrelated tests. This indicates a recurring hygiene issue with merge resolution.
 **Action:** Cleaned up both files to strictly modular implementations. Implemented `tests/test_lmm_timeout.py` to verify LMM fallback logic, confirming that `LogicEngine` correctly handles LMM timeouts by opening the circuit breaker and triggering offline interventions.
 **Pitfall:** Python `unittest.mock.patch` decorators pass arguments in reverse order (bottom-up), which can lead to confusing test failures if mocks are swapped.
+
+## 2026-01-29 - [Context Intelligence]
+**Learning:** `WindowSensor` was implemented in the codebase but its output was not being included in the LMM prompt, rendering it effectively useless for context awareness.
+**Action:** Updated `core/lmm_interface.py` to inject `Active Window` into the prompt and updated `core/prompts/v1.py` with guidance on how to interpret it.
+**Hygiene:** Verified with a new dedicated integration test `tests/test_lmm_context_integration.py`.

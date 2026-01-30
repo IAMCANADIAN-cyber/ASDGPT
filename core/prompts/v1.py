@@ -13,6 +13,11 @@ Sensor Interpretations:
 - Vertical Position: High (>0.6) = Slouching/Low Energy. Low (<0.4) = Upright/High Energy.
 - Horizontal Position: Approx 0.5 is centered.
 
+Active Window Context:
+- Productivity Apps (e.g., VS Code, Word, Slack) -> High Focus / Work Mode.
+- Entertainment Apps (e.g., Netflix, YouTube, Games) -> Low Focus / Leisure Mode.
+- "Unknown" -> Rely on other sensors.
+
 Output a valid JSON object with the following structure:
 {
   "state_estimation": {
