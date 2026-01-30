@@ -1,6 +1,7 @@
 import time
 import config
 import threading
+from collections import deque
 from typing import Optional, Callable, Any
 import numpy as np
 import cv2
@@ -80,6 +81,9 @@ class LogicEngine:
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
+
+        # Context History (for LMM Pruning/Trend Analysis)
+        self.context_history: deque = deque(maxlen=5)
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
@@ -281,8 +285,21 @@ class LogicEngine:
                 except Exception as e:
                     self.logger.log_debug(f"Error fetching active window: {e}")
 
+            # Add to history
+            history_entry = {
+                "timestamp": time.time(),
+                "active_window": active_window,
+                "current_mode": self.current_mode,
+                "trigger_reason": trigger_reason,
+                "face_detected": bool(self.face_metrics.get("face_detected", False)),
+                "audio_level": float(self.audio_level),
+                "video_activity": float(self.video_activity)
+            }
+            self.context_history.append(history_entry)
+
             context = {
                 "current_mode": self.current_mode,
+                "context_history": list(self.context_history),
                 "trigger_reason": trigger_reason,
                 "active_window": active_window,
                 "sensor_metrics": {
