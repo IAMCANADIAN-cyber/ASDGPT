@@ -45,7 +45,8 @@ class DataLogger:
 
         # Formatter
         # Matches previous style: timestamp [LEVEL] message
-        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%dT%H:%M:%S.%f')
+        # Note: Removed %f from datefmt as it causes ValueError in Python 3.13+ logging. Using space instead of T for max compatibility.
+        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
         # File Handler (Rotating)
         try:
