@@ -107,5 +107,48 @@ class TestWindowSensor(unittest.TestCase):
         self.assertEqual(sensor._sanitize_title("Unknown"), "Unknown")
         self.assertEqual(sensor._sanitize_title(None), "Unknown")
 
+    @patch('sensors.window_sensor.config')
+    def test_sensitive_keyword_redaction(self, mock_config):
+        # Setup mock config
+        mock_config.SENSITIVE_APP_KEYWORDS = ["password", "secret", "vault"]
+
+        sensor = WindowSensor(self.mock_logger)
+
+        # Should be redacted
+        self.assertEqual(sensor._sanitize_title("My Password Manager"), "[REDACTED_SENSITIVE_APP]")
+        self.assertEqual(sensor._sanitize_title("Editing secret_file.txt"), "[REDACTED_SENSITIVE_APP]")
+        self.assertEqual(sensor._sanitize_title("Opening Vault"), "[REDACTED_SENSITIVE_APP]")
+
+        # Case insensitive check
+        self.assertEqual(sensor._sanitize_title("SECRET STUFF"), "[REDACTED_SENSITIVE_APP]")
+
+        # Should NOT be redacted
+        self.assertEqual(sensor._sanitize_title("Notepad"), "Notepad")
+        self.assertEqual(sensor._sanitize_title("Public Document"), "Public Document")
+
+    @patch('platform.system')
+    @patch('subprocess.run')
+    def test_linux_complex_title(self, mock_subprocess, mock_system):
+        mock_system.return_value = 'Linux'
+
+        # Mock sequence of calls
+        mock_res_root = MagicMock()
+        mock_res_root.returncode = 0
+        mock_res_root.stdout = "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x12345"
+
+        mock_res_name = MagicMock()
+        mock_res_name.returncode = 0
+        # Title with quotes inside: "My Project "Cool stuff""
+        # xprop typically escapes, but let's test a complex string that might appear
+        mock_res_name.stdout = 'WM_NAME(STRING) = "My Project \\"Cool stuff\\""'
+
+        mock_subprocess.side_effect = [mock_res_root, mock_res_name]
+
+        sensor = WindowSensor(self.mock_logger)
+        title = sensor.get_active_window()
+
+        # The regex should capture: My Project \"Cool stuff\"
+        self.assertEqual(title, 'My Project \\"Cool stuff\\"')
+
 if __name__ == '__main__':
     unittest.main()

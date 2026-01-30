@@ -3,6 +3,7 @@ import subprocess
 import re
 import sys
 import logging
+import config
 from typing import Optional
 
 class WindowSensor:
@@ -87,7 +88,15 @@ class WindowSensor:
             # Output: WM_NAME(STRING) = "Title"
             # or WM_NAME(UTF8_STRING) = "Title"
             output = name_res.stdout.strip()
-            # Find the first quote
+
+            # Use regex to robustly capture the content inside quotes
+            # Handle escaped quotes if possible, though xprop output can be tricky.
+            # This regex captures everything between the first and last quote of the assignment.
+            match = re.search(r'WM_NAME\(.*?\)\s*=\s*"(.*)"', output)
+            if match:
+                return match.group(1)
+
+            # Fallback mechanism if regex misses
             first_quote = output.find('"')
             last_quote = output.rfind('"')
 
@@ -133,11 +142,18 @@ class WindowSensor:
         if not title or title == "Unknown":
             return "Unknown"
 
-        # 1. Redact Email Addresses
+        # 1. Redact Sensitive Apps
+        title_lower = title.lower()
+        if hasattr(config, 'SENSITIVE_APP_KEYWORDS') and config.SENSITIVE_APP_KEYWORDS:
+            for keyword in config.SENSITIVE_APP_KEYWORDS:
+                if keyword in title_lower:
+                    return "[REDACTED_SENSITIVE_APP]"
+
+        # 2. Redact Email Addresses
         # Basic regex for email
         title = re.sub(r'[\w\.-]+@[\w\.-]+\.\w+', '[EMAIL_REDACTED]', title)
 
-        # 2. Redact File Paths
+        # 3. Redact File Paths
         # Windows paths (e.g. C:\Users\...)
         title = re.sub(r'[a-zA-Z]:\\[\w\\\.\s-]+', '[PATH_REDACTED]', title)
         # Unix paths (e.g. /home/user/...) - Be careful not to match simple words, look for at least 2 levels
