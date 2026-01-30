@@ -77,6 +77,11 @@ HOTKEY_FEEDBACK_UNHELPFUL = _get_conf("HOTKEY_FEEDBACK_UNHELPFUL", "ctrl+alt+dow
 FEEDBACK_WINDOW_SECONDS = _get_conf("FEEDBACK_WINDOW_SECONDS", 15, int)
 FEEDBACK_SUPPRESSION_MINUTES = _get_conf("FEEDBACK_SUPPRESSION_MINUTES", 240, int)
 
+# --- Privacy ---
+SENSITIVE_APP_KEYWORDS = _get_conf("SENSITIVE_APP_KEYWORDS", [
+    "password", "bitwarden", "1password", "private", "incognito", "tor browser", "keychain", "vault"
+], list)
+
 # --- Sensors ---
 CAMERA_INDEX = _get_conf("CAMERA_INDEX", 0, int)
 
