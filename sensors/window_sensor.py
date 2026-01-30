@@ -4,6 +4,8 @@ import re
 import sys
 import os
 import logging
+from typing import Optional
+import config
 from typing import Optional, List
 
 class WindowSensor:
@@ -153,6 +155,16 @@ class WindowSensor:
         if not title or title == "Unknown":
             return "Unknown"
 
+        # 1. Redact Sensitive App Names
+        if hasattr(config, 'SENSITIVE_APP_KEYWORDS'):
+            title_lower = title.lower()
+            for keyword in config.SENSITIVE_APP_KEYWORDS:
+                if keyword.lower() in title_lower:
+                    return "[REDACTED_SENSITIVE_APP]"
+
+        # 2. Redact Email Addresses
+        # Basic regex for email
+        title = re.sub(r'[\w\.-]+@[\w\.-]+\.\w+', '[EMAIL_REDACTED]', title)
         # 0. Check for Sensitive Apps first
         if self._is_sensitive_app(title):
             return "[REDACTED_SENSITIVE_APP]"
@@ -161,7 +173,7 @@ class WindowSensor:
         # Improved regex for email (handles subdomains and common TLDs)
         title = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '[EMAIL_REDACTED]', title)
 
-        # 2. Redact File Paths
+        # 3. Redact File Paths
         # Windows paths (e.g. C:\Users\...)
         title = re.sub(r'[a-zA-Z]:\\[\w\\\.\s-]+', '[PATH_REDACTED]', title)
         # Unix paths (e.g. /home/user/...) - Be careful not to match simple words, look for at least 2 levels
