@@ -4,19 +4,22 @@ import re
 import sys
 import os
 import logging
-from typing import Optional
-import config
 from typing import Optional, List
+import config
 
 class WindowSensor:
     def __init__(self, logger: Optional[logging.Logger] = None):
         self.logger = logger
         self.os_type = platform.system()
         # Define sensitive keywords (case-insensitive checks)
-        self.sensitive_keywords: List[str] = [
-            "password", "keepass", "bitwarden", "1password",
-            "lastpass", "vault", "private", "incognito", "tor browser"
-        ]
+        # Load from config, defaulting to a basic list if config is missing or empty
+        self.sensitive_keywords: List[str] = getattr(config, 'SENSITIVE_APP_KEYWORDS', [])
+        # Ensure fallback defaults if config is empty (though config.py usually has them)
+        if not self.sensitive_keywords:
+             self.sensitive_keywords = [
+                "password", "keepass", "bitwarden", "1password",
+                "lastpass", "vault", "private", "incognito", "tor browser"
+            ]
         self._setup_platform()
 
     def _setup_platform(self):
@@ -143,40 +146,29 @@ class WindowSensor:
 
         return "Unknown"
 
-    def _is_sensitive_app(self, title: str) -> bool:
-        """Checks if the window title indicates a sensitive application."""
-        title_lower = title.lower()
-        for keyword in self.sensitive_keywords:
-            if keyword in title_lower:
-                return True
-        return False
-
     def _sanitize_title(self, title: str) -> str:
+        """
+        Sanitizes the window title by redacting sensitive information (PII, secrets).
+        """
         if not title or title == "Unknown":
             return "Unknown"
 
-        # 1. Redact Sensitive App Names
-        if hasattr(config, 'SENSITIVE_APP_KEYWORDS'):
-            title_lower = title.lower()
-            for keyword in config.SENSITIVE_APP_KEYWORDS:
-                if keyword.lower() in title_lower:
-                    return "[REDACTED_SENSITIVE_APP]"
+        # 1. Redact Sensitive App Names (Pre-defined list)
+        title_lower = title.lower()
+        for keyword in self.sensitive_keywords:
+            if keyword.lower() in title_lower:
+                return "[REDACTED_SENSITIVE_APP]"
 
         # 2. Redact Email Addresses
-        # Basic regex for email
-        title = re.sub(r'[\w\.-]+@[\w\.-]+\.\w+', '[EMAIL_REDACTED]', title)
-        # 0. Check for Sensitive Apps first
-        if self._is_sensitive_app(title):
-            return "[REDACTED_SENSITIVE_APP]"
-
-        # 1. Redact Email Addresses
-        # Improved regex for email (handles subdomains and common TLDs)
+        # Robust regex for email (handles subdomains and common TLDs)
+        # Matches user@domain.tld, where TLD is at least 2 chars
         title = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '[EMAIL_REDACTED]', title)
 
         # 3. Redact File Paths
         # Windows paths (e.g. C:\Users\...)
         title = re.sub(r'[a-zA-Z]:\\[\w\\\.\s-]+', '[PATH_REDACTED]', title)
-        # Unix paths (e.g. /home/user/...) - Be careful not to match simple words, look for at least 2 levels
+        # Unix paths (e.g. /home/user/...) - Match absolute paths with at least 2 segments
+        # to avoid matching simple text that looks like a path
         title = re.sub(r'/(?:[\w\.-]+/){2,}[\w\.-]+', '[PATH_REDACTED]', title)
 
         return title.strip()
