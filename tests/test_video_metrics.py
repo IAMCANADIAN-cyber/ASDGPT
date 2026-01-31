@@ -26,6 +26,10 @@ class TestVideoMetrics(unittest.TestCase):
             self.video_sensor.eye_cascade = self.mock_cascade
             self.video_sensor.face_cascade = self.mock_cascade
 
+            # Force face detection to run by pretending we saw a face recently
+            import time
+            self.video_sensor.last_face_detected_time = time.time()
+
     def test_head_tilt_calculation(self):
         """
         Test that face_roll_angle is calculated correctly based on eye positions.

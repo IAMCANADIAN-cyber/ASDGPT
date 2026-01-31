@@ -18,6 +18,10 @@ class TestVideoFeatures(unittest.TestCase):
         from unittest.mock import MagicMock
         self.sensor.face_cascade = MagicMock()
 
+        # Force Eco Mode check to pass (simulate recent face)
+        import time
+        self.sensor.last_face_detected_time = time.time()
+
     def test_metrics_no_face(self):
         self.sensor.face_cascade.detectMultiScale.return_value = []
 
