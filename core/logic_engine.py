@@ -575,7 +575,7 @@ class LogicEngine:
                      self.set_mode("active")
                      # auto_dnd_active is reset in set_mode
 
-            # 3. Check for Event-based triggers
+            # 3. Check for Event-based Triggers
             # Check for sudden loud noise AND it is speech-like
             # If it's just a loud bang (high RMS, no speech confidence), we ignore it to prevent false positives.
             if current_audio_level > self.audio_threshold_high:
