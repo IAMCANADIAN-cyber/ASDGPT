@@ -405,7 +405,6 @@ class LogicEngine:
         """
         Analyzes visual context tags for persistent patterns (e.g., Doom Scrolling).
         Returns an intervention ID string if a specific persistent trigger is met, else None.
-        Returns an intervention ID if a trigger condition is met, else None.
         """
         # Tags we track for persistence
         tracked_tags = ["phone_usage", "messy_room"]
