@@ -24,7 +24,7 @@ class TestLMMContextIntegration(unittest.TestCase):
              self.lmm_interface.circuit_max_failures = 5
              self.lmm_interface.circuit_cooldown = 60
 
-    def test_active_window_injection(self):
+    def test_active_window_injection_logic(self):
         """
         Verifies that 'active_window' from user_context is correctly injected
         into the text prompt passed to _send_request_with_retry.

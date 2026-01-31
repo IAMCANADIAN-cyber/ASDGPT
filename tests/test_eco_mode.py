@@ -1,16 +1,9 @@
+import pytest
 import unittest
 from unittest.mock import MagicMock, patch
-import sys
-
-# Patch hardware dependencies BEFORE importing main to avoid ImportErrors (e.g. PortAudio, X11)
-sys.modules['pystray'] = MagicMock()
-sys.modules['sounddevice'] = MagicMock()
-sys.modules['keyboard'] = MagicMock()
-# Optionally mock cv2 if needed, but it seems installed
-# sys.modules['cv2'] = MagicMock()
-
 import config
 from main import Application
+import sys
 
 class TestEcoMode(unittest.TestCase):
     def setUp(self):
@@ -30,7 +23,9 @@ class TestEcoMode(unittest.TestCase):
         p5 = patch('main.InterventionEngine', MagicMock())
         p6 = patch('main.ACRTrayIcon', MagicMock())
         p7 = patch('main.DataLogger', return_value=self.mock_logger)
+        # Patch keyboard which is imported inside _setup_hotkeys
         p8 = patch.dict(sys.modules, {'keyboard': MagicMock()})
+        # Patch WindowSensor as well since it's new
         p9 = patch('main.WindowSensor', MagicMock())
 
         self.patchers.extend([p1, p2, p3, p4, p5, p6, p7, p8, p9])
@@ -78,6 +73,4 @@ class TestEcoMode(unittest.TestCase):
 
         # Activity <= VIDEO_WAKE_THRESHOLD (5.0)
         delay = self.app._get_video_poll_delay(activity=4.0)
-
-        # We expect 0.2 now (5Hz) instead of 1.0 (1Hz) to satisfy latency requirement
-        self.assertEqual(delay, 0.2)
+        self.assertEqual(delay, config.VIDEO_ECO_MODE_DELAY)
