@@ -90,7 +90,7 @@ class MockVideoSensor:
     def __init__(self):
         self.analysis_result = {}
 
-    def process_frame(self, frame):
+    def process_frame(self, frame, *args, **kwargs):
         if not self.analysis_result:
             return {"video_activity": 0.0, "face_detected": False}
         return self.analysis_result
@@ -384,8 +384,13 @@ class ReplayHarness:
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         path = sys.argv[1]
+    else:
+        path = "datasets/synthetic_events.json"
+        print(f"No dataset path provided. Using default: {path}")
+
+    if os.path.exists(path):
         harness = ReplayHarness(path)
         results = harness.run()
         harness.print_report(results)
     else:
-        print("Please provide a dataset path as argument.")
+        print(f"Dataset not found at {path}. Please run generate_dataset.py first.")
