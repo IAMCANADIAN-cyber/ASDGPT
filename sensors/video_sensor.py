@@ -344,11 +344,11 @@ class VideoSensor:
         angle = np.degrees(np.arctan2(dy, dx))
         return angle
 
-    def process_frame(self, frame):
+    def process_frame(self, frame, run_face_detection: bool = True):
         """
         Comprehensive frame processing:
         - Activity calculation (Raw and Normalized)
-        - Face detection and metrics
+        - Face detection and metrics (optional via run_face_detection)
 
         Returns a dictionary with all metrics.
         """
@@ -379,33 +379,39 @@ class VideoSensor:
             metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
 
             # 2. Face Detection (using full size gray frame)
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
+            if run_face_detection:
+                faces = self.face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=5,
+                    minSize=(30, 30)
+                )
 
-            metrics["face_detected"] = len(faces) > 0
-            metrics["face_count"] = len(faces)
-            metrics["face_locations"] = [list(f) for f in faces]
+                metrics["face_detected"] = len(faces) > 0
+                metrics["face_count"] = len(faces)
+                metrics["face_locations"] = [list(f) for f in faces]
 
-            if len(faces) > 0:
-                # Find largest face
-                largest_face = max(faces, key=lambda f: f[2] * f[3])
-                x, y, w, h = largest_face
+                if len(faces) > 0:
+                    # Find largest face
+                    largest_face = max(faces, key=lambda f: f[2] * f[3])
+                    x, y, w, h = largest_face
 
-                img_h, img_w = frame.shape[:2]
+                    img_h, img_w = frame.shape[:2]
 
-                metrics["face_size_ratio"] = float(w) / img_w
-                metrics["vertical_position"] = float(y + h/2) / img_h
-                metrics["horizontal_position"] = float(x + w/2) / img_w
+                    metrics["face_size_ratio"] = float(w) / img_w
+                    metrics["vertical_position"] = float(y + h/2) / img_h
+                    metrics["horizontal_position"] = float(x + w/2) / img_w
 
-                # Head Tilt Estimation (Face Roll)
-                face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+                    # Head Tilt Estimation (Face Roll)
+                    face_roi_gray = gray[y:y+h, x:x+w]
+                    metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
 
-                self._calculate_posture(metrics)
+                    self._calculate_posture(metrics)
+            else:
+                # Ensure schema consistency when skipping (though defaults are set at init)
+                metrics["face_detected"] = False
+                metrics["face_count"] = 0
+                metrics["face_locations"] = []
 
         except Exception as e:
             self._log_error(f"Error processing frame: {e}")

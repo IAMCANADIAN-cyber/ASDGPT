@@ -178,14 +178,14 @@ class LogicEngine:
         if self.tray_callback:
             self.tray_callback(new_mode=new_mode, old_mode=old_mode)
 
-    def process_video_data(self, frame: np.ndarray) -> None:
+    def process_video_data(self, frame: np.ndarray, run_face_detection: bool = True) -> None:
         with self._lock:
             self.previous_video_frame = self.last_video_frame
             self.last_video_frame = frame
 
             # Use VideoSensor's unified processing if available
             if self.video_sensor and hasattr(self.video_sensor, 'process_frame'):
-                metrics = self.video_sensor.process_frame(frame)
+                metrics = self.video_sensor.process_frame(frame, run_face_detection=run_face_detection)
                 self.video_activity = metrics.get("video_activity", 0.0)
 
                 # Filter out non-face metrics for face_metrics dict

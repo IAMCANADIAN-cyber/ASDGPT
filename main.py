@@ -55,6 +55,7 @@ class Application:
         self.logic_engine.state_update_callback = self.update_tray_tooltip
         self.logic_engine.notification_callback = self.send_notification
 
+        self.face_check_counter: int = 0
         self._setup_hotkeys()
 
         self.data_logger.log_info(f"ACR Initialized. Mode: {self.logic_engine.get_mode()}.")
@@ -213,6 +214,29 @@ class Application:
         # Otherwise, Eco Mode (low FPS)
         return config.VIDEO_ECO_MODE_DELAY
 
+    def _should_run_face_detection(self) -> bool:
+        """
+        Determines whether to run expensive face detection for the current frame.
+        In Eco Mode (Low Activity + No Face), we skip N frames to save CPU.
+        """
+        # If we have a recent face detection, we want to keep tracking high-fidelity
+        if self.logic_engine.is_face_detected():
+            self.face_check_counter = 0
+            return True
+
+        # If activity is high, we suspect a user might be back -> Check immediately
+        if self.logic_engine.video_activity > config.VIDEO_WAKE_THRESHOLD:
+            self.face_check_counter = 0
+            return True
+
+        # Otherwise: Eco Mode. Check only periodically.
+        interval = getattr(config, 'VIDEO_ECO_FACE_CHECK_INTERVAL', 5)
+        self.face_check_counter += 1
+        if self.face_check_counter % interval == 0:
+            return True
+
+        return False
+
     def _video_worker(self) -> None:
         self.data_logger.log_info("Video worker thread started.")
         while self.running:
@@ -331,7 +355,8 @@ class Application:
                         self.data_logger.log_warning(f"Video frame read error from queue: {video_err}")
                     # Process frame if not None (e.g., pass to logic engine)
                     if frame is not None:
-                        self.logic_engine.process_video_data(frame)
+                        run_face_detection = self._should_run_face_detection()
+                        self.logic_engine.process_video_data(frame, run_face_detection=run_face_detection)
                         self.data_logger.log_debug(f"Dequeued video frame. Shape: {frame.shape}")
                     video_data_processed = True
                     self.video_queue.task_done() # Signal that item processing is complete
