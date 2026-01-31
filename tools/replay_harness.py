@@ -90,7 +90,7 @@ class MockVideoSensor:
     def __init__(self):
         self.analysis_result = {}
 
-    def process_frame(self, frame):
+    def process_frame(self, frame, skip_face_detection=False, activity_threshold=None):
         if not self.analysis_result:
             return {"video_activity": 0.0, "face_detected": False}
         return self.analysis_result
