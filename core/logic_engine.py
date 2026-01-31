@@ -81,6 +81,8 @@ class LogicEngine:
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
 
+        self.last_face_check_time: float = 0
+
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
     def get_mode(self) -> str:
@@ -185,19 +187,38 @@ class LogicEngine:
 
             # Use VideoSensor's unified processing if available
             if self.video_sensor and hasattr(self.video_sensor, 'process_frame'):
-                metrics = self.video_sensor.process_frame(frame)
+                # Hierarchical Sensing Logic (Deep Eco Mode)
+                skip_face_detection = True
+                current_time = time.time()
+
+                # Rule 1: High Activity (Motion) -> Immediate Face Check
+                if self.video_activity > self.video_activity_threshold_high:
+                    skip_face_detection = False
+                # Rule 2: Heartbeat (1Hz) -> Periodic Face Check
+                elif current_time - self.last_face_check_time > 1.0:
+                    skip_face_detection = False
+
+                # We pass the threshold to allow the sensor to override 'skip' if it detects high activity on *this* frame
+                metrics = self.video_sensor.process_frame(
+                    frame,
+                    skip_face_detection=skip_face_detection,
+                    activity_threshold=self.video_activity_threshold_high
+                )
                 self.video_activity = metrics.get("video_activity", 0.0)
 
-                # Filter out non-face metrics for face_metrics dict
-                self.face_metrics = {k: v for k, v in metrics.items() if k.startswith("face_")}
+                # Only update face metrics if detection was run
+                if not metrics.get("face_detection_skipped", False):
+                    # Filter out non-face metrics for face_metrics dict
+                    self.face_metrics = {k: v for k, v in metrics.items() if k.startswith("face_")}
+                    self.last_face_check_time = current_time
 
-                # Prepare video analysis context for LMM
-                # We want face metrics plus other relevant high-level signals
-                self.video_analysis = self.face_metrics.copy()
-                additional_keys = ["posture_state", "vertical_position", "horizontal_position", "normalized_activity"]
-                for k in additional_keys:
-                    if k in metrics:
-                        self.video_analysis[k] = metrics[k]
+                    # Prepare video analysis context for LMM
+                    # We want face metrics plus other relevant high-level signals
+                    self.video_analysis = self.face_metrics.copy()
+                    additional_keys = ["posture_state", "vertical_position", "horizontal_position", "normalized_activity"]
+                    for k in additional_keys:
+                        if k in metrics:
+                            self.video_analysis[k] = metrics[k]
 
             else:
                 # Fallback to legacy calculation (if sensor doesn't have process_frame or is missing)
