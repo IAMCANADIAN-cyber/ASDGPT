@@ -344,7 +344,7 @@ class VideoSensor:
         angle = np.degrees(np.arctan2(dy, dx))
         return angle
 
-    def process_frame(self, frame):
+    def process_frame(self, frame, skip_face_detection: bool = False, activity_threshold: Optional[float] = None):
         """
         Comprehensive frame processing:
         - Activity calculation (Raw and Normalized)
@@ -377,6 +377,16 @@ class VideoSensor:
             raw_activity = self.calculate_raw_activity(gray_small)
             metrics["video_activity"] = float(raw_activity)
             metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
+
+            should_skip = skip_face_detection
+            # Override skip if activity is high enough to warrant a check
+            if should_skip and activity_threshold is not None:
+                if metrics["video_activity"] > activity_threshold:
+                    should_skip = False
+
+            if should_skip:
+                metrics["face_detection_skipped"] = True
+                return metrics
 
             # 2. Face Detection (using full size gray frame)
             faces = self.face_cascade.detectMultiScale(
