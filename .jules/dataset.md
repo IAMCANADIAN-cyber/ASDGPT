@@ -13,6 +13,8 @@
 - The harness bypasses raw sensors but injects data into the `LogicEngine` in a way that exercises the signal processing logic (e.g., generating video frames with specific difference means).
 - Mocked `LMMInterface` to return deterministic analysis based on the event's "expected outcome", allowing us to test the `LogicEngine` -> `LMM` -> `StateEngine` pipeline flow.
 - The harness provides a report with metrics: accuracy (match rate between expected and actual interventions) and simulated intervention rate.
+- **Update**: Enhanced `MockVideoSensor` to robustly accept `*args` and `**kwargs`, ensuring forward compatibility with potential `LogicEngine` signature changes (e.g., Deep Eco Mode flags).
+- **Update**: Improved harness usability to default to the standard synthetic dataset path if no argument is provided.
 
 ### Metrics & Evaluation
 - The current synthetic set achieves 100% accuracy on the current logic. This serves as a regression test suite.
