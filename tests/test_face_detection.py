@@ -44,6 +44,10 @@ class TestFaceDetection(unittest.TestCase):
         # Create a dummy frame
         frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
+        # Force "Smart Face Check" to run (heartbeat)
+        # It increments in process_frame, so we set to 4 to result in 5
+        self.video_sensor.frame_count = 4
+
         # Run analysis
         metrics = self.video_sensor.analyze_frame(frame)
 

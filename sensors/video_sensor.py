@@ -31,6 +31,10 @@ class VideoSensor:
         self.retry_delay = 30  # seconds
         self.last_retry_time = 0
 
+        # Eco Mode State
+        self.last_face_detected_time = 0
+        self.frame_count = 0
+
         self._initialize_camera()
 
         # Load Haarcascade for face detection
@@ -378,34 +382,51 @@ class VideoSensor:
             metrics["video_activity"] = float(raw_activity)
             metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
 
-            # 2. Face Detection (using full size gray frame)
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
+            # Smart Face Check (Eco Mode Logic)
+            self.frame_count += 1
+            should_detect_face = True
 
-            metrics["face_detected"] = len(faces) > 0
-            metrics["face_count"] = len(faces)
-            metrics["face_locations"] = [list(f) for f in faces]
+            # If activity is low, we might skip expensive face detection
+            if metrics["video_activity"] <= config.VIDEO_WAKE_THRESHOLD:
+                # But we check if we saw a face recently (grace period)
+                time_since_face = time.time() - self.last_face_detected_time
+                if time_since_face > 5.0:
+                    # And we check strictly periodically (Heartbeat) to catch silent returns
+                    # Assuming ~5Hz polling in idle, % 5 gives ~1Hz heartbeat
+                    if self.frame_count % 5 != 0:
+                        should_detect_face = False
 
-            if len(faces) > 0:
-                # Find largest face
-                largest_face = max(faces, key=lambda f: f[2] * f[3])
-                x, y, w, h = largest_face
+            if should_detect_face:
+                # 2. Face Detection (using full size gray frame)
+                faces = self.face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=5,
+                    minSize=(30, 30)
+                )
 
-                img_h, img_w = frame.shape[:2]
+                metrics["face_detected"] = len(faces) > 0
+                metrics["face_count"] = len(faces)
+                metrics["face_locations"] = [list(f) for f in faces]
 
-                metrics["face_size_ratio"] = float(w) / img_w
-                metrics["vertical_position"] = float(y + h/2) / img_h
-                metrics["horizontal_position"] = float(x + w/2) / img_w
+                if len(faces) > 0:
+                    self.last_face_detected_time = time.time()
 
-                # Head Tilt Estimation (Face Roll)
-                face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+                    # Find largest face
+                    largest_face = max(faces, key=lambda f: f[2] * f[3])
+                    x, y, w, h = largest_face
 
-                self._calculate_posture(metrics)
+                    img_h, img_w = frame.shape[:2]
+
+                    metrics["face_size_ratio"] = float(w) / img_w
+                    metrics["vertical_position"] = float(y + h/2) / img_h
+                    metrics["horizontal_position"] = float(x + w/2) / img_w
+
+                    # Head Tilt Estimation (Face Roll)
+                    face_roi_gray = gray[y:y+h, x:x+w]
+                    metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+
+                    self._calculate_posture(metrics)
 
         except Exception as e:
             self._log_error(f"Error processing frame: {e}")

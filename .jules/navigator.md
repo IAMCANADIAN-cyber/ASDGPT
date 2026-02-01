@@ -39,3 +39,12 @@
 **Learning:** While `WindowSensor` was implemented and collecting data, the `LMMInterface` was not using this data in the prompt construction. This meant the "Context Intelligence" milestone was effectively stalled at the integration layer.
 **Action:** Updated `core/lmm_interface.py` to inject `active_window` into the prompt and updated `core/prompts/v1.py` with guidance for the LLM. Added `tests/test_lmm_interface.py` verification.
 **Hygiene:** Test execution failed initially due to missing `python-dotenv` in the environment. Ensuring `pip install -r requirements.txt` is run before testing is critical in this environment.
+
+## 2026-01-30 - [Video Eco Mode Implementation]
+**Learning:** "Eco Mode" for video isn't just about dropping FPS; it's about reducing computational cost per frame. Face detection (`detectMultiScale`) is expensive.
+**Action:** Implemented "Smart Face Check" in `VideoSensor`. It now skips face detection when activity is low and no face has been seen recently, while maintaining a heartbeat check. This allows high responsiveness to motion (which triggers full detection) while saving CPU during idle periods.
+**Hygiene:** Updating `tests/test_video_metrics.py` and `tests/test_video_features.py` was necessary because they relied on the assumption that face detection *always* runs, even on blank frames. Mocking `last_face_detected_time` fixed this.
+
+## 2026-02-06 - [Active Window Fix & Hygiene]
+**Learning:** Duplicate logic in `sensors/window_sensor.py` and `core/lmm_interface.py` suggested a previous incomplete merge or copy-paste error. Specifically, `active_window` was being injected into the LMM prompt twice, and sanitization logic was redundant.
+**Action:** Refactored `WindowSensor._sanitize_title` to be single-pass and robust. Removed duplicate prompt injection in `LMMInterface`. Added `test_prompt_includes_active_window` to `tests/test_lmm_prompt_engineering.py` to strictly verify single injection.

@@ -53,7 +53,7 @@ class TestLMMPromptEngineering(unittest.TestCase):
                     "pitch_estimation": 150.0,
                     "pitch_variance": 60.0, # High
                     "zcr": 0.15, # High
-                    "activity_bursts": 6 # High
+                    "speech_rate": 4.5 # High syllables/sec
                 },
                 "video_analysis": {
                     "face_detected": True,
@@ -78,13 +78,13 @@ class TestLMMPromptEngineering(unittest.TestCase):
         # Check System Prompt updates
         self.assertIn("Audio Pitch Variance: High (>50)", system_msg)
         self.assertIn("Audio ZCR: High (>0.1)", system_msg)
-        self.assertIn("Speech Rate (Burst Density): High (>5)", system_msg)
+        self.assertIn("Speech Rate: Syllables/sec", system_msg)
 
         # Check User Context injection
         self.assertIn("Audio Pitch (est): 150.00 Hz", user_text)
         self.assertIn("Audio Pitch Variance: 60.00", user_text)
         self.assertIn("Audio ZCR: 0.1500", user_text)
-        self.assertIn("Speech Rate (Burst Density): 6", user_text)
+        self.assertIn("Speech Rate: 4.50 syllables/sec", user_text)
 
     @patch('requests.post')
     def test_prompt_handles_missing_metrics(self, mock_post):
@@ -123,6 +123,59 @@ class TestLMMPromptEngineering(unittest.TestCase):
         # Should NOT contain the detailed audio lines
         self.assertNotIn("Audio Pitch (est)", user_text)
         self.assertNotIn("Speech Rate", user_text)
+
+    @patch('requests.post')
+    def test_prompt_includes_active_window(self, mock_post):
+        # Setup mock response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "choices": [{
+                "message": {
+                    "content": json.dumps({
+                        "state_estimation": {"arousal": 50, "overload": 50, "focus": 50, "energy": 50, "mood": 50},
+                        "suggestion": None
+                    })
+                }
+            }]
+        }
+        mock_post.return_value = mock_response
+
+        # Case 1: Active Window Present
+        user_context = {
+            "current_mode": "active",
+            "active_window": "VS Code - Project",
+            "sensor_metrics": {}
+        }
+
+        self.lmm_interface.process_data(user_context=user_context)
+
+        args, kwargs = mock_post.call_args
+        payload = kwargs['json']
+        messages = payload['messages']
+        user_msg_parts = next(m for m in messages if m['role'] == 'user')['content']
+        user_text = next(p['text'] for p in user_msg_parts if p['type'] == 'text')
+
+        self.assertIn("Active Window: VS Code - Project", user_text)
+        # Verify it appears exactly once
+        self.assertEqual(user_text.count("Active Window: VS Code - Project"), 1)
+
+        # Case 2: Active Window Unknown
+        user_context_unknown = {
+            "current_mode": "active",
+            # No active_window key, or explicitly Unknown
+            "sensor_metrics": {}
+        }
+        self.lmm_interface.process_data(user_context=user_context_unknown)
+
+        args, kwargs = mock_post.call_args
+        payload = kwargs['json']
+        messages = payload['messages']
+        user_msg_parts = next(m for m in messages if m['role'] == 'user')['content']
+        user_text = next(p['text'] for p in user_msg_parts if p['type'] == 'text')
+
+        self.assertIn("Active Window: Unknown", user_text)
+        self.assertEqual(user_text.count("Active Window:"), 1)
 
 if __name__ == '__main__':
     unittest.main()

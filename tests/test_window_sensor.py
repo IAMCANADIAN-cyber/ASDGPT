@@ -108,11 +108,10 @@ class TestWindowSensor(unittest.TestCase):
         self.assertEqual(sensor._sanitize_title(None), "Unknown")
 
     def test_sensitive_app_redaction(self):
-        sensor = WindowSensor(self.mock_logger)
-
-        # Patch config.SENSITIVE_APP_KEYWORDS
+        # 1. Test custom keywords (Patch BEFORE init)
         test_keywords = ["SecretApp", "Incognito"]
         with patch('sensors.window_sensor.config.SENSITIVE_APP_KEYWORDS', test_keywords):
+            sensor = WindowSensor(self.mock_logger)
             # Test exact match
             self.assertEqual(sensor._sanitize_title("SecretApp"), "[REDACTED_SENSITIVE_APP]")
 
@@ -127,6 +126,10 @@ class TestWindowSensor(unittest.TestCase):
 
             # Test no match
             self.assertEqual(sensor._sanitize_title("Normal App"), "Normal App")
+
+        # 2. Test default/real keywords (New instance, no patch)
+        sensor_real = WindowSensor(self.mock_logger)
+
         # Test known sensitive keywords
         sensitive_titles = [
             "KeePassXC - Database.kdbx",
@@ -136,11 +139,11 @@ class TestWindowSensor(unittest.TestCase):
             "Incognito Tab - Google Chrome",
             "Tor Browser",
             "LastPass",
-            "My Secret Vault"
+            "My Secret Vault" # Matches "vault" (case-insensitive)
         ]
 
         for title in sensitive_titles:
-            sanitized = sensor._sanitize_title(title)
+            sanitized = sensor_real._sanitize_title(title)
             self.assertEqual(sanitized, "[REDACTED_SENSITIVE_APP]", f"Failed to redact: {title}")
 
         # Test safe titles
@@ -151,7 +154,7 @@ class TestWindowSensor(unittest.TestCase):
             "Notepad"
         ]
         for title in safe_titles:
-            self.assertNotEqual(sensor._sanitize_title(title), "[REDACTED_SENSITIVE_APP]", f"Incorrectly redacted: {title}")
+            self.assertNotEqual(sensor_real._sanitize_title(title), "[REDACTED_SENSITIVE_APP]", f"Incorrectly redacted: {title}")
 
     def test_improved_email_redaction(self):
         sensor = WindowSensor(self.mock_logger)
