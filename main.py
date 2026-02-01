@@ -19,24 +19,40 @@ class Application:
         self.data_logger: DataLogger = DataLogger(config.LOG_FILE)
         self.data_logger.log_info("ACR Application Initializing...")
 
-        # Initialize sensors first, as they might be needed by LogicEngine
-        self.video_sensor = VideoSensor(config.CAMERA_INDEX, self.data_logger)
-        self.audio_sensor = AudioSensor(self.data_logger)
-        self.window_sensor = WindowSensor(self.data_logger)
+        # Initialize attributes to None for safe cleanup
+        self.video_sensor = None
+        self.audio_sensor = None
+        self.window_sensor = None
+        self.logic_engine = None
+        self.intervention_engine = None
+        self.tray_icon = None
 
-        # Initialize LMM Interface
-        self.lmm_interface = LMMInterface(self.data_logger)
+        try:
+            # Initialize sensors first, as they might be needed by LogicEngine
+            self.video_sensor = VideoSensor(config.CAMERA_INDEX, self.data_logger)
+            self.audio_sensor = AudioSensor(self.data_logger)
+            self.window_sensor = WindowSensor(self.data_logger)
 
-        # Pass sensors and logger to LogicEngine
-        self.logic_engine = LogicEngine(
-            audio_sensor=self.audio_sensor,
-            video_sensor=self.video_sensor,
-            window_sensor=self.window_sensor,
-            logger=self.data_logger,
-            lmm_interface=self.lmm_interface
-        )
-        self.intervention_engine: InterventionEngine = InterventionEngine(self.logic_engine, self)
-        self.logic_engine.set_intervention_engine(self.intervention_engine)
+            # Initialize LMM Interface
+            self.lmm_interface = LMMInterface(self.data_logger)
+
+            # Pass sensors and logger to LogicEngine
+            self.logic_engine = LogicEngine(
+                audio_sensor=self.audio_sensor,
+                video_sensor=self.video_sensor,
+                window_sensor=self.window_sensor,
+                logger=self.data_logger,
+                lmm_interface=self.lmm_interface
+            )
+            self.intervention_engine: InterventionEngine = InterventionEngine(self.logic_engine, self)
+            self.logic_engine.set_intervention_engine(self.intervention_engine)
+        except Exception as e:
+            self.data_logger.log_error(f"Initialization failed: {e}")
+            if self.video_sensor:
+                self.video_sensor.release()
+            if self.audio_sensor:
+                self.audio_sensor.release()
+            raise
 
         self.running: bool = True
         self.sensor_error_active: bool = False
