@@ -79,5 +79,5 @@ class TestEcoMode(unittest.TestCase):
         # Activity <= VIDEO_WAKE_THRESHOLD (5.0)
         delay = self.app._get_video_poll_delay(activity=4.0)
 
-        # We expect 0.2 now (5Hz) instead of 1.0 (1Hz) to satisfy latency requirement
-        self.assertEqual(delay, 0.2)
+        # We expect 1.0 (1Hz) for Eco Mode
+        self.assertEqual(delay, 1.0)

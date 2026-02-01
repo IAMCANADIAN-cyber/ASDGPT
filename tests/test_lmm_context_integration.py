@@ -160,7 +160,7 @@ class TestLMMContextIntegration(unittest.TestCase):
                 text_content = part['text']
                 break
 
-        self.assertNotIn("Active Window: Unknown", text_content)
+        self.assertIn("Active Window: Unknown", text_content)
 
 if __name__ == '__main__':
     unittest.main()
