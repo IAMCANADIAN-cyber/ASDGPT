@@ -347,6 +347,22 @@ class LMMInterface:
             if est:
                  context_str += f"Previous State: {est}\n"
 
+            # Inject Context History
+            history = user_context.get('context_history')
+            if history:
+                context_str += "\nRecent Context History (Last 5 snapshots):\n"
+                # Show last 5 to conserve tokens while providing trajectory
+                recent_history = history[-5:]
+                current_time = time.time()
+                for snap in recent_history:
+                    age = int(current_time - snap.get('timestamp', current_time))
+                    win = snap.get('active_window', 'Unknown')
+                    # Truncate window if too long
+                    if len(win) > 30: win = win[:27] + "..."
+                    face = "Yes" if snap.get('face_detected') else "No"
+                    act = snap.get('video_activity', 0.0)
+                    context_str += f"- [{age}s ago] Win: {win} | Face: {face} | Act: {act:.1f}\n"
+
             # Add suppressed interventions
             suppressed = user_context.get('suppressed_interventions')
             if suppressed:

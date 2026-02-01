@@ -5,6 +5,7 @@ from typing import Optional, Callable, Any
 import numpy as np
 import cv2
 import base64
+from collections import deque
 from .data_logger import DataLogger
 from .lmm_interface import LMMInterface
 from .intervention_engine import InterventionEngine
@@ -80,6 +81,9 @@ class LogicEngine:
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
+
+        # Context History (Sliding Window)
+        self.context_history = deque(maxlen=10)
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
@@ -281,10 +285,22 @@ class LogicEngine:
                 except Exception as e:
                     self.logger.log_debug(f"Error fetching active window: {e}")
 
+            # Update context history
+            snapshot = {
+                "timestamp": time.time(),
+                "mode": self.current_mode,
+                "active_window": active_window,
+                "audio_level": float(self.audio_level),
+                "video_activity": float(self.video_activity),
+                "face_detected": bool(self.face_metrics.get("face_detected", False))
+            }
+            self.context_history.append(snapshot)
+
             context = {
                 "current_mode": self.current_mode,
                 "trigger_reason": trigger_reason,
                 "active_window": active_window,
+                "context_history": list(self.context_history),
                 "sensor_metrics": {
                     "audio_level": float(self.audio_level),
                     "video_activity": float(self.video_activity),

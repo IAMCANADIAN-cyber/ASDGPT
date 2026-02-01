@@ -39,3 +39,8 @@
 **Learning:** While `WindowSensor` was implemented and collecting data, the `LMMInterface` was not using this data in the prompt construction. This meant the "Context Intelligence" milestone was effectively stalled at the integration layer.
 **Action:** Updated `core/lmm_interface.py` to inject `active_window` into the prompt and updated `core/prompts/v1.py` with guidance for the LLM. Added `tests/test_lmm_interface.py` verification.
 **Hygiene:** Test execution failed initially due to missing `python-dotenv` in the environment. Ensuring `pip install -r requirements.txt` is run before testing is critical in this environment.
+
+## 2026-02-05 - [Context History Implementation]
+**Learning:** A significant discrepancy existed between the project memory (claiming Context History sliding window was implemented) and the actual codebase (where it was missing). The Roadmap correctly identified it as a "Backlog" item.
+**Action:** Implemented the sliding window in `LogicEngine` and its injection in `LMMInterface`. Created `tests/test_lmm_context_history.py` to verify.
+**Hygiene:** `pytest` was missing from the environment, requiring manual installation.
