@@ -155,7 +155,10 @@ class WindowSensor:
         if not title or title == "Unknown":
             return "Unknown"
 
-        # 1. Redact Sensitive App Names
+        # 1. Redact Sensitive App Names (Config + Built-in)
+        if self._is_sensitive_app(title):
+            return "[REDACTED_SENSITIVE_APP]"
+
         if hasattr(config, 'SENSITIVE_APP_KEYWORDS'):
             title_lower = title.lower()
             for keyword in config.SENSITIVE_APP_KEYWORDS:
@@ -163,13 +166,6 @@ class WindowSensor:
                     return "[REDACTED_SENSITIVE_APP]"
 
         # 2. Redact Email Addresses
-        # Basic regex for email
-        title = re.sub(r'[\w\.-]+@[\w\.-]+\.\w+', '[EMAIL_REDACTED]', title)
-        # 0. Check for Sensitive Apps first
-        if self._is_sensitive_app(title):
-            return "[REDACTED_SENSITIVE_APP]"
-
-        # 1. Redact Email Addresses
         # Improved regex for email (handles subdomains and common TLDs)
         title = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '[EMAIL_REDACTED]', title)
 
