@@ -1,6 +1,7 @@
 import time
 import config
 import threading
+import collections
 from typing import Optional, Callable, Any
 import numpy as np
 import cv2
@@ -80,6 +81,11 @@ class LogicEngine:
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
+
+        # Context History (Sliding Window for LMM)
+        self.context_history = collections.deque(maxlen=10) # Keep last 10 snapshots
+        self.context_history_interval: float = 10.0 # Seconds between snapshots
+        self.last_history_snapshot_time: float = 0
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
@@ -296,7 +302,8 @@ class LogicEngine:
                 "current_state_estimation": self.state_engine.get_state(),
                 "suppressed_interventions": suppressed_list,
                 "system_alerts": system_alerts,
-                "preferred_interventions": preferred_list
+                "preferred_interventions": preferred_list,
+                "context_history": list(self.context_history)
             }
 
             return {
@@ -506,6 +513,26 @@ class LogicEngine:
 
         if current_mode in ["active", "dnd"]:
             current_time = time.time()
+
+            # Context History Snapshot
+            if current_time - self.last_history_snapshot_time >= self.context_history_interval:
+                self.last_history_snapshot_time = current_time
+                active_window_snap = "Unknown"
+                if self.window_sensor:
+                    try:
+                        active_window_snap = self.window_sensor.get_active_window()
+                    except Exception:
+                        pass
+
+                snapshot = {
+                    "timestamp": current_time,
+                    "mode": current_mode,
+                    "active_window": active_window_snap,
+                    "audio_level": float(self.audio_level),
+                    "video_activity": float(self.video_activity),
+                    "face_detected": bool(self.face_metrics.get("face_detected", False))
+                }
+                self.context_history.append(snapshot)
 
             # Check probation (only relevant if recovering to active, but harmless to check)
             if self.recovery_probation_end_time > 0 and current_time > self.recovery_probation_end_time:

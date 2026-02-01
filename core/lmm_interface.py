@@ -299,10 +299,6 @@ class LMMInterface:
             context_str += f"Current Mode: {user_context.get('current_mode', 'unknown')}\n"
             context_str += f"Trigger Reason: {user_context.get('trigger_reason', 'unknown')}\n"
 
-            # Inject Active Window Context
-            active_window = user_context.get('active_window')
-            if active_window and active_window != "Unknown":
-                context_str += f"Active Window: {active_window}\n"
             # Context Intelligence: Active Window
             active_window = user_context.get('active_window', 'Unknown')
             context_str += f"Active Window: {active_window}\n"
@@ -346,6 +342,16 @@ class LMMInterface:
             est = user_context.get('current_state_estimation')
             if est:
                  context_str += f"Previous State: {est}\n"
+
+            # Context History (Sliding Window)
+            history = user_context.get('context_history')
+            if history:
+                context_str += "\nContext History (Last few minutes):\n"
+                for snapshot in history:
+                    # Format: [HH:MM:SS] Mode: active | Window: VS Code | Audio: 0.1 | Face: True
+                    ts = time.strftime('%H:%M:%S', time.localtime(snapshot.get('timestamp', 0)))
+                    context_str += f"[{ts}] Mode: {snapshot.get('mode')} | Window: {snapshot.get('active_window')} | "
+                    context_str += f"Audio: {snapshot.get('audio_level', 0):.2f} | Face: {snapshot.get('face_detected')}\n"
 
             # Add suppressed interventions
             suppressed = user_context.get('suppressed_interventions')
