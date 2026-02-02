@@ -37,11 +37,11 @@ class TestLMMTimeout(unittest.TestCase):
         self.mock_intervention = MagicMock()
 
         # Patch config to ensure fallback is enabled and thresholds are low for testing
-        self.config_patcher = patch.dict('config.__dict__', {
-            'LMM_FALLBACK_ENABLED': True,
-            'LMM_CIRCUIT_BREAKER_MAX_FAILURES': 2,
-            'LMM_CIRCUIT_BREAKER_COOLDOWN': 100
-        })
+        self.config_patcher = patch.multiple(config,
+            LMM_FALLBACK_ENABLED=True,
+            LMM_CIRCUIT_BREAKER_MAX_FAILURES=2,
+            LMM_CIRCUIT_BREAKER_COOLDOWN=100
+        )
         self.config_patcher.start()
 
         # Initialize LMM Interface

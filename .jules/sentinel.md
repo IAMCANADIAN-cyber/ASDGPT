@@ -18,3 +18,22 @@ Previously, daemon threads were used without any cleanup logic. If the user quit
 ## Risks
 - **Shutdown Delay:** Shutdown now takes up to 5 seconds longer if an LMM call is active (timeout set to 5s).
 - **Deadlock Potential:** If a thread refuses to join (e.g., stuck in C-level call without timeout), the `join(timeout=...)` prevents the app from hanging forever, so this risk is mitigated.
+<<<<<<< HEAD
+=======
+
+## 2026-01-29: Initialization Resource Leak
+
+### Failure Mode
+The `Application` class in `main.py` initialized sensors (`VideoSensor`, `AudioSensor`) sequentially in its `__init__` method. If a later sensor failed to initialize (raising an exception), the earlier sensors remained initialized (holding resources like camera handles) but the `Application` instance itself was never returned to the caller. Consequently, the `finally` block in `main` which calls `app.quit_application()` was skipped (because `app` was None), and the `VideoSensor.release()` method was never called. This left the camera device locked until the process was forcibly terminated or the OS cleaned it up.
+
+### Fix
+Wrapped the sensor initialization logic in `Application.__init__` within a `try...except` block. Initialize all sensor attributes to `None` first. In the `except` handler, explicitly check for and release any non-None sensors before re-raising the exception.
+
+### Verification
+Created a reproduction test `tests/test_init_reliability.py` that mocks `AudioSensor` to throw a `RuntimeError` and verifies that `VideoSensor.release()` is called in response.
+
+### Learnings
+- Constructors (`__init__`) that acquire external resources must be atomic or self-cleaning. If they fail, they must clean up partial state.
+- Relying on `finally` blocks in the caller is insufficient if the constructor itself fails and returns nothing.
+- Mocks for system libraries (`pystray`, `sounddevice`) are essential for testing reliability logic in headless CI environments.
+>>>>>>> origin/merge-consolidation-feb-05-12320247635166828082
