@@ -31,6 +31,10 @@ class VideoSensor:
         self.retry_delay = 30  # seconds
         self.last_retry_time = 0
 
+        # Eco Mode State
+        self.frame_count = 0
+        self.last_face_detected_time = 0
+
         self._initialize_camera()
 
         # Load Haarcascade for face detection
@@ -98,6 +102,12 @@ class VideoSensor:
                     self.error_state = True
                     self.last_error_message = "Camera failed to open."
                 else:
+                    # Optimize buffer size for latency (Eco Mode)
+                    try:
+                        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                    except Exception:
+                        pass # Backend might not support it
+
                     self._log_info("Video camera initialized successfully.")
                     self.error_state = False
                     self.last_error_message = ""
@@ -378,19 +388,35 @@ class VideoSensor:
             metrics["video_activity"] = float(raw_activity)
             metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
 
-            # 2. Face Detection (using full size gray frame)
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
+            # 2. Smart Face Check (Eco Mode Optimization)
+            self.frame_count += 1
+            should_run_face_detection = False
+
+            # Always run if activity is high (user moving)
+            if raw_activity > getattr(config, 'VIDEO_WAKE_THRESHOLD', 5.0):
+                should_run_face_detection = True
+            # Always run periodically (Heartbeat - e.g., every 30 frames)
+            elif self.frame_count % 30 == 0:
+                should_run_face_detection = True
+            # Always run if face was recently detected (Hysteresis - e.g., 2 seconds)
+            elif time.time() - self.last_face_detected_time < 2.0:
+                 should_run_face_detection = True
+
+            faces = []
+            if should_run_face_detection:
+                faces = self.face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=5,
+                    minSize=(30, 30)
+                )
 
             metrics["face_detected"] = len(faces) > 0
             metrics["face_count"] = len(faces)
             metrics["face_locations"] = [list(f) for f in faces]
 
             if len(faces) > 0:
+                self.last_face_detected_time = time.time()
                 # Find largest face
                 largest_face = max(faces, key=lambda f: f[2] * f[3])
                 x, y, w, h = largest_face

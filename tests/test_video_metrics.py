@@ -60,6 +60,8 @@ class TestVideoMetrics(unittest.TestCase):
 
         self.mock_cascade.detectMultiScale.side_effect = detect_side_effect
 
+        # Force face detection (bypass Eco Mode optimization)
+        self.video_sensor.frame_count = 29
         metrics = self.video_sensor.process_frame(frame)
 
         self.assertTrue(metrics["face_detected"])
@@ -103,6 +105,8 @@ class TestVideoMetrics(unittest.TestCase):
 
         self.mock_cascade.detectMultiScale.side_effect = detect_side_effect
 
+        # Force face detection (bypass Eco Mode optimization)
+        self.video_sensor.frame_count = 29
         metrics = self.video_sensor.process_frame(frame)
 
         self.assertAlmostEqual(metrics["face_roll_angle"], -45.0, delta=1.0)
