@@ -70,6 +70,27 @@ class TestWindowSensor(unittest.TestCase):
 
     @patch('platform.system')
     @patch('subprocess.run')
+    def test_linux_quotes_in_title(self, mock_subprocess, mock_system):
+        mock_system.return_value = 'Linux'
+
+        mock_res_root = MagicMock()
+        mock_res_root.returncode = 0
+        mock_res_root.stdout = "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x12345"
+
+        mock_res_name = MagicMock()
+        mock_res_name.returncode = 0
+        # Simulate xprop escaping: "My "Project" - Editor" -> "My \"Project\" - Editor"
+        mock_res_name.stdout = 'WM_NAME(STRING) = "My \\"Project\\" - Editor"'
+
+        mock_subprocess.side_effect = [mock_res_root, mock_res_name]
+
+        sensor = WindowSensor(self.mock_logger)
+        title = sensor.get_active_window()
+
+        self.assertEqual(title, 'My "Project" - Editor')
+
+    @patch('platform.system')
+    @patch('subprocess.run')
     def test_macos_success(self, mock_subprocess, mock_system):
         mock_system.return_value = 'Darwin'
 
@@ -108,11 +129,10 @@ class TestWindowSensor(unittest.TestCase):
         self.assertEqual(sensor._sanitize_title(None), "Unknown")
 
     def test_sensitive_app_redaction(self):
-        sensor = WindowSensor(self.mock_logger)
-
         # Patch config.SENSITIVE_APP_KEYWORDS
         test_keywords = ["SecretApp", "Incognito"]
         with patch('sensors.window_sensor.config.SENSITIVE_APP_KEYWORDS', test_keywords):
+            sensor = WindowSensor(self.mock_logger)
             # Test exact match
             self.assertEqual(sensor._sanitize_title("SecretApp"), "[REDACTED_SENSITIVE_APP]")
 
@@ -127,7 +147,12 @@ class TestWindowSensor(unittest.TestCase):
 
             # Test no match
             self.assertEqual(sensor._sanitize_title("Normal App"), "Normal App")
-        # Test known sensitive keywords
+
+        # Test known sensitive keywords (using default list since we are out of patch context)
+        # We need a new sensor instance to pick up defaults from config (which is not patched here, or is patched with original if we rely on sys.modules)
+        # Actually, since config is global, and we unpatched it, instantiating now should pick up real config.
+        sensor_defaults = WindowSensor(self.mock_logger)
+
         sensitive_titles = [
             "KeePassXC - Database.kdbx",
             "Bitwarden - My Vault",
@@ -140,7 +165,7 @@ class TestWindowSensor(unittest.TestCase):
         ]
 
         for title in sensitive_titles:
-            sanitized = sensor._sanitize_title(title)
+            sanitized = sensor_defaults._sanitize_title(title)
             self.assertEqual(sanitized, "[REDACTED_SENSITIVE_APP]", f"Failed to redact: {title}")
 
         # Test safe titles

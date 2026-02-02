@@ -4,19 +4,21 @@ import re
 import sys
 import os
 import logging
-from typing import Optional
-import config
 from typing import Optional, List
+import config
 
 class WindowSensor:
     def __init__(self, logger: Optional[logging.Logger] = None):
         self.logger = logger
         self.os_type = platform.system()
-        # Define sensitive keywords (case-insensitive checks)
-        self.sensitive_keywords: List[str] = [
-            "password", "keepass", "bitwarden", "1password",
-            "lastpass", "vault", "private", "incognito", "tor browser"
-        ]
+        # Initialize sensitive keywords from config or defaults
+        self.sensitive_keywords: List[str] = getattr(config, 'SENSITIVE_APP_KEYWORDS', [])
+        if not self.sensitive_keywords:
+             # Fallback defaults if config is empty/missing
+             self.sensitive_keywords = [
+                "password", "keepass", "bitwarden", "1password",
+                "lastpass", "vault", "private", "incognito", "tor browser"
+            ]
         self._setup_platform()
 
     def _setup_platform(self):
@@ -101,12 +103,16 @@ class WindowSensor:
             # Output: WM_NAME(STRING) = "Title"
             # or WM_NAME(UTF8_STRING) = "Title"
             output = name_res.stdout.strip()
-            # Find the first quote
-            first_quote = output.find('"')
-            last_quote = output.rfind('"')
 
-            if first_quote != -1 and last_quote != -1 and last_quote > first_quote:
-                return output[first_quote+1 : last_quote]
+            # Regex to capture the content inside the quotes
+            # Handle cases where the title itself contains escaped quotes
+            # xprop outputs: WM_NAME(STRING) = "My \"Project\""
+            match = re.search(r'WM_NAME\(.*?\) = "(.*)"', output)
+            if match:
+                title = match.group(1)
+                # Unescape quotes (xprop escapes internal quotes)
+                title = title.replace('\\"', '"')
+                return title
 
         except FileNotFoundError:
             # xprop not installed
@@ -147,7 +153,7 @@ class WindowSensor:
         """Checks if the window title indicates a sensitive application."""
         title_lower = title.lower()
         for keyword in self.sensitive_keywords:
-            if keyword in title_lower:
+            if keyword.lower() in title_lower:
                 return True
         return False
 
@@ -156,27 +162,16 @@ class WindowSensor:
             return "Unknown"
 
         # 1. Redact Sensitive App Names
-        if hasattr(config, 'SENSITIVE_APP_KEYWORDS'):
-            title_lower = title.lower()
-            for keyword in config.SENSITIVE_APP_KEYWORDS:
-                if keyword.lower() in title_lower:
-                    return "[REDACTED_SENSITIVE_APP]"
-
-        # 2. Redact Email Addresses
-        # Basic regex for email
-        title = re.sub(r'[\w\.-]+@[\w\.-]+\.\w+', '[EMAIL_REDACTED]', title)
-        # 0. Check for Sensitive Apps first
         if self._is_sensitive_app(title):
             return "[REDACTED_SENSITIVE_APP]"
 
-        # 1. Redact Email Addresses
-        # Improved regex for email (handles subdomains and common TLDs)
+        # 2. Redact Email Addresses (Improved Regex)
         title = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '[EMAIL_REDACTED]', title)
 
         # 3. Redact File Paths
         # Windows paths (e.g. C:\Users\...)
         title = re.sub(r'[a-zA-Z]:\\[\w\\\.\s-]+', '[PATH_REDACTED]', title)
-        # Unix paths (e.g. /home/user/...) - Be careful not to match simple words, look for at least 2 levels
+        # Unix paths (e.g. /home/user/...)
         title = re.sub(r'/(?:[\w\.-]+/){2,}[\w\.-]+', '[PATH_REDACTED]', title)
 
         return title.strip()
