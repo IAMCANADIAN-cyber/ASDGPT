@@ -1,5 +1,12 @@
 import unittest
+import sys
 from unittest.mock import MagicMock
+
+# Mock pystray and PIL before importing core.system_tray
+sys.modules['pystray'] = MagicMock()
+sys.modules['PIL'] = MagicMock()
+sys.modules['PIL.Image'] = MagicMock()
+
 from core.system_tray import ACRTrayIcon
 import config
 
@@ -25,9 +32,9 @@ class TestTooltip(unittest.TestCase):
         tray.update_tooltip(state)
         # We expect:
         # ACR
-        # A:65 O:20 F:80
-        # E:42 M:55
-        expected = f"{config.APP_NAME}\nA:65 O:20 F:80\nE:42 M:55"
+        # A: 65 O: 20 F: 80
+        # E: 42 M: 55
+        expected = f"{config.APP_NAME}\nA: 65 O: 20 F: 80\nE: 42 M: 55"
         self.assertEqual(tray.tray_icon.title, expected)
 
         # Test with partial state
@@ -35,9 +42,9 @@ class TestTooltip(unittest.TestCase):
         tray.update_tooltip(partial_state)
         # We expect:
         # ACR
-        # A:30
-        # E:90
-        expected_partial = f"{config.APP_NAME}\nA:30\nE:90"
+        # A: 30 O: ? F: ?
+        # E: 90 M: ?
+        expected_partial = f"{config.APP_NAME}\nA: 30 O: ? F: ?\nE: 90 M: ?"
         self.assertEqual(tray.tray_icon.title, expected_partial)
 
         print("Tooltip verification passed!")
