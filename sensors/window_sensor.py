@@ -143,33 +143,24 @@ class WindowSensor:
 
         return "Unknown"
 
-    def _is_sensitive_app(self, title: str) -> bool:
-        """Checks if the window title indicates a sensitive application."""
-        title_lower = title.lower()
-        for keyword in self.sensitive_keywords:
-            if keyword in title_lower:
-                return True
-        return False
-
     def _sanitize_title(self, title: str) -> str:
         if not title or title == "Unknown":
             return "Unknown"
 
-        # 1. Redact Sensitive App Names
+        # 1. Check for Sensitive Apps (Config + Internal)
+        sensitive_keywords = self.sensitive_keywords.copy()
         if hasattr(config, 'SENSITIVE_APP_KEYWORDS'):
-            title_lower = title.lower()
-            for keyword in config.SENSITIVE_APP_KEYWORDS:
-                if keyword.lower() in title_lower:
-                    return "[REDACTED_SENSITIVE_APP]"
+             # print(f"DEBUG: Found config.SENSITIVE_APP_KEYWORDS: {config.SENSITIVE_APP_KEYWORDS}")
+             sensitive_keywords.extend(config.SENSITIVE_APP_KEYWORDS)
+        # else:
+             # print("DEBUG: config has no SENSITIVE_APP_KEYWORDS")
+
+        title_lower = title.lower()
+        for keyword in set(sensitive_keywords):
+             if keyword.lower() in title_lower:
+                  return "[REDACTED_SENSITIVE_APP]"
 
         # 2. Redact Email Addresses
-        # Basic regex for email
-        title = re.sub(r'[\w\.-]+@[\w\.-]+\.\w+', '[EMAIL_REDACTED]', title)
-        # 0. Check for Sensitive Apps first
-        if self._is_sensitive_app(title):
-            return "[REDACTED_SENSITIVE_APP]"
-
-        # 1. Redact Email Addresses
         # Improved regex for email (handles subdomains and common TLDs)
         title = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '[EMAIL_REDACTED]', title)
 
