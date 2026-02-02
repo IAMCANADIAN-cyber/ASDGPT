@@ -26,3 +26,9 @@
 *   **Heuristics Win**: The "Meeting Mode" heuristic (Speech + Face + Idle) proved effective, validating that complex high-level states can often be approximated by composite low-level signals without deep ML models.
 *   **Pivot to Context**: With resilience established, the next friction point is "Context". The system treats "Coding" the same as "Watching Netflix". Detecting active windows (`WindowSensor`) is the critical next step to differentiate productivity from passivity.
 *   **Efficiency**: As we add more sensors, `VideoSensor` CPU usage is becoming a concern. "Eco Mode" (Dynamic FPS) is necessary to keep the lightweight promise.
+
+## Weekly Refresh (2026-02-05)
+*   **Execution Velocity**: The implementation of `WindowSensor` and `Eco Mode` was swift and accurate. The code structure in `main.py` and `LogicEngine` accommodated these changes well.
+*   **Context Amnesia**: While we now have `active_window`, the LMM sees it as a single snapshot. It lacks the "narrative" of the session (e.g., "User was coding for 2 hours, then switched to Reddit"). We need **Context History** to enable smarter interventions.
+*   **Test Hygiene**: The repository is accumulating artifacts (`captures/`, `*.log`, `__pycache__`) and flaky tests are emerging. A dedicated cleanup tool and harness verification are needed to maintain Navigator velocity.
+*   **Reflexive Triggers**: Relying solely on the LMM for "Doom Scroll" detection via visual tags is too slow. We should use the new `active_window` data for immediate, rule-based "Reflexive Triggers" (e.g., specific game or social media titles).

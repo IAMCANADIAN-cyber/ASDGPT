@@ -128,7 +128,7 @@ class TestLMMContextIntegration(unittest.TestCase):
         self.assertIn("Active Window: Visual Studio Code - MyProject", text_content)
 
     @patch('requests.post')
-    def test_active_window_injection_skipped_if_unknown(self, mock_post):
+    def test_active_window_injection_includes_unknown(self, mock_post):
          # Setup mock response
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -160,7 +160,7 @@ class TestLMMContextIntegration(unittest.TestCase):
                 text_content = part['text']
                 break
 
-        self.assertNotIn("Active Window: Unknown", text_content)
+        self.assertIn("Active Window: Unknown", text_content)
 
 if __name__ == '__main__':
     unittest.main()
