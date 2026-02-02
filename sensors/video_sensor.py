@@ -23,6 +23,10 @@ class VideoSensor:
             "horizontal_position": collections.deque(maxlen=history_size)
         }
 
+        # Smart Check Logic State
+        self.last_face_check_time = 0
+        self.cached_face_metrics = {}
+
         self._lock = threading.RLock()
 
         # Error handling / Recovery state
@@ -378,34 +382,64 @@ class VideoSensor:
             metrics["video_activity"] = float(raw_activity)
             metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
 
-            # 2. Face Detection (using full size gray frame)
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
+            # --- Smart Face Check Logic ---
+            wake_threshold = getattr(config, 'VIDEO_WAKE_THRESHOLD', 5.0)
+            heartbeat_interval = getattr(config, 'VIDEO_ECO_HEARTBEAT_INTERVAL', 1.0)
+            current_time = time.time()
 
-            metrics["face_detected"] = len(faces) > 0
-            metrics["face_count"] = len(faces)
-            metrics["face_locations"] = [list(f) for f in faces]
+            should_check_face = False
 
-            if len(faces) > 0:
-                # Find largest face
-                largest_face = max(faces, key=lambda f: f[2] * f[3])
-                x, y, w, h = largest_face
+            # 1. Activity Spike?
+            if raw_activity > wake_threshold:
+                should_check_face = True
+            # 2. Heartbeat due?
+            elif current_time - self.last_face_check_time >= heartbeat_interval:
+                should_check_face = True
+            # 3. No cache?
+            elif not self.cached_face_metrics:
+                should_check_face = True
 
-                img_h, img_w = frame.shape[:2]
+            if should_check_face:
+                # 2. Face Detection (using full size gray frame)
+                faces = self.face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=5,
+                    minSize=(30, 30)
+                )
 
-                metrics["face_size_ratio"] = float(w) / img_w
-                metrics["vertical_position"] = float(y + h/2) / img_h
-                metrics["horizontal_position"] = float(x + w/2) / img_w
+                metrics["face_detected"] = len(faces) > 0
+                metrics["face_count"] = len(faces)
+                metrics["face_locations"] = [list(f) for f in faces]
 
-                # Head Tilt Estimation (Face Roll)
-                face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+                if len(faces) > 0:
+                    # Find largest face
+                    largest_face = max(faces, key=lambda f: f[2] * f[3])
+                    x, y, w, h = largest_face
 
-                self._calculate_posture(metrics)
+                    img_h, img_w = frame.shape[:2]
+
+                    metrics["face_size_ratio"] = float(w) / img_w
+                    metrics["vertical_position"] = float(y + h/2) / img_h
+                    metrics["horizontal_position"] = float(x + w/2) / img_w
+
+                    # Head Tilt Estimation (Face Roll)
+                    face_roi_gray = gray[y:y+h, x:x+w]
+                    metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+
+                    self._calculate_posture(metrics)
+
+                # Update Cache & Timestamp
+                self.last_face_check_time = current_time
+                # Store only face-related keys
+                face_keys = ["face_detected", "face_count", "face_locations",
+                             "face_size_ratio", "vertical_position", "horizontal_position",
+                             "face_roll_angle", "posture_state"]
+                self.cached_face_metrics = {k: metrics.get(k) for k in face_keys}
+
+            else:
+                # Use cached metrics
+                metrics.update(self.cached_face_metrics)
 
         except Exception as e:
             self._log_error(f"Error processing frame: {e}")
