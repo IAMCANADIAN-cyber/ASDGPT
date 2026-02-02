@@ -39,3 +39,8 @@
 **Learning:** While `WindowSensor` was implemented and collecting data, the `LMMInterface` was not using this data in the prompt construction. This meant the "Context Intelligence" milestone was effectively stalled at the integration layer.
 **Action:** Updated `core/lmm_interface.py` to inject `active_window` into the prompt and updated `core/prompts/v1.py` with guidance for the LLM. Added `tests/test_lmm_interface.py` verification.
 **Hygiene:** Test execution failed initially due to missing `python-dotenv` in the environment. Ensuring `pip install -r requirements.txt` is run before testing is critical in this environment.
+
+## 2026-02-05 - [Video Eco Mode Logic]
+**Learning:** `VideoSensor` internal state preservation is critical for optimizations like 'Smart Face Check'. When implementing caching logic (skipping frames), one must ensure that non-expensive metrics (like `video_activity`) are still calculated every frame to maintain system responsiveness (e.g., wake-on-motion).
+**Action:** Implemented 'Smart Face Check' in `VideoSensor` using `cached_face_metrics` while ensuring `raw_activity` is computed on every frame. Verified with `tests/test_video_eco_logic.py`.
+**Refinement:** Standardized configuration access to direct lookups (e.g., `config.VIDEO_ECO_HEARTBEAT_INTERVAL`) rather than defensive `getattr`, as the config variables are guaranteed to exist after patching `config.py`.
