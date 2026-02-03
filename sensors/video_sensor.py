@@ -23,6 +23,22 @@ class VideoSensor:
             "horizontal_position": collections.deque(maxlen=history_size)
         }
 
+        # Cache for Eco Mode (Smart Face Check)
+        self.cached_face_metrics = {
+            "face_detected": False,
+            "face_count": 0,
+            "face_locations": [],
+            "face_size_ratio": 0.0,
+            "vertical_position": 0.0,
+            "horizontal_position": 0.0,
+            "face_roll_angle": 0.0,
+            "posture_state": "neutral",
+            "video_activity": 0.0,
+            "normalized_activity": 0.0,
+            "timestamp": 0
+        }
+        self.last_face_check_time = 0
+
         self._lock = threading.RLock()
 
         # Error handling / Recovery state
@@ -352,6 +368,7 @@ class VideoSensor:
 
         Returns a dictionary with all metrics.
         """
+        current_time = time.time()
         metrics = {
             "video_activity": 0.0,      # Raw mean diff (0-255)
             "normalized_activity": 0.0, # Normalized (0.0-1.0)
@@ -363,7 +380,7 @@ class VideoSensor:
             "horizontal_position": 0.0,
             "face_roll_angle": 0.0,
             "posture_state": "neutral",
-            "timestamp": time.time()
+            "timestamp": current_time
         }
 
         if frame is None:
@@ -372,13 +389,28 @@ class VideoSensor:
         try:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-            # 1. Activity Calculation
+            # 1. Activity Calculation (Always run this)
             gray_small = cv2.resize(gray, (100, 100))
             raw_activity = self.calculate_raw_activity(gray_small)
             metrics["video_activity"] = float(raw_activity)
             metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
 
-            # 2. Face Detection (using full size gray frame)
+            # 2. Smart Face Check (Eco Mode Optimization)
+            # If low activity and not time for heartbeat, skip expensive detection
+            wake_threshold = config.VIDEO_WAKE_THRESHOLD
+            heartbeat_interval = config.VIDEO_ECO_HEARTBEAT_INTERVAL
+
+            time_since_check = current_time - self.last_face_check_time
+
+            if metrics["video_activity"] < wake_threshold and time_since_check < heartbeat_interval:
+                # Use cached face metrics, but update activity and timestamp
+                cached_metrics = self.cached_face_metrics.copy()
+                cached_metrics["video_activity"] = metrics["video_activity"]
+                cached_metrics["normalized_activity"] = metrics["normalized_activity"]
+                cached_metrics["timestamp"] = current_time
+                return cached_metrics
+
+            # 3. Face Detection (using full size gray frame)
             faces = self.face_cascade.detectMultiScale(
                 gray,
                 scaleFactor=1.1,
@@ -406,6 +438,10 @@ class VideoSensor:
                 metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
 
                 self._calculate_posture(metrics)
+
+            # Update Cache and Timestamp
+            self.cached_face_metrics = metrics.copy()
+            self.last_face_check_time = current_time
 
         except Exception as e:
             self._log_error(f"Error processing frame: {e}")
