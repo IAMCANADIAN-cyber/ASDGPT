@@ -15,6 +15,19 @@ class VideoSensor:
         self.cap = None
         self.last_frame = None
 
+        # Smart Face Check state
+        self.last_face_check_time = 0
+        self.cached_face_metrics = {
+            "face_detected": False,
+            "face_count": 0,
+            "face_locations": [],
+            "face_size_ratio": 0.0,
+            "vertical_position": 0.0,
+            "horizontal_position": 0.0,
+            "face_roll_angle": 0.0,
+            "posture_state": "neutral"
+        }
+
         # History buffers for smoothing
         self.history_size = history_size
         self.history = {
@@ -348,7 +361,7 @@ class VideoSensor:
         """
         Comprehensive frame processing:
         - Activity calculation (Raw and Normalized)
-        - Face detection and metrics
+        - Face detection and metrics (Smart Face Check supported)
 
         Returns a dictionary with all metrics.
         """
@@ -378,34 +391,67 @@ class VideoSensor:
             metrics["video_activity"] = float(raw_activity)
             metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
 
-            # 2. Face Detection (using full size gray frame)
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
+            # 2. Smart Face Check Logic
+            # Trigger conditions: High activity OR Heartbeat timeout
+            should_detect = False
+            current_time = time.time()
 
-            metrics["face_detected"] = len(faces) > 0
-            metrics["face_count"] = len(faces)
-            metrics["face_locations"] = [list(f) for f in faces]
+            # Trigger 1: High activity (e.g. user moved significantly)
+            if metrics["video_activity"] > config.VIDEO_WAKE_THRESHOLD:
+                should_detect = True
 
-            if len(faces) > 0:
-                # Find largest face
-                largest_face = max(faces, key=lambda f: f[2] * f[3])
-                x, y, w, h = largest_face
+            # Trigger 2: Heartbeat (check periodically even if idle)
+            elif current_time - self.last_face_check_time > getattr(config, 'VIDEO_ECO_HEARTBEAT_INTERVAL', 1.0):
+                should_detect = True
 
-                img_h, img_w = frame.shape[:2]
+            if should_detect:
+                # Run Face Detection
+                faces = self.face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=5,
+                    minSize=(30, 30)
+                )
 
-                metrics["face_size_ratio"] = float(w) / img_w
-                metrics["vertical_position"] = float(y + h/2) / img_h
-                metrics["horizontal_position"] = float(x + w/2) / img_w
+                metrics["face_detected"] = len(faces) > 0
+                metrics["face_count"] = len(faces)
+                metrics["face_locations"] = [list(f) for f in faces]
 
-                # Head Tilt Estimation (Face Roll)
-                face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+                if len(faces) > 0:
+                    # Find largest face
+                    largest_face = max(faces, key=lambda f: f[2] * f[3])
+                    x, y, w, h = largest_face
 
-                self._calculate_posture(metrics)
+                    img_h, img_w = frame.shape[:2]
+
+                    metrics["face_size_ratio"] = float(w) / img_w
+                    metrics["vertical_position"] = float(y + h/2) / img_h
+                    metrics["horizontal_position"] = float(x + w/2) / img_w
+
+                    # Head Tilt Estimation (Face Roll)
+                    face_roi_gray = gray[y:y+h, x:x+w]
+                    metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+
+                    self._calculate_posture(metrics)
+
+                # Update Cache
+                self.cached_face_metrics = {
+                    "face_detected": metrics["face_detected"],
+                    "face_count": metrics["face_count"],
+                    "face_locations": metrics["face_locations"],
+                    "face_size_ratio": metrics["face_size_ratio"],
+                    "vertical_position": metrics["vertical_position"],
+                    "horizontal_position": metrics["horizontal_position"],
+                    "face_roll_angle": metrics["face_roll_angle"],
+                    "posture_state": metrics["posture_state"]
+                }
+                self.last_face_check_time = current_time
+
+            else:
+                # Use Cache
+                # We merge cached face metrics with current activity metrics
+                metrics.update(self.cached_face_metrics)
+                # self._log_info("Smart Face Check: Skipping detection (Eco Mode).") # Debug logging if needed
 
         except Exception as e:
             self._log_error(f"Error processing frame: {e}")
