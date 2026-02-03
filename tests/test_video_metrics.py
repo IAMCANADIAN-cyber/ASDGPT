@@ -135,5 +135,60 @@ class TestVideoMetrics(unittest.TestCase):
         self.assertEqual(analysis.get("vertical_position"), 0.8)
         self.assertEqual(analysis.get("normalized_activity"), 0.5)
 
+    def test_posture_leaning_forward(self):
+        # Frame 100x100
+        frame = np.zeros((100, 100, 3), dtype=np.uint8)
+        # Face: 50x50 -> Width Ratio 0.5 (> 0.45)
+        # Position: y=25, h=50. Center = 50. 50/100 = 0.5 (Neutral vertical)
+        self.video_sensor.face_cascade.detectMultiScale.return_value = [[25, 25, 50, 50]]
+
+        metrics = self.video_sensor.analyze_frame(frame)
+
+        self.assertIn("face_size_ratio", metrics)
+        self.assertAlmostEqual(metrics["face_size_ratio"], 0.5)
+        self.assertEqual(metrics["posture_state"], "leaning_forward")
+
+    def test_posture_leaning_back(self):
+        frame = np.zeros((100, 100, 3), dtype=np.uint8)
+        # Face: 10x10 -> Width Ratio 0.1 (< 0.15)
+        self.video_sensor.face_cascade.detectMultiScale.return_value = [[45, 45, 10, 10]]
+
+        metrics = self.video_sensor.analyze_frame(frame)
+
+        self.assertAlmostEqual(metrics["face_size_ratio"], 0.1)
+        self.assertEqual(metrics["posture_state"], "leaning_back")
+
+    def test_posture_slouching(self):
+        # Face at bottom
+        frame = np.zeros((100, 100, 3), dtype=np.uint8)
+        # x=25, y=60, w=50, h=50
+        # Center Y = 60 + 25 = 85 -> 0.85 (> 0.65 threshold)
+        self.video_sensor.face_cascade.detectMultiScale.return_value = [[25, 60, 50, 50]]
+
+        metrics = self.video_sensor.analyze_frame(frame)
+
+        self.assertIn("vertical_position", metrics)
+        self.assertAlmostEqual(metrics["vertical_position"], 0.85)
+
+        # Let's make the face smaller for pure slouching test
+        # Size 30 (0.3) -> Neutral size
+        # Position 70 -> Center 85 (0.85) -> Slouching
+        self.video_sensor.face_cascade.detectMultiScale.return_value = [[35, 70, 30, 30]]
+        metrics = self.video_sensor.analyze_frame(frame)
+        self.assertEqual(metrics["posture_state"], "slouching")
+
+    def test_no_face_detected(self):
+        frame = np.zeros((100, 100, 3), dtype=np.uint8)
+        self.video_sensor.face_cascade.detectMultiScale.return_value = []
+
+        metrics = self.video_sensor.analyze_frame(frame)
+
+        self.assertFalse(metrics["face_detected"])
+        self.assertEqual(metrics["face_count"], 0)
+        # These keys should exist but be 0.0, because analyze_frame always populates them
+        self.assertEqual(metrics["face_size_ratio"], 0.0)
+        self.assertEqual(metrics["vertical_position"], 0.0)
+        self.assertEqual(metrics["horizontal_position"], 0.0)
+
 if __name__ == '__main__':
     unittest.main()
