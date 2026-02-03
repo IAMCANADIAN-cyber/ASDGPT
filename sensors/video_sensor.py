@@ -31,6 +31,19 @@ class VideoSensor:
         self.retry_delay = 30  # seconds
         self.last_retry_time = 0
 
+        # Smart Face Check state
+        self.last_face_check_time = 0
+        self.cached_face_metrics = {
+            "face_detected": False,
+            "face_count": 0,
+            "face_locations": [],
+            "face_size_ratio": 0.0,
+            "vertical_position": 0.0,
+            "horizontal_position": 0.0,
+            "face_roll_angle": 0.0,
+            "posture_state": "neutral"
+        }
+
         self._initialize_camera()
 
         # Load Haarcascade for face detection
@@ -378,34 +391,52 @@ class VideoSensor:
             metrics["video_activity"] = float(raw_activity)
             metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
 
-            # 2. Face Detection (using full size gray frame)
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
+            # 2. Smart Face Check logic
+            # Only run expensive face detection if:
+            # a) Significant motion (activity > threshold)
+            # b) Periodic heartbeat interval elapsed (ensure we don't miss a silent face)
+            should_run_detection = (
+                metrics["video_activity"] > config.VIDEO_WAKE_THRESHOLD or
+                (time.time() - self.last_face_check_time) > config.VIDEO_ECO_HEARTBEAT_INTERVAL
             )
 
-            metrics["face_detected"] = len(faces) > 0
-            metrics["face_count"] = len(faces)
-            metrics["face_locations"] = [list(f) for f in faces]
+            if should_run_detection:
+                faces = self.face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=5,
+                    minSize=(30, 30)
+                )
 
-            if len(faces) > 0:
-                # Find largest face
-                largest_face = max(faces, key=lambda f: f[2] * f[3])
-                x, y, w, h = largest_face
+                metrics["face_detected"] = len(faces) > 0
+                metrics["face_count"] = len(faces)
+                metrics["face_locations"] = [list(f) for f in faces]
 
-                img_h, img_w = frame.shape[:2]
+                if len(faces) > 0:
+                    # Find largest face
+                    largest_face = max(faces, key=lambda f: f[2] * f[3])
+                    x, y, w, h = largest_face
 
-                metrics["face_size_ratio"] = float(w) / img_w
-                metrics["vertical_position"] = float(y + h/2) / img_h
-                metrics["horizontal_position"] = float(x + w/2) / img_w
+                    img_h, img_w = frame.shape[:2]
 
-                # Head Tilt Estimation (Face Roll)
-                face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+                    metrics["face_size_ratio"] = float(w) / img_w
+                    metrics["vertical_position"] = float(y + h/2) / img_h
+                    metrics["horizontal_position"] = float(x + w/2) / img_w
 
-                self._calculate_posture(metrics)
+                    # Head Tilt Estimation (Face Roll)
+                    face_roi_gray = gray[y:y+h, x:x+w]
+                    metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+
+                    self._calculate_posture(metrics)
+
+                # Update cache and timestamp
+                self.last_face_check_time = time.time()
+                # Create a cacheable dict (copy relevant fields)
+                self.cached_face_metrics = {k: v for k, v in metrics.items() if k in self.cached_face_metrics}
+
+            else:
+                # Use cached metrics
+                metrics.update(self.cached_face_metrics)
 
         except Exception as e:
             self._log_error(f"Error processing frame: {e}")

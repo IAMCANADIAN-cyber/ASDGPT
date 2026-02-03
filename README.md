@@ -74,6 +74,7 @@ LOCAL_LLM_URL=http://localhost:1234/v1/chat/completions
 *   `CAMERA_INDEX`: Index of the camera to use (Default: 0)
 *   `AUDIO_THRESHOLD_HIGH`: RMS threshold for high audio levels (Default: 0.5)
 *   `VIDEO_ACTIVITY_THRESHOLD_HIGH`: Threshold for high video activity (Default: 20.0)
+*   `VIDEO_ECO_HEARTBEAT_INTERVAL`: Interval in seconds to force a face check during low activity (Default: 1.0)
 *   `VAD_SILENCE_THRESHOLD`: RMS threshold for silence (Default: 0.01)
 
 **LMM Integration**
