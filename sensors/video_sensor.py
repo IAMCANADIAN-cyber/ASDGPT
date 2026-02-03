@@ -31,6 +31,20 @@ class VideoSensor:
         self.retry_delay = 30  # seconds
         self.last_retry_time = 0
 
+        # Eco Mode State
+        self.last_face_check_time = 0
+        self.cached_face_metrics = {
+            "face_detected": False,
+            "face_count": 0,
+            "face_locations": [],
+            "face_size_ratio": 0.0,
+            "vertical_position": 0.0,
+            "horizontal_position": 0.0,
+            "face_roll_angle": 0.0,
+            "posture_state": "neutral",
+            "timestamp": 0
+        }
+
         self._initialize_camera()
 
         # Load Haarcascade for face detection
@@ -378,6 +392,19 @@ class VideoSensor:
             metrics["video_activity"] = float(raw_activity)
             metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
 
+            # --- Smart Face Check (Eco Mode Logic) ---
+            wake_threshold = getattr(config, 'VIDEO_WAKE_THRESHOLD', 5.0)
+            heartbeat_interval = getattr(config, 'VIDEO_ECO_HEARTBEAT_INTERVAL', 1.0)
+            time_since_check = time.time() - self.last_face_check_time
+
+            # If activity is low AND we checked recently, SKIP detection
+            if raw_activity < wake_threshold and time_since_check < heartbeat_interval:
+                # Return cached metrics but update real-time activity fields
+                self.cached_face_metrics["video_activity"] = metrics["video_activity"]
+                self.cached_face_metrics["normalized_activity"] = metrics["normalized_activity"]
+                self.cached_face_metrics["timestamp"] = time.time()
+                return self.cached_face_metrics.copy()
+
             # 2. Face Detection (using full size gray frame)
             faces = self.face_cascade.detectMultiScale(
                 gray,
@@ -406,6 +433,10 @@ class VideoSensor:
                 metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
 
                 self._calculate_posture(metrics)
+
+            # Update cache
+            self.cached_face_metrics = metrics.copy()
+            self.last_face_check_time = time.time()
 
         except Exception as e:
             self._log_error(f"Error processing frame: {e}")

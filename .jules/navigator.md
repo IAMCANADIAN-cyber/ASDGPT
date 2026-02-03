@@ -39,3 +39,8 @@
 **Learning:** While `WindowSensor` was implemented and collecting data, the `LMMInterface` was not using this data in the prompt construction. This meant the "Context Intelligence" milestone was effectively stalled at the integration layer.
 **Action:** Updated `core/lmm_interface.py` to inject `active_window` into the prompt and updated `core/prompts/v1.py` with guidance for the LLM. Added `tests/test_lmm_interface.py` verification.
 **Hygiene:** Test execution failed initially due to missing `python-dotenv` in the environment. Ensuring `pip install -r requirements.txt` is run before testing is critical in this environment.
+
+## 2026-02-03 - [Smart Face Check Implementation]
+Learning: Implemented "Smart Face Check" in `VideoSensor` to skip expensive `detectMultiScale` calls during low activity, optimizing CPU usage for Eco Mode.
+Action: Updated `sensors/video_sensor.py` and `config.py`. Added `tests/test_video_eco_smart.py` to verify the logic.
+Pitfall: `unittest.mock.MagicMock` has a default length of 0, which caused initial test failures when mocking `detectMultiScale`. Explicitly setting `.return_value` or understanding this behavior is crucial when testing iterables.
