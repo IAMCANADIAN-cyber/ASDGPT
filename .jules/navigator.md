@@ -39,3 +39,8 @@
 **Learning:** While `WindowSensor` was implemented and collecting data, the `LMMInterface` was not using this data in the prompt construction. This meant the "Context Intelligence" milestone was effectively stalled at the integration layer.
 **Action:** Updated `core/lmm_interface.py` to inject `active_window` into the prompt and updated `core/prompts/v1.py` with guidance for the LLM. Added `tests/test_lmm_interface.py` verification.
 **Hygiene:** Test execution failed initially due to missing `python-dotenv` in the environment. Ensuring `pip install -r requirements.txt` is run before testing is critical in this environment.
+
+## 2026-02-05 - [Smart Face Check & Eco Mode]
+**Learning:** Implemented "Smart Face Check" to reduce CPU usage. The implementation required adding `VIDEO_ECO_HEARTBEAT_INTERVAL` to `config.py` and updating `VideoSensor` to skip `detectMultiScale` when activity is low.
+**Pitfall:** A potential runtime error was avoided by verifying that `VIDEO_WAKE_THRESHOLD` (used in the logic) was already present in `config.py`, despite not being modified in the current plan. Configuration dependencies must be checked exhaustively.
+**Action:** Added `VIDEO_ECO_HEARTBEAT_INTERVAL` to `config.py`, updated `sensors/video_sensor.py`, and added `tests/test_video_eco_smart.py`.

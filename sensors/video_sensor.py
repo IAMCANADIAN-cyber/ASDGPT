@@ -15,6 +15,22 @@ class VideoSensor:
         self.cap = None
         self.last_frame = None
 
+        # Smart Face Check state
+        self.last_face_check_time = 0
+        self.cached_face_metrics = {
+            "face_detected": False,
+            "face_count": 0,
+            "face_locations": [],
+            "face_size_ratio": 0.0,
+            "vertical_position": 0.0,
+            "horizontal_position": 0.0,
+            "face_roll_angle": 0.0,
+            "posture_state": "neutral",
+            "video_activity": 0.0,
+            "normalized_activity": 0.0,
+            "timestamp": 0
+        }
+
         # History buffers for smoothing
         self.history_size = history_size
         self.history = {
@@ -378,34 +394,60 @@ class VideoSensor:
             metrics["video_activity"] = float(raw_activity)
             metrics["normalized_activity"] = min(1.0, raw_activity / 50.0)
 
-            # 2. Face Detection (using full size gray frame)
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
-            )
+            # Smart Face Check Logic
+            # Skip detection if activity is low and we checked recently
+            now = time.time()
+            should_detect = True
 
-            metrics["face_detected"] = len(faces) > 0
-            metrics["face_count"] = len(faces)
-            metrics["face_locations"] = [list(f) for f in faces]
+            if hasattr(config, 'VIDEO_ECO_HEARTBEAT_INTERVAL'):
+                 time_since_last_check = now - self.last_face_check_time
+                 # If activity is low AND we haven't exceeded the heartbeat time
+                 if raw_activity < config.VIDEO_WAKE_THRESHOLD and time_since_last_check < config.VIDEO_ECO_HEARTBEAT_INTERVAL:
+                     should_detect = False
 
-            if len(faces) > 0:
-                # Find largest face
-                largest_face = max(faces, key=lambda f: f[2] * f[3])
-                x, y, w, h = largest_face
+            if should_detect:
+                # 2. Face Detection (using full size gray frame)
+                faces = self.face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=5,
+                    minSize=(30, 30)
+                )
 
-                img_h, img_w = frame.shape[:2]
+                metrics["face_detected"] = len(faces) > 0
+                metrics["face_count"] = len(faces)
+                metrics["face_locations"] = [list(f) for f in faces]
 
-                metrics["face_size_ratio"] = float(w) / img_w
-                metrics["vertical_position"] = float(y + h/2) / img_h
-                metrics["horizontal_position"] = float(x + w/2) / img_w
+                if len(faces) > 0:
+                    # Find largest face
+                    largest_face = max(faces, key=lambda f: f[2] * f[3])
+                    x, y, w, h = largest_face
 
-                # Head Tilt Estimation (Face Roll)
-                face_roi_gray = gray[y:y+h, x:x+w]
-                metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+                    img_h, img_w = frame.shape[:2]
 
-                self._calculate_posture(metrics)
+                    metrics["face_size_ratio"] = float(w) / img_w
+                    metrics["vertical_position"] = float(y + h/2) / img_h
+                    metrics["horizontal_position"] = float(x + w/2) / img_w
+
+                    # Head Tilt Estimation (Face Roll)
+                    face_roi_gray = gray[y:y+h, x:x+w]
+                    metrics["face_roll_angle"] = self._calculate_head_tilt(face_roi_gray, w, h)
+
+                    self._calculate_posture(metrics)
+
+                # Update cache
+                self.cached_face_metrics = metrics.copy()
+                self.last_face_check_time = now
+
+            else:
+                # Use cached metrics but update activity and timestamp
+                current_activity = metrics["video_activity"]
+                current_norm_activity = metrics["normalized_activity"]
+
+                metrics = self.cached_face_metrics.copy()
+                metrics["video_activity"] = current_activity
+                metrics["normalized_activity"] = current_norm_activity
+                metrics["timestamp"] = now
 
         except Exception as e:
             self._log_error(f"Error processing frame: {e}")
