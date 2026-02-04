@@ -2,6 +2,7 @@ import time
 import config
 import threading
 from typing import Optional, Callable, Any
+from collections import deque
 import numpy as np
 import cv2
 import base64
@@ -80,6 +81,10 @@ class LogicEngine:
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
+
+        # Context History (for LMM narrative)
+        self.context_history = deque(maxlen=config.HISTORY_WINDOW_SIZE)
+        self.last_history_update_time: float = 0
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
@@ -294,6 +299,7 @@ class LogicEngine:
                     "audio_analysis": self.audio_analysis
                 },
                 "current_state_estimation": self.state_engine.get_state(),
+                "history": list(self.context_history),
                 "suppressed_interventions": suppressed_list,
                 "system_alerts": system_alerts,
                 "preferred_interventions": preferred_list
@@ -506,6 +512,30 @@ class LogicEngine:
 
         if current_mode in ["active", "dnd"]:
             current_time = time.time()
+
+            # 0. Update Context History (Periodic Snapshot)
+            if current_time - self.last_history_update_time >= config.HISTORY_SAMPLE_INTERVAL:
+                self.last_history_update_time = current_time
+
+                # Fetch minimal context for history
+                h_window = "Unknown"
+                if self.window_sensor:
+                    try:
+                        h_window = self.window_sensor.get_active_window()
+                    except Exception as e:
+                        self.logger.log_debug(f"History update: active window fetch failed: {e}")
+
+                snapshot = {
+                    "timestamp": current_time,
+                    "mode": current_mode,
+                    "active_window": h_window,
+                    "audio_level": float(f"{self.audio_level:.2f}"),
+                    "video_activity": float(f"{self.video_activity:.2f}"),
+                    "face_detected": self.face_metrics.get("face_detected", False),
+                    "state": self.state_engine.get_state()
+                }
+                self.context_history.append(snapshot)
+                self.logger.log_debug(f"Context history updated. Size: {len(self.context_history)}")
 
             # Check probation (only relevant if recovering to active, but harmless to check)
             if self.recovery_probation_end_time > 0 and current_time > self.recovery_probation_end_time:

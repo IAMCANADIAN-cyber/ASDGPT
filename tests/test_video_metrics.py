@@ -9,12 +9,17 @@ import os
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
+import config
 from sensors.video_sensor import VideoSensor
 from core.logic_engine import LogicEngine
 from core.data_logger import DataLogger
 
 class TestVideoMetrics(unittest.TestCase):
     def setUp(self):
+        # Ensure consistent posture baseline for tests
+        self.config_patcher = patch.object(config, 'BASELINE_POSTURE', {}, create=True)
+        self.config_patcher.start()
+
         self.logger = MagicMock(spec=DataLogger)
         # Mock cv2.CascadeClassifier before VideoSensor init
         with patch('cv2.CascadeClassifier') as MockCascade:
@@ -25,6 +30,9 @@ class TestVideoMetrics(unittest.TestCase):
             # If it wasn't found (no file), it might be None. We force it to be our mock.
             self.video_sensor.eye_cascade = self.mock_cascade
             self.video_sensor.face_cascade = self.mock_cascade
+
+    def tearDown(self):
+        self.config_patcher.stop()
 
     def test_head_tilt_calculation(self):
         """
@@ -173,6 +181,8 @@ class TestVideoMetrics(unittest.TestCase):
         # Let's make the face smaller for pure slouching test
         # Size 30 (0.3) -> Neutral size
         # Position 70 -> Center 85 (0.85) -> Slouching
+        # FORCE update (bypass eco mode cache)
+        self.video_sensor.last_face_check_time = 0
         self.video_sensor.face_cascade.detectMultiScale.return_value = [[35, 70, 30, 30]]
         metrics = self.video_sensor.analyze_frame(frame)
         self.assertEqual(metrics["posture_state"], "slouching")
