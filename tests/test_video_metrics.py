@@ -184,6 +184,8 @@ class TestVideoMetrics(unittest.TestCase):
         # FORCE update (bypass eco mode cache)
         self.video_sensor.last_face_check_time = 0
         self.video_sensor.face_cascade.detectMultiScale.return_value = [[35, 70, 30, 30]]
+        # Force re-detection
+        self.video_sensor.last_face_check_time = 0
         metrics = self.video_sensor.analyze_frame(frame)
         self.assertEqual(metrics["posture_state"], "slouching")
 
