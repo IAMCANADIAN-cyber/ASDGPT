@@ -339,6 +339,18 @@ class LMMInterface:
             else:
                 context_str += f"Face Detected: No\n"
 
+            # Context History
+            context_history = user_context.get('context_history', [])
+            if context_history:
+                context_str += "\nRecent History (Last 5 snapshots):\n"
+                for snapshot in context_history:
+                    # Format simplified line
+                    ts = snapshot.get('timestamp', 0)
+                    win = snapshot.get('active_window', 'Unknown')
+                    # Relative time is better for LMM
+                    rel_time = int(time.time() - ts)
+                    context_str += f"- T-{rel_time}s: Window='{win}', Mode={snapshot.get('mode')}, Face={snapshot.get('face_detected')}\n"
+
             est = user_context.get('current_state_estimation')
             if est:
                  context_str += f"Previous State: {est}\n"

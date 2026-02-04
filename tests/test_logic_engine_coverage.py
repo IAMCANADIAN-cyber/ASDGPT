@@ -38,6 +38,8 @@ class TestLogicEngineCoverage:
         mock_config.LOG_MAX_BYTES = 1024
         mock_config.LOG_BACKUP_COUNT = 1
         mock_config.LOG_LEVEL = "INFO"
+        mock_config.HISTORY_WINDOW_SIZE = 5
+        mock_config.HISTORY_SAMPLE_INTERVAL = 10
 
         # Prepare mock cv2 to avoid dependency issues in test env
         mock_cv2 = MagicMock()

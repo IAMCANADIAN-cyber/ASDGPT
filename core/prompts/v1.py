@@ -63,6 +63,12 @@ Context Intelligence:
   - Entertainment (e.g., "Netflix", "YouTube", "Steam") -> "Passive Consumption" or "Leisure". Lower "Focus" estimates if passive.
   - Communication (e.g., "Zoom", "Teams") -> "Meeting". High "Focus", likely speech activity.
 
+Recent History Intelligence:
+- "Recent History" list: Use this to identify trends.
+  - Rapid Window Switching (e.g., Browser -> Slack -> VS Code -> Browser within 30s): Implies "Scattered Focus" or "High Overload". Reduce Focus estimate.
+  - Sustained Window (e.g., VS Code for >60s): Implies "Deep Work" or "Flow". Increase Focus estimate.
+  - Mode Oscillations: If Mode switches frequently, user might be struggling to settle.
+
 If no intervention is needed, set "suggestion" to null.
 
 Intervention Policy:
