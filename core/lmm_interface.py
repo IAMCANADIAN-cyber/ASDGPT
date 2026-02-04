@@ -343,6 +343,16 @@ class LMMInterface:
             if est:
                  context_str += f"Previous State: {est}\n"
 
+            # Add History
+            history = user_context.get('history')
+            if history:
+                context_str += "\nRecent History (Last ~1 min):\n"
+                for i, snap in enumerate(history):
+                    # Format timestamp as relative or just sequence
+                    t_str = time.strftime("%H:%M:%S", time.localtime(snap.get('timestamp', 0)))
+                    context_str += f"- [{t_str}] Win: {snap.get('active_window', 'Unknown')}, Act: {snap.get('video_activity', 0)}, Face: {snap.get('face_detected')}\n"
+                context_str += "\n"
+
             # Add suppressed interventions
             suppressed = user_context.get('suppressed_interventions')
             if suppressed:

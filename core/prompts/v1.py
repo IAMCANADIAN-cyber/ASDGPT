@@ -62,6 +62,10 @@ Context Intelligence:
   - Productivity apps (e.g., "Word", "Docs", "Slack") -> "Work Mode".
   - Entertainment (e.g., "Netflix", "YouTube", "Steam") -> "Passive Consumption" or "Leisure". Lower "Focus" estimates if passive.
   - Communication (e.g., "Zoom", "Teams") -> "Meeting". High "Focus", likely speech activity.
+- "Recent History": Use this chronological list (Last ~1 min) to identify trends.
+  - Sustained "Deep Work" window -> High Focus.
+  - Rapid switching between "Social Media" and "Work" -> Distraction / Low Focus.
+  - Consistently High Activity -> Restlessness / Anxiety.
 
 If no intervention is needed, set "suggestion" to null.
 

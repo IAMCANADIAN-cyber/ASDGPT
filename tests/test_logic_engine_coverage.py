@@ -33,6 +33,8 @@ class TestLogicEngineCoverage:
         mock_config.LMM_CIRCUIT_BREAKER_COOLDOWN = 10
         mock_config.SNOOZE_DURATION = 60
         mock_config.DOOM_SCROLL_THRESHOLD = 3
+        mock_config.HISTORY_WINDOW_SIZE = 5
+        mock_config.HISTORY_SAMPLE_INTERVAL = 10.0
         mock_config.LOG_FILE = "test.log"
         mock_config.EVENTS_FILE = "events.jsonl"
         mock_config.LOG_MAX_BYTES = 1024

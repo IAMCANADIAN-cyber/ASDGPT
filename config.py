@@ -168,3 +168,7 @@ INTERVENTION_CONFIGS = {
         "force_action": True,
     }
 }
+
+# --- Context History ---
+HISTORY_SAMPLE_INTERVAL = _get_conf("HISTORY_SAMPLE_INTERVAL", 10.0, float) # Seconds between history snapshots
+HISTORY_WINDOW_SIZE = _get_conf("HISTORY_WINDOW_SIZE", 5, int) # Number of snapshots to keep
