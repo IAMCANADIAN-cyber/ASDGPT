@@ -1,6 +1,7 @@
 import time
 import config
 import threading
+from collections import deque
 from typing import Optional, Callable, Any
 import numpy as np
 import cv2
@@ -80,6 +81,10 @@ class LogicEngine:
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
+
+        # Context History (for LMM narrative)
+        self.context_history: deque = deque(maxlen=config.HISTORY_WINDOW_SIZE)
+        self.last_history_sample_time: float = 0
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
@@ -283,6 +288,7 @@ class LogicEngine:
 
             context = {
                 "current_mode": self.current_mode,
+                "context_history": list(self.context_history),
                 "trigger_reason": trigger_reason,
                 "active_window": active_window,
                 "sensor_metrics": {
@@ -527,6 +533,29 @@ class LogicEngine:
                 # Face detection is key for "user activity" vs "shadows"
                 face_detected = self.face_metrics.get("face_detected", False)
                 face_count = self.face_metrics.get("face_count", 0)
+
+                # Snapshot current state for history (Lock held)
+                if current_time - self.last_history_sample_time >= config.HISTORY_SAMPLE_INTERVAL:
+                    self.last_history_sample_time = current_time
+
+                    # Fetch active window safely (might take time, but usually fast enough; ideally async but sensor is local)
+                    hist_active_window = "Unknown"
+                    if self.window_sensor:
+                        try:
+                            hist_active_window = self.window_sensor.get_active_window()
+                        except: pass
+
+                    snapshot = {
+                        "timestamp": current_time,
+                        "mode": self.current_mode,
+                        "active_window": hist_active_window,
+                        "audio_level": current_audio_level,
+                        "video_activity": current_video_activity,
+                        "face_detected": face_detected,
+                        "posture": self.video_analysis.get("posture_state", "unknown")
+                    }
+                    self.context_history.append(snapshot)
+                    # self.logger.log_debug(f"History snapshot added. Size: {len(self.context_history)}")
 
             # 2. Check Meeting Mode Conditions (Active -> DND)
             # Heuristic: Continuous Speech + Face Detected + No User Input for X seconds
