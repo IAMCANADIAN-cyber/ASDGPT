@@ -90,3 +90,26 @@ class TestVideoSensorInit(unittest.TestCase):
             eye_calls = [c for c in calls if "haarcascade_eye.xml" in str(c)]
 
             self.assertEqual(len(eye_calls), 1, f"Eye cascade should be loaded exactly once. Count: {len(eye_calls)}")
+
+    def test_buffer_size_is_set(self):
+        """
+        Verify that CV2.CAP_PROP_BUFFERSIZE is set to 1 during initialization.
+        This is critical for Eco Mode (Low FPS) to avoid processing old buffered frames.
+        """
+        # Set buffer size constant on mock
+        self.mock_cv2.CAP_PROP_BUFFERSIZE = 38
+
+        # Setup VideoCapture mock
+        mock_cap = MagicMock()
+        mock_cap.isOpened.return_value = True
+        self.mock_cv2.VideoCapture.return_value = mock_cap
+
+        with patch('os.path.exists', return_value=True):
+            # Initialize with an index so it tries to open camera
+            sensor = self.VideoSensor(camera_index=0)
+
+            # Verify VideoCapture was created
+            self.mock_cv2.VideoCapture.assert_called_with(0)
+
+            # Verify set was called with (CAP_PROP_BUFFERSIZE, 1)
+            mock_cap.set.assert_called_with(self.mock_cv2.CAP_PROP_BUFFERSIZE, 1)

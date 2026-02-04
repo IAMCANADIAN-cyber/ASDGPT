@@ -115,6 +115,12 @@ class VideoSensor:
                     self.last_error_message = "Camera failed to open."
                 else:
                     self._log_info("Video camera initialized successfully.")
+                    # Set buffer size to 1 to minimize latency (crucial for Eco Mode)
+                    try:
+                        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                    except Exception:
+                        pass # Property might not be supported by backend
+
                     self.error_state = False
                     self.last_error_message = ""
 
