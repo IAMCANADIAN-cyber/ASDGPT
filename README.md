@@ -96,6 +96,10 @@ LOCAL_LLM_URL=http://localhost:1234/v1/chat/completions
 *   `LMM_FALLBACK_ENABLED`: Enable offline heuristics if LMM is unreachable (Default: True)
 *   `LMM_CIRCUIT_BREAKER_MAX_FAILURES`: Failures before pausing LMM calls (Default: 5)
 
+**Context Intelligence**
+*   `HISTORY_SIZE`: Number of recent context snapshots to retain for LMM memory (Default: 10)
+*   `HISTORY_SAMPLE_INTERVAL`: Seconds between context snapshots (Default: 10)
+
 ### User Config File
 
 You can also create a `user_data/config.json` file to persist your settings:

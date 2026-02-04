@@ -39,3 +39,9 @@
 **Learning:** While `WindowSensor` was implemented and collecting data, the `LMMInterface` was not using this data in the prompt construction. This meant the "Context Intelligence" milestone was effectively stalled at the integration layer.
 **Action:** Updated `core/lmm_interface.py` to inject `active_window` into the prompt and updated `core/prompts/v1.py` with guidance for the LLM. Added `tests/test_lmm_interface.py` verification.
 **Hygiene:** Test execution failed initially due to missing `python-dotenv` in the environment. Ensuring `pip install -r requirements.txt` is run before testing is critical in this environment.
+
+## 2026-02-05 - [Context History Implementation]
+**Learning:** When writing tests that mock `config` via `sys.modules['config']`, simply assigning a `MagicMock` is insufficient if the code under test uses `getattr(config, 'KEY', default)`. `getattr` on a `MagicMock` returns a new `MagicMock` instead of the default value, causing `TypeError` when that value is expected to be an int (e.g., in `deque(maxlen=...)`).
+**Action:** Always explicitly set the attributes on the mock config object (e.g., `mock_config.HISTORY_SIZE = 10`) or use a concrete object/dict instead of a bare `MagicMock`.
+**Pitfall:** Reloading modules that import `numpy` (like `core.logic_engine`) inside a test using `sys.modules` patching can trigger `ImportError: cannot load module more than once per process` in `numpy` core.
+**Mitigation:** Mock `cv2` and `numpy` in `sys.modules` alongside the target module to prevent actual `numpy` re-import attempts during the test.

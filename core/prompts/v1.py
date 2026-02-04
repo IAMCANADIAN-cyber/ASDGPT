@@ -63,6 +63,14 @@ Context Intelligence:
   - Entertainment (e.g., "Netflix", "YouTube", "Steam") -> "Passive Consumption" or "Leisure". Lower "Focus" estimates if passive.
   - Communication (e.g., "Zoom", "Teams") -> "Meeting". High "Focus", likely speech activity.
 
+Narrative Context (History):
+- You will receive a list of "Recent Context History" snapshots.
+- Use this to differentiate TRANSIENT states from SUSTAINED behaviors.
+  - Example: A single snapshot of "YouTube" amidst 10 minutes of "VS Code" is likely a break or research.
+  - Example: Sustained "YouTube" for >5 minutes suggests a shift to Leisure.
+  - Example: Rapid switching between apps + High Video Activity -> Potential Multitasking/Overload.
+- If the history shows consistent High Focus, DO NOT INTERRUPT unless Overload is critical.
+
 If no intervention is needed, set "suggestion" to null.
 
 Intervention Policy:

@@ -357,6 +357,21 @@ class LMMInterface:
             if preferred:
                 context_str += f"\nPreferred Interventions (User found these helpful recently): {', '.join(preferred)}\n"
 
+            # Context History (Narrative Context)
+            history = user_context.get('history')
+            if history and isinstance(history, list) and len(history) > 0:
+                context_str += "\nRecent Context History (Last 5-10 snapshots):\n"
+                # Format each history entry concisely
+                # Entry: {'timestamp': int, 'active_window': str, 'video_activity': float, 'audio_level': float, 'state': dict, 'mode': str}
+                for idx, entry in enumerate(history[-5:]): # Only show last 5 if list is long
+                    t_offset = int(time.time() - entry.get('timestamp', 0))
+                    win = entry.get('active_window', 'Unknown')
+                    act = entry.get('video_activity', 0.0)
+                    aud = entry.get('audio_level', 0.0)
+                    mode = entry.get('mode', 'unknown')
+                    # Format: "- [30s ago] Mode: active | Window: VS Code | Act: 5.2 | Aud: 0.01"
+                    context_str += f"- [{t_offset}s ago] Mode: {mode} | Window: {win} | Act: {act:.1f} | Aud: {aud:.2f}\n"
+
         content_parts.append({"type": "text", "text": context_str})
 
         # 2. Image (Video Frame)

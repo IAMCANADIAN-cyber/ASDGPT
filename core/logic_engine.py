@@ -1,6 +1,7 @@
 import time
 import config
 import threading
+from collections import deque
 from typing import Optional, Callable, Any
 import numpy as np
 import cv2
@@ -80,6 +81,12 @@ class LogicEngine:
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
+
+        # Context History (Milestone: Context Intelligence V2)
+        history_size = getattr(config, 'HISTORY_SIZE', 10)
+        self.context_history = deque(maxlen=history_size)
+        self.last_history_sample_time: float = 0
+        self.history_sample_interval = getattr(config, 'HISTORY_SAMPLE_INTERVAL', 10)
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
@@ -172,6 +179,35 @@ class LogicEngine:
         # Updates are atomic enough for our resolution
         self.last_user_input_time = time.time()
         self.input_tracking_enabled = True
+
+    def _record_context_snapshot(self) -> None:
+        """
+        Records a lightweight snapshot of the current context for history tracking.
+        """
+        current_time = time.time()
+        if current_time - self.last_history_sample_time < self.history_sample_interval:
+            return
+
+        with self._lock:
+            active_window = "Unknown"
+            if self.window_sensor:
+                try:
+                    active_window = self.window_sensor.get_active_window()
+                except Exception:
+                    pass
+
+            snapshot = {
+                "timestamp": int(current_time),
+                "active_window": active_window,
+                "video_activity": float(f"{self.video_activity:.2f}"),
+                "audio_level": float(f"{self.audio_level:.2f}"),
+                "state": self.state_engine.get_state() if self.state_engine else {},
+                "mode": self.current_mode
+            }
+
+            self.context_history.append(snapshot)
+            self.last_history_sample_time = current_time
+            # self.logger.log_debug(f"Recorded context snapshot. History size: {len(self.context_history)}")
 
     def _notify_mode_change(self, old_mode: str, new_mode: str, from_snooze_expiry: bool = False) -> None:
         self.logger.log_info(f"LogicEngine Notification: Mode changed from {old_mode} to {new_mode}{' (due to snooze expiry)' if from_snooze_expiry else ''}")
@@ -296,7 +332,8 @@ class LogicEngine:
                 "current_state_estimation": self.state_engine.get_state(),
                 "suppressed_interventions": suppressed_list,
                 "system_alerts": system_alerts,
-                "preferred_interventions": preferred_list
+                "preferred_interventions": preferred_list,
+                "history": list(self.context_history)
             }
 
             return {
@@ -500,6 +537,11 @@ class LogicEngine:
                 self.logger.log_info("Snooze expired.")
                 self.snooze_end_time = 0
                 self._set_mode_unlocked("active", from_snooze_expiry=True)
+
+        # Record history snapshot periodically regardless of mode (mostly)
+        # We might want to skip in 'paused', but 'active/dnd/snoozed' are valid contexts.
+        if self.current_mode != "paused" and self.current_mode != "error":
+             self._record_context_snapshot()
 
         current_mode = self.get_mode()
         # self.logger.log_debug(f"LogicEngine update. Current mode: {current_mode}")

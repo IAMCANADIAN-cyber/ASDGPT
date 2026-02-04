@@ -132,6 +132,10 @@ LMM_FALLBACK_ENABLED = _get_conf("LMM_FALLBACK_ENABLED", True, bool)
 LMM_CIRCUIT_BREAKER_MAX_FAILURES = _get_conf("LMM_CIRCUIT_BREAKER_MAX_FAILURES", 5, int)
 LMM_CIRCUIT_BREAKER_COOLDOWN = _get_conf("LMM_CIRCUIT_BREAKER_COOLDOWN", 60, int)
 
+# --- Context History ---
+HISTORY_SIZE = _get_conf("HISTORY_SIZE", 10, int) # Number of snapshots to keep
+HISTORY_SAMPLE_INTERVAL = _get_conf("HISTORY_SAMPLE_INTERVAL", 10, int) # Seconds between snapshots
+
 # --- API Keys ---
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
