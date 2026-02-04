@@ -5,6 +5,7 @@ import numpy as np
 import math
 import sys
 import os
+import config
 
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
@@ -15,6 +16,10 @@ from core.data_logger import DataLogger
 
 class TestVideoMetrics(unittest.TestCase):
     def setUp(self):
+        # Reset baseline posture to ensure deterministic tests
+        self.original_baseline = getattr(config, 'BASELINE_POSTURE', {})
+        config.BASELINE_POSTURE = {}
+
         self.logger = MagicMock(spec=DataLogger)
         # Mock cv2.CascadeClassifier before VideoSensor init
         with patch('cv2.CascadeClassifier') as MockCascade:
@@ -25,6 +30,9 @@ class TestVideoMetrics(unittest.TestCase):
             # If it wasn't found (no file), it might be None. We force it to be our mock.
             self.video_sensor.eye_cascade = self.mock_cascade
             self.video_sensor.face_cascade = self.mock_cascade
+
+    def tearDown(self):
+        config.BASELINE_POSTURE = self.original_baseline
 
     def test_head_tilt_calculation(self):
         """
@@ -174,6 +182,8 @@ class TestVideoMetrics(unittest.TestCase):
         # Size 30 (0.3) -> Neutral size
         # Position 70 -> Center 85 (0.85) -> Slouching
         self.video_sensor.face_cascade.detectMultiScale.return_value = [[35, 70, 30, 30]]
+        # Force re-detection (bypass Smart Face Check which caches results on low activity)
+        self.video_sensor.last_face_check_time = 0
         metrics = self.video_sensor.analyze_frame(frame)
         self.assertEqual(metrics["posture_state"], "slouching")
 

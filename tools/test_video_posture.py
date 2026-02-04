@@ -8,13 +8,19 @@ import cv2
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import config
 from sensors.video_sensor import VideoSensor
 
 class TestVideoSensorPosture(unittest.TestCase):
     def setUp(self):
+        self.original_baseline = getattr(config, 'BASELINE_POSTURE', {})
+        config.BASELINE_POSTURE = {}
         self.sensor = VideoSensor(camera_index=None, data_logger=MagicMock())
         # Mock the cascade classifier to avoid loading the real one
         self.sensor.face_cascade = MagicMock()
+
+    def tearDown(self):
+        config.BASELINE_POSTURE = self.original_baseline
 
     def test_posture_metrics_calculation(self):
         # Create a dummy frame (100x100)
@@ -90,6 +96,8 @@ class TestVideoSensorPosture(unittest.TestCase):
         # Size 30 (0.3) -> Neutral size
         # Position 70 -> Center 85 (0.85) -> Slouching
         self.sensor.face_cascade.detectMultiScale.return_value = [[35, 70, 30, 30]]
+        # Force re-detection (bypass Smart Face Check)
+        self.sensor.last_face_check_time = 0
         metrics = self.sensor.analyze_frame(frame)
         self.assertEqual(metrics["posture_state"], "slouching")
 
