@@ -94,6 +94,9 @@ VIDEO_ACTIVE_DELAY = _get_conf("VIDEO_ACTIVE_DELAY", 0.05, float) # 20 FPS
 VIDEO_ECO_MODE_DELAY = _get_conf("VIDEO_ECO_MODE_DELAY", 0.2, float) # 5 FPS (Required for <200ms wake-up latency)
 VIDEO_ECO_HEARTBEAT_INTERVAL = _get_conf("VIDEO_ECO_HEARTBEAT_INTERVAL", 1.0, float) # Max time between face checks (seconds)
 
+# --- Logic Engine History ---
+HISTORY_SAMPLE_INTERVAL = _get_conf("HISTORY_SAMPLE_INTERVAL", 10, int)
+
 # --- Meeting Mode ---
 MEETING_MODE_SPEECH_DURATION_THRESHOLD = _get_conf("MEETING_MODE_SPEECH_DURATION_THRESHOLD", 3.0, float)
 MEETING_MODE_IDLE_KEYBOARD_THRESHOLD = _get_conf("MEETING_MODE_IDLE_KEYBOARD_THRESHOLD", 10.0, float)

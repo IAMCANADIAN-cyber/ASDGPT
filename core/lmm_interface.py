@@ -303,6 +303,16 @@ class LMMInterface:
             active_window = user_context.get('active_window', 'Unknown')
             context_str += f"Active Window: {active_window}\n"
 
+            # Context History
+            history = user_context.get("history", [])
+            if history:
+                context_str += "\nContext History (Newest Last, ~10s interval):\n"
+                # Deque is already limited, but we can be safe
+                for item in list(history)[-5:]:
+                     t_str = time.strftime('%H:%M:%S', time.localtime(item.get('timestamp', 0)))
+                     context_str += f"- [{t_str}] Mode: {item.get('mode', 'unknown')}, Window: {item.get('active_window', 'unknown')}\n"
+                context_str += "\n"
+
             metrics = user_context.get('sensor_metrics', {})
             context_str += f"Audio Level (RMS): {metrics.get('audio_level', 0.0):.4f}\n"
 

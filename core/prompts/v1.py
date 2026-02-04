@@ -63,6 +63,13 @@ Context Intelligence:
   - Entertainment (e.g., "Netflix", "YouTube", "Steam") -> "Passive Consumption" or "Leisure". Lower "Focus" estimates if passive.
   - Communication (e.g., "Zoom", "Teams") -> "Meeting". High "Focus", likely speech activity.
 
+Narrative Context (History):
+- The "Context History" list shows the user's trajectory over the last minute.
+- Use this to distinguish transient behavior from sustained states.
+  - Example: A single "Reddit" entry is fine, but 5 consecutive entries implies "Doom Scrolling".
+  - Example: "VS Code" followed by "Stack Overflow" followed by "VS Code" implies active problem solving (High Focus).
+  - Example: "Zoom" entries persisting for >30s confirms "Meeting Mode".
+
 If no intervention is needed, set "suggestion" to null.
 
 Intervention Policy:

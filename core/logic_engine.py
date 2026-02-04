@@ -1,6 +1,7 @@
 import time
 import config
 import threading
+import collections
 from typing import Optional, Callable, Any
 import numpy as np
 import cv2
@@ -80,6 +81,11 @@ class LogicEngine:
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
+
+        # Context History (for LMM Narrative)
+        self.context_history = collections.deque(maxlen=10)
+        self.last_history_sample_time: float = 0
+        self.history_sample_interval: int = getattr(config, 'HISTORY_SAMPLE_INTERVAL', 10)
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
@@ -283,6 +289,7 @@ class LogicEngine:
 
             context = {
                 "current_mode": self.current_mode,
+                "history": list(self.context_history),
                 "trigger_reason": trigger_reason,
                 "active_window": active_window,
                 "sensor_metrics": {
@@ -506,6 +513,22 @@ class LogicEngine:
 
         if current_mode in ["active", "dnd"]:
             current_time = time.time()
+
+            # 0. Update Context History (Sampled)
+            if current_time - self.last_history_sample_time >= self.history_sample_interval:
+                active_window = "Unknown"
+                if self.window_sensor:
+                    try:
+                        active_window = self.window_sensor.get_active_window()
+                    except Exception as e:
+                         pass
+
+                self.context_history.append({
+                    "timestamp": current_time,
+                    "mode": current_mode,
+                    "active_window": active_window
+                })
+                self.last_history_sample_time = current_time
 
             # Check probation (only relevant if recovering to active, but harmless to check)
             if self.recovery_probation_end_time > 0 and current_time > self.recovery_probation_end_time:
