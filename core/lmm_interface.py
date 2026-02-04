@@ -303,6 +303,16 @@ class LMMInterface:
             active_window = user_context.get('active_window', 'Unknown')
             context_str += f"Active Window: {active_window}\n"
 
+            # Context History (Narrative)
+            history = user_context.get('history', [])
+            if history:
+                context_str += "\nRecent History (Last 50s):\n"
+                current_time = time.time()
+                for snap in history:
+                    age = int(current_time - snap.get('timestamp', current_time))
+                    context_str += f"- [{age}s ago] Mode: {snap.get('mode')}, Window: {snap.get('active_window')}, Activity: {snap.get('video_activity')}, Face: {snap.get('face_detected')}\n"
+                context_str += "\n"
+
             metrics = user_context.get('sensor_metrics', {})
             context_str += f"Audio Level (RMS): {metrics.get('audio_level', 0.0):.4f}\n"
 

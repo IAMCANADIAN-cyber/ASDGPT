@@ -105,6 +105,9 @@ VAD_SILENCE_THRESHOLD = _get_conf("VAD_SILENCE_THRESHOLD", 0.01, float)
 VAD_WEAK_THRESHOLD = _get_conf("VAD_WEAK_THRESHOLD", 0.4, float)
 VAD_STRONG_THRESHOLD = _get_conf("VAD_STRONG_THRESHOLD", 0.7, float)
 
+# --- Context History ---
+HISTORY_SAMPLE_INTERVAL = _get_conf("HISTORY_SAMPLE_INTERVAL", 10, int)
+
 # --- State Engine Baseline ---
 # Allows personalization of the "neutral" state.
 BASELINE_STATE = _get_conf("BASELINE_STATE", {

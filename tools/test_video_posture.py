@@ -90,6 +90,8 @@ class TestVideoSensorPosture(unittest.TestCase):
         # Size 30 (0.3) -> Neutral size
         # Position 70 -> Center 85 (0.85) -> Slouching
         self.sensor.face_cascade.detectMultiScale.return_value = [[35, 70, 30, 30]]
+        # Force fresh check (bypass Eco Mode)
+        self.sensor.last_face_check_time = 0
         metrics = self.sensor.analyze_frame(frame)
         self.assertEqual(metrics["posture_state"], "slouching")
 

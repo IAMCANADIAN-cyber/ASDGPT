@@ -39,3 +39,7 @@
 **Learning:** While `WindowSensor` was implemented and collecting data, the `LMMInterface` was not using this data in the prompt construction. This meant the "Context Intelligence" milestone was effectively stalled at the integration layer.
 **Action:** Updated `core/lmm_interface.py` to inject `active_window` into the prompt and updated `core/prompts/v1.py` with guidance for the LLM. Added `tests/test_lmm_interface.py` verification.
 **Hygiene:** Test execution failed initially due to missing `python-dotenv` in the environment. Ensuring `pip install -r requirements.txt` is run before testing is critical in this environment.
+
+## 2026-02-05 - [Context History & Test Robustness]
+**Learning:** `VideoSensor` uses caching for Eco Mode, which can cause unit tests using rapid sequential calls to return stale data. Fix by explicitly resetting `last_face_check_time = 0` in tests. Also, avoiding `patch.dict(sys.modules)` for modules with C-extensions (like `numpy`) prevents import errors during tests.
+**Action:** Implemented sliding window context history in `LogicEngine` and `LMMInterface` to satisfy the "Context Intelligence V2" milestone. Fixed regression failures in `test_logic_engine_coverage.py` and pre-existing flakiness in `test_video_metrics.py`.
