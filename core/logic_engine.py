@@ -86,6 +86,13 @@ class LogicEngine:
         self.context_history: deque = deque(maxlen=config.HISTORY_WINDOW_SIZE)
         self.last_history_sample_time: float = 0
 
+        # Reflexive Window Triggers
+        self.reflexive_window_triggers: dict = getattr(config, 'REFLEXIVE_WINDOW_TRIGGERS', {})
+        self.reflexive_window_cooldown: int = getattr(config, 'REFLEXIVE_WINDOW_COOLDOWN', 300)
+        self.last_reflexive_trigger_time: dict = {} # Maps intervention_id to timestamp
+        self.last_window_check_time: float = 0
+        self.window_check_interval: float = 1.0 # Throttle window checks
+
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
     def get_mode(self) -> str:
@@ -429,6 +436,30 @@ class LogicEngine:
 
         return None
 
+    def _check_window_reflexes(self, active_window: str) -> Optional[str]:
+        """
+        Checks if the active window matches any reflexive trigger keywords.
+        Returns intervention ID if triggered and cooldown passed, else None.
+        """
+        if not active_window or active_window == "Unknown":
+            return None
+
+        current_time = time.time()
+
+        for keyword, intervention_id in self.reflexive_window_triggers.items():
+            if keyword.lower() in active_window.lower():
+                # Check cooldown
+                last_time = self.last_reflexive_trigger_time.get(intervention_id, 0)
+                if current_time - last_time >= self.reflexive_window_cooldown:
+                    self.logger.log_info(f"Reflexive Window Trigger: '{keyword}' matched in '{active_window}'")
+                    self.last_reflexive_trigger_time[intervention_id] = current_time
+                    return intervention_id
+                else:
+                    # Log debug only occasionally to avoid spam
+                    pass
+
+        return None
+
     def _run_offline_fallback_logic(self, reason: str) -> None:
         """
         Executes simple heuristic-based interventions when LMM is offline.
@@ -556,6 +587,31 @@ class LogicEngine:
                     }
                     self.context_history.append(snapshot)
                     # self.logger.log_debug(f"History snapshot added. Size: {len(self.context_history)}")
+
+            # 1b. Check Reflexive Window Triggers (Throttled)
+            if current_time - self.last_window_check_time >= self.window_check_interval:
+                self.last_window_check_time = current_time
+                reflexive_window = "Unknown"
+                if self.window_sensor:
+                    try:
+                        reflexive_window = self.window_sensor.get_active_window()
+                    except: pass
+
+                reflexive_id = self._check_window_reflexes(reflexive_window)
+                if reflexive_id:
+                    self.logger.log_info(f"Reflexive Trigger Activated: {reflexive_id}")
+                    if self.intervention_engine:
+                        # Attempt to construct payload from config if available (for custom alerts)
+                        payload = {"id": reflexive_id}
+                        config_def = getattr(config, 'INTERVENTION_CONFIGS', {}).get(reflexive_id)
+                        if config_def:
+                            payload = {
+                                "type": reflexive_id,
+                                "message": config_def.get("default_message", "Attention required."),
+                                "tier": config_def.get("tier", 2)
+                            }
+
+                        self.intervention_engine.start_intervention(payload)
 
             # 2. Check Meeting Mode Conditions (Active -> DND)
             # Heuristic: Continuous Speech + Face Detected + No User Input for X seconds
