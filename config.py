@@ -136,6 +136,18 @@ LMM_CIRCUIT_BREAKER_COOLDOWN = _get_conf("LMM_CIRCUIT_BREAKER_COOLDOWN", 60, int
 HISTORY_SAMPLE_INTERVAL = _get_conf("HISTORY_SAMPLE_INTERVAL", 10, int) # Seconds between history snapshots
 HISTORY_WINDOW_SIZE = _get_conf("HISTORY_WINDOW_SIZE", 5, int) # Number of snapshots to keep
 
+# --- Reflexive Window Triggers (Milestone 2) ---
+# Triggers intervention immediately if window title matches keyword
+REFLEXIVE_WINDOW_TRIGGERS = _get_conf("REFLEXIVE_WINDOW_TRIGGERS", {
+    "Civilization": "distraction_alert",
+    "Minecraft": "distraction_alert",
+    "Steam": "distraction_alert",
+    "Twitter": "distraction_alert",
+    "Reddit": "distraction_alert"
+}, dict)
+
+REFLEXIVE_WINDOW_COOLDOWN = _get_conf("REFLEXIVE_WINDOW_COOLDOWN", 300, int) # 5 minutes
+
 # --- API Keys ---
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
@@ -170,5 +182,11 @@ INTERVENTION_CONFIGS = {
         "default_duration": 300,
         "sound_file": "sounds/urgent_alert_tone.wav",
         "force_action": True,
+    },
+    "distraction_alert": {
+        "tier": 2,
+        "default_message": "Distraction detected. Is this how you want to spend your time?",
+        "default_duration": 30,
+        "sound_file": "sounds/gentle_chime.wav",
     }
 }
