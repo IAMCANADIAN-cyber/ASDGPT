@@ -83,7 +83,16 @@ CAMERA_INDEX = _get_conf("CAMERA_INDEX", 0, int)
 # Thresholds
 AUDIO_THRESHOLD_HIGH = _get_conf("AUDIO_THRESHOLD_HIGH", 0.5, float)
 VIDEO_ACTIVITY_THRESHOLD_HIGH = _get_conf("VIDEO_ACTIVITY_THRESHOLD_HIGH", 20.0, float)
+VIDEO_WAKE_THRESHOLD = _get_conf("VIDEO_WAKE_THRESHOLD", 5.0, float)
 DOOM_SCROLL_THRESHOLD = _get_conf("DOOM_SCROLL_THRESHOLD", 3, int)
+
+# Privacy
+SENSITIVE_APP_KEYWORDS = _get_conf("SENSITIVE_APP_KEYWORDS", ["Keepass", "LastPass", "1Password", "Bitwarden", "Incognito", "InPrivate", "Tor Browser"])
+
+# Video Polling Delays (Eco Mode)
+VIDEO_ACTIVE_DELAY = _get_conf("VIDEO_ACTIVE_DELAY", 0.05, float) # 20 FPS
+VIDEO_ECO_MODE_DELAY = _get_conf("VIDEO_ECO_MODE_DELAY", 0.2, float) # 5 FPS (Required for <200ms wake-up latency)
+VIDEO_ECO_HEARTBEAT_INTERVAL = _get_conf("VIDEO_ECO_HEARTBEAT_INTERVAL", 1.0, float) # Max time between face checks (seconds)
 
 # --- Meeting Mode ---
 MEETING_MODE_SPEECH_DURATION_THRESHOLD = _get_conf("MEETING_MODE_SPEECH_DURATION_THRESHOLD", 3.0, float)
@@ -122,6 +131,10 @@ LOCAL_LLM_MODEL_ID = _get_conf("LOCAL_LLM_MODEL_ID", "deepseek/deepseek-r1-0528-
 LMM_FALLBACK_ENABLED = _get_conf("LMM_FALLBACK_ENABLED", True, bool)
 LMM_CIRCUIT_BREAKER_MAX_FAILURES = _get_conf("LMM_CIRCUIT_BREAKER_MAX_FAILURES", 5, int)
 LMM_CIRCUIT_BREAKER_COOLDOWN = _get_conf("LMM_CIRCUIT_BREAKER_COOLDOWN", 60, int)
+
+# --- Context History ---
+HISTORY_SAMPLE_INTERVAL = _get_conf("HISTORY_SAMPLE_INTERVAL", 10, int) # Seconds between history snapshots
+HISTORY_WINDOW_SIZE = _get_conf("HISTORY_WINDOW_SIZE", 5, int) # Number of snapshots to keep
 
 # --- API Keys ---
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
