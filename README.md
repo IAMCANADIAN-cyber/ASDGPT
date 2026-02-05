@@ -161,10 +161,24 @@ To verify that the system correctly identifies meetings and suppresses intervent
 
 ## Testing
 
-Run the test suite using `pytest`:
+Run the test suite using `pytest` or `make`:
 
 ```bash
-pytest
+make test
+```
+
+We also provide a **Replay Harness** for deterministic testing of Logic Engine scenarios:
+
+```bash
+make replay
+```
+
+### Maintenance
+
+To clean up temporary files (logs, captures, caches):
+
+```bash
+make clean
 ```
 
 ### Stress Testing
