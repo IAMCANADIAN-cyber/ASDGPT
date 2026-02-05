@@ -86,6 +86,11 @@ class LogicEngine:
         self.context_history: deque = deque(maxlen=config.HISTORY_WINDOW_SIZE)
         self.last_history_sample_time: float = 0
 
+        # Reflexive Triggers Logic
+        self.last_reflexive_trigger_time: dict = {}
+        self.reflexive_trigger_interval: float = 0.2 # 5Hz check frequency
+        self.last_reflexive_check_time: float = 0
+
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
     def get_mode(self) -> str:
@@ -310,6 +315,41 @@ class LogicEngine:
                 "audio_data": audio_data_list,
                 "user_context": context
             }
+
+    def _check_window_reflexes(self, active_window: str) -> Optional[str]:
+        """
+        Checks if the active window matches any reflexive triggers (e.g., specific games or distractions).
+        Returns an intervention ID if triggered, else None.
+        Enforces cooldowns per trigger.
+        """
+        if not active_window or active_window == "Unknown":
+            return None
+
+        # Reflexive Triggers from config
+        triggers = getattr(config, 'REFLEXIVE_WINDOW_TRIGGERS', {})
+        cooldown = getattr(config, 'REFLEXIVE_WINDOW_COOLDOWN', 300)
+
+        current_time = time.time()
+        triggered_id = None
+        matched_keyword = None
+
+        for keyword, intervention_id in triggers.items():
+            if keyword.lower() in active_window.lower():
+                # Check cooldown for this specific keyword/rule
+                last_time = self.last_reflexive_trigger_time.get(keyword, 0)
+                if current_time - last_time >= cooldown:
+                    triggered_id = intervention_id
+                    matched_keyword = keyword
+                    break # Trigger the first match
+                else:
+                    self.logger.log_debug(f"Reflexive trigger '{keyword}' matched but on cooldown.")
+
+        if triggered_id:
+            self.last_reflexive_trigger_time[matched_keyword] = current_time
+            self.logger.log_info(f"Reflexive Window Trigger Matched: '{matched_keyword}' in '{active_window}' -> {triggered_id}")
+            return triggered_id
+
+        return None
 
     def _run_lmm_analysis_async(self, lmm_payload: dict, allow_intervention: bool) -> None:
         """Background worker for LMM analysis."""
@@ -557,7 +597,29 @@ class LogicEngine:
                     self.context_history.append(snapshot)
                     # self.logger.log_debug(f"History snapshot added. Size: {len(self.context_history)}")
 
-            # 2. Check Meeting Mode Conditions (Active -> DND)
+            # 2. Check Reflexive Window Triggers (Immediate Reaction)
+            if self.window_sensor and (current_time - self.last_reflexive_check_time >= self.reflexive_trigger_interval):
+                self.last_reflexive_check_time = current_time
+                try:
+                    # Note: get_active_window might be expensive (subprocess). 5Hz should be acceptable.
+                    active_window = self.window_sensor.get_active_window()
+                    reflexive_id = self._check_window_reflexes(active_window)
+
+                    if reflexive_id and self.current_mode == "active":
+                         # Construct payload using ID (InterventionEngine handles lookup)
+                         # Use a direct construction if we want to be safe, but IE handles IDs.
+                         # We verify the ID exists in LogicEngine logic usually via LMM suggestions,
+                         # but here we trust config.
+
+                         intervention_payload = {"id": reflexive_id}
+                         if self.intervention_engine:
+                             self.logger.log_info(f"Reflexive Trigger Fired: {reflexive_id}")
+                             self.intervention_engine.start_intervention(intervention_payload)
+
+                except Exception as e:
+                    self.logger.log_debug(f"Reflexive trigger check failed: {e}")
+
+            # 3. Check Meeting Mode Conditions (Active -> DND)
             # Heuristic: Continuous Speech + Face Detected + No User Input for X seconds
             if self.input_tracking_enabled: # Only trust idle time if tracking is working
                 idle_time = current_time - self.last_user_input_time

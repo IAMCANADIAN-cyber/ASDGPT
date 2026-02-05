@@ -7,6 +7,7 @@ ASDGPT is a Python application designed to act as an autonomous co-regulator. It
 *   **State Management**: Tracks user state (Active, Snoozed, Paused, DND).
 *   **Sensor Input**: Captures data from camera (video) and microphone (audio).
 *   **Intervention System**: Provides notifications and interventions (TTS, audio prompts).
+*   **Reflexive Triggers**: Instant reaction to specific apps (games, social media) bypassing the LMM for speed.
 *   **User Feedback**: Allows users to provide feedback on interventions via hotkeys.
 *   **Hotkey Controls**: Easily manage application state and provide feedback without GUI interaction.
 *   **System Tray Icon**: Provides a visual indicator of the application's status and quick access to controls.
@@ -91,6 +92,10 @@ LOCAL_LLM_URL=http://localhost:1234/v1/chat/completions
 *   `MEETING_MODE_SPEECH_DURATION_THRESHOLD`: Seconds of continuous speech to trigger (Default: 3.0)
 *   `MEETING_MODE_IDLE_KEYBOARD_THRESHOLD`: Seconds of idle keyboard before allowing trigger (Default: 10.0)
 *   `MEETING_MODE_SPEECH_GRACE_PERIOD`: Seconds allowed between words before speech is considered stopped (Default: 2.0)
+
+**Reflexive Triggers**
+*   `REFLEXIVE_WINDOW_TRIGGERS`: Mapping of keywords (e.g., "Steam") to intervention IDs.
+*   `REFLEXIVE_WINDOW_COOLDOWN`: Seconds to wait before re-triggering for the same keyword (Default: 300).
 
 **Resilience**
 *   `LMM_FALLBACK_ENABLED`: Enable offline heuristics if LMM is unreachable (Default: True)
