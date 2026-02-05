@@ -139,9 +139,24 @@ HISTORY_WINDOW_SIZE = _get_conf("HISTORY_WINDOW_SIZE", 5, int) # Number of snaps
 # --- API Keys ---
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
+# --- Reflexive Window Triggers ---
+REFLEXIVE_WINDOW_TRIGGERS = _get_conf("REFLEXIVE_WINDOW_TRIGGERS", {
+    "Steam": "distraction_alert",
+    "Netflix": "distraction_alert",
+    "YouTube": "distraction_alert",
+    "Reddit": "distraction_alert"
+}, dict)
+REFLEXIVE_WINDOW_COOLDOWN = _get_conf("REFLEXIVE_WINDOW_COOLDOWN", 300, int)
+
 # --- Tiered Intervention Configurations ---
 # (Used for legacy ad-hoc interventions or fallback defaults)
 INTERVENTION_CONFIGS = {
+    "distraction_alert": {
+        "tier": 2,
+        "default_message": "This app is on your distraction list. Do you want to continue?",
+        "default_duration": 30,
+        "sound_file": "sounds/alert_soft.wav",
+    },
     "gentle_reminder_text": {
         "tier": 1,
         "default_message": "This is a gentle reminder.",

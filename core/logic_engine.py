@@ -86,11 +86,34 @@ class LogicEngine:
         self.context_history: deque = deque(maxlen=config.HISTORY_WINDOW_SIZE)
         self.last_history_sample_time: float = 0
 
+        # Reflexive Triggers
+        self.last_reflexive_trigger_time: float = 0
+        self.last_window_check_time: float = 0
+        self.window_check_interval: float = 0.2 # 5Hz check for responsiveness vs performance
+
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
     def get_mode(self) -> str:
         with self._lock:
             return self.current_mode
+
+    def _check_window_reflexes(self, active_window: str) -> Optional[str]:
+        """
+        Checks if the active window triggers a reflexive intervention.
+        Returns the intervention ID if triggered, else None.
+        """
+        triggers = getattr(config, 'REFLEXIVE_WINDOW_TRIGGERS', {})
+        if not triggers or not active_window or active_window == "Unknown":
+            return None
+
+        # Case insensitive match for keywords
+        active_lower = active_window.lower()
+
+        for keyword, intervention_id in triggers.items():
+            if keyword.lower() in active_lower:
+                return intervention_id
+
+        return None
 
     def is_face_detected(self) -> bool:
         with self._lock:
@@ -521,6 +544,26 @@ class LogicEngine:
 
             trigger_lmm = False
             trigger_reason = ""
+
+            # Reflexive Window Checks (High Frequency, Outside Lock)
+            if current_time - self.last_window_check_time >= self.window_check_interval:
+                self.last_window_check_time = current_time
+
+                current_active_window = "Unknown"
+                if self.window_sensor:
+                    try:
+                        current_active_window = self.window_sensor.get_active_window()
+                    except Exception:
+                        pass
+
+                reflex_id = self._check_window_reflexes(current_active_window)
+                if reflex_id:
+                    cooldown = getattr(config, 'REFLEXIVE_WINDOW_COOLDOWN', 300)
+                    if current_time - self.last_reflexive_trigger_time > cooldown:
+                        self.logger.log_info(f"Reflexive Trigger activated: {reflex_id} (Window: {current_active_window})")
+                        if self.intervention_engine:
+                            self.intervention_engine.start_intervention({"id": reflex_id})
+                            self.last_reflexive_trigger_time = current_time
 
             # 1. Process sensor data & Evaluate conditions (Metrics updated in process_* methods)
             # We access metrics (atomic reads roughly safe, but better with lock if precise)
