@@ -101,12 +101,11 @@ class WindowSensor:
             # Output: WM_NAME(STRING) = "Title"
             # or WM_NAME(UTF8_STRING) = "Title"
             output = name_res.stdout.strip()
-            # Find the first quote
-            first_quote = output.find('"')
-            last_quote = output.rfind('"')
 
-            if first_quote != -1 and last_quote != -1 and last_quote > first_quote:
-                return output[first_quote+1 : last_quote]
+            # Use regex to extract title inside quotes
+            match = re.search(r'WM_NAME\(.*?\) = "(.*)"', output)
+            if match:
+                return match.group(1)
 
         except FileNotFoundError:
             # xprop not installed
@@ -155,25 +154,22 @@ class WindowSensor:
         if not title or title == "Unknown":
             return "Unknown"
 
-        # 1. Redact Sensitive App Names
+        # 1. Check for Sensitive Apps (Class list)
+        if self._is_sensitive_app(title):
+            return "[REDACTED_SENSITIVE_APP]"
+
+        # 2. Check for Sensitive Apps (Config list override)
         if hasattr(config, 'SENSITIVE_APP_KEYWORDS'):
             title_lower = title.lower()
             for keyword in config.SENSITIVE_APP_KEYWORDS:
                 if keyword.lower() in title_lower:
                     return "[REDACTED_SENSITIVE_APP]"
 
-        # 2. Redact Email Addresses
-        # Basic regex for email
-        title = re.sub(r'[\w\.-]+@[\w\.-]+\.\w+', '[EMAIL_REDACTED]', title)
-        # 0. Check for Sensitive Apps first
-        if self._is_sensitive_app(title):
-            return "[REDACTED_SENSITIVE_APP]"
-
-        # 1. Redact Email Addresses
+        # 3. Redact Email Addresses
         # Improved regex for email (handles subdomains and common TLDs)
         title = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '[EMAIL_REDACTED]', title)
 
-        # 3. Redact File Paths
+        # 4. Redact File Paths
         # Windows paths (e.g. C:\Users\...)
         title = re.sub(r'[a-zA-Z]:\\[\w\\\.\s-]+', '[PATH_REDACTED]', title)
         # Unix paths (e.g. /home/user/...) - Be careful not to match simple words, look for at least 2 levels

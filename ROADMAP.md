@@ -11,6 +11,7 @@ The focus for this week is to give the LMM a "memory" of recent actions (Context
 *   **Merged**: **Context Intelligence V1**: `WindowSensor` is live, sanitizing and reporting the active window title.
 *   **Merged**: **Resource Optimization**: `Video Eco Mode` (Dynamic FPS) is live in `main.py`, reducing idle CPU usage.
 *   **Merged**: **Adaptive Policy**: `InterventionEngine` now supports "Cooling" (suppression) based on "Unhelpful" feedback.
+*   **Merged**: **Test Hygiene**: Added `tools/cleanup.py` and `Makefile`. Verified `ReplayHarness` functionality.
 *   **Consolidated**: Routine maintenance merges (test fixes, cleanup) have been consolidated into `main`.
 
 ## 2. Top Milestones (Next 7 Days)
@@ -25,7 +26,7 @@ The focus for this week is to give the LMM a "memory" of recent actions (Context
 *   **Deliverable**: `LogicEngine` triggers specific interventions immediately when `active_window` matches a rule set.
 *   **Success Metric**: Latency < 100ms for detecting and reacting to a blacklisted app.
 
-### 🎯 Milestone 3: Test Hygiene & Harness
+### ✅ Milestone 3: Test Hygiene & Harness (Completed)
 *   **Goal**: Eliminate "flaky" tests and repo clutter to improve developer velocity.
 *   **Deliverable**: `tools/cleanup.py` to remove artifacts; verification of `tools/replay_harness.py`.
 *   **Success Metric**: `make clean` works; Replay Harness runs a scenario successfully.
@@ -44,8 +45,6 @@ The focus for this week is to give the LMM a "memory" of recent actions (Context
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Implement Context History** | LMM needs "narrative". | `user_context` includes `history` list in prompt. | M | Low | Navigator |
 | **Implement Reflexive Window Triggers** | Fast reaction to games/distractions. | `LogicEngine` triggers on specific window titles. | M | Low | Sentinel |
-| **Create Cleanup Tool** | Dev velocity / repo hygiene. | `tools/cleanup.py` removes logs/captures. | S | Low | Scribe |
-| **Verify Replay Harness** | Deterministic testing. | `tools/replay_harness.py` runs and produces report. | M | Med | Testsmith |
 | **Verify WindowSensor on Linux** | Cross-platform compatibility. | `xprop` returns correct titles on CI/Dev machine. | S | Med | Testsmith |
 | **Refine LMM Prompt for History** | Teach LMM to use history. | System prompt includes instructions on "Recent History". | S | Low | Navigator |
 | **Update User Guide** | Documentation. | `README.md` reflects Eco Mode and Window Sensor. | S | Low | Scribe |
