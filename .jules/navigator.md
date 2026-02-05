@@ -39,3 +39,8 @@
 **Learning:** While `WindowSensor` was implemented and collecting data, the `LMMInterface` was not using this data in the prompt construction. This meant the "Context Intelligence" milestone was effectively stalled at the integration layer.
 **Action:** Updated `core/lmm_interface.py` to inject `active_window` into the prompt and updated `core/prompts/v1.py` with guidance for the LLM. Added `tests/test_lmm_interface.py` verification.
 **Hygiene:** Test execution failed initially due to missing `python-dotenv` in the environment. Ensuring `pip install -r requirements.txt` is run before testing is critical in this environment.
+
+## 2026-02-05 - [Test Hygiene & Harness]
+**Learning:** `tools/replay_harness.py` was functional but lacked standardized execution and verification commands. Also, repo hygiene was difficult to maintain without a dedicated cleanup script.
+**Action:** Created `tools/cleanup.py` and a `Makefile` to standardize `install`, `test`, `replay`, and `clean` commands. Verified `ReplayHarness` functionality (100% accuracy on synthetic events). Fixed an indentation error in `tests/test_logic_engine_coverage.py` that was causing `make test` to fail.
+**Outcome:** `make test` now passes cleanly (323 tests).
