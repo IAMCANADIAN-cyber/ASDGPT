@@ -86,6 +86,10 @@ class LogicEngine:
         self.context_history: deque = deque(maxlen=config.HISTORY_WINDOW_SIZE)
         self.last_history_sample_time: float = 0
 
+        # Reflexive Triggers (Window Rules)
+        self.last_reflexive_trigger_time: float = 0
+        self.reflexive_trigger_cooldown: int = getattr(config, 'REFLEXIVE_WINDOW_COOLDOWN', 300)
+
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
     def get_mode(self) -> str:
@@ -429,6 +433,29 @@ class LogicEngine:
 
         return None
 
+    def _check_window_reflexes(self, active_window: str) -> Optional[str]:
+        """
+        Checks if the active window matches any reflexive trigger rules.
+        Returns the intervention ID if matched and eligible (cooldown), else None.
+        """
+        current_time = time.time()
+        if current_time - self.last_reflexive_trigger_time < self.reflexive_trigger_cooldown:
+            return None
+
+        reflex_rules = getattr(config, 'REFLEXIVE_WINDOW_TRIGGERS', {})
+        if not reflex_rules or not active_window:
+            return None
+
+        # Check for keyword match
+        # Logic: If rule key is in active_window (case-insensitive)
+        active_window_lower = active_window.lower()
+        for keyword, intervention_id in reflex_rules.items():
+            if keyword.lower() in active_window_lower:
+                self.logger.log_info(f"Reflexive Window Match: '{keyword}' found in '{active_window}'")
+                return intervention_id
+
+        return None
+
     def _run_offline_fallback_logic(self, reason: str) -> None:
         """
         Executes simple heuristic-based interventions when LMM is offline.
@@ -509,6 +536,33 @@ class LogicEngine:
 
         current_mode = self.get_mode()
         # self.logger.log_debug(f"LogicEngine update. Current mode: {current_mode}")
+
+        if current_mode == "active":
+            # Check Reflexive Window Triggers (Instant reaction, minimal latency)
+            # We check this outside the heavy sensor lock if possible, but we need the window title.
+            # Window sensor is queried inside the history block usually.
+            # To ensure low latency (<100ms), we might want to query it every loop?
+            # Querying active window is usually fast (OS call).
+            # To avoid spamming OS, we can throttle slightly (e.g. 5Hz), or just rely on main loop speed.
+            # Let's assume main loop is ~10-20Hz.
+            # We will check it here.
+
+            if self.window_sensor and self.intervention_engine:
+                # Rate limit check to avoid overhead?
+                # Let's just do it.
+                try:
+                    active_win = self.window_sensor.get_active_window()
+                    reflex_id = self._check_window_reflexes(active_win)
+                    if reflex_id:
+                        self.logger.log_info(f"Triggering Reflexive Intervention: {reflex_id}")
+                        self.intervention_engine.start_intervention({
+                            "id": reflex_id,
+                            "tier": 2 # Escalated tier for distraction
+                        })
+                        self.last_reflexive_trigger_time = time.time()
+                except Exception as e:
+                    # Don't let window check crash the loop
+                    pass
 
         if current_mode in ["active", "dnd"]:
             current_time = time.time()
