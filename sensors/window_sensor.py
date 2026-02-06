@@ -3,6 +3,7 @@ import subprocess
 import re
 import sys
 import os
+import shutil
 import logging
 from typing import Optional
 import config
@@ -17,6 +18,7 @@ class WindowSensor:
             "password", "keepass", "bitwarden", "1password",
             "lastpass", "vault", "private", "incognito", "tor browser"
         ]
+        self.xprop_available = False
         self._setup_platform()
 
     def _setup_platform(self):
@@ -29,6 +31,14 @@ class WindowSensor:
                 if self.logger:
                     self.logger.warning("ctypes not available on Windows. WindowSensor disabled.")
         elif self.os_type == 'Linux':
+             # Check for xprop
+             if shutil.which("xprop"):
+                 self.xprop_available = True
+             else:
+                 self.xprop_available = False
+                 if self.logger:
+                     self.logger.warning("WindowSensor: 'xprop' utility not found. Active window detection will be unavailable. (Hint: install x11-utils)")
+
              # Check for Wayland
              session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
              if "wayland" in session_type:
@@ -72,6 +82,9 @@ class WindowSensor:
         return "Unknown"
 
     def _get_active_window_linux(self) -> str:
+        if not self.xprop_available:
+            return "Unknown"
+
         # Try using xprop
         try:
             # 1. Get ID of active window
