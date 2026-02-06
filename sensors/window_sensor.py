@@ -3,6 +3,7 @@ import subprocess
 import re
 import sys
 import os
+import shutil
 import logging
 from typing import Optional
 import config
@@ -12,11 +13,10 @@ class WindowSensor:
     def __init__(self, logger: Optional[logging.Logger] = None):
         self.logger = logger
         self.os_type = platform.system()
-        # Define sensitive keywords (case-insensitive checks)
-        self.sensitive_keywords: List[str] = [
-            "password", "keepass", "bitwarden", "1password",
-            "lastpass", "vault", "private", "incognito", "tor browser"
-        ]
+        # Use centralized sensitive keywords from config
+        # Ensure they are lowercase for case-insensitive matching
+        raw_keywords = getattr(config, 'SENSITIVE_APP_KEYWORDS', [])
+        self.sensitive_keywords: List[str] = [k.lower() for k in raw_keywords]
         self._setup_platform()
 
     def _setup_platform(self):
@@ -34,6 +34,11 @@ class WindowSensor:
              if "wayland" in session_type:
                  if self.logger:
                      self.logger.warning("Wayland detected. 'xprop' based window detection may fail or return generic values.")
+
+             # Check for xprop
+             if not shutil.which('xprop'):
+                 if self.logger:
+                     self.logger.warning("xprop not found. Window detection will fail. Please install xprop (e.g., 'sudo apt install x11-utils').")
 
     def get_active_window(self) -> str:
         """
@@ -154,18 +159,11 @@ class WindowSensor:
         if not title or title == "Unknown":
             return "Unknown"
 
-        # 1. Check for Sensitive Apps (Class list)
+        # 1. Check for Sensitive Apps
         if self._is_sensitive_app(title):
             return "[REDACTED_SENSITIVE_APP]"
 
-        # 2. Check for Sensitive Apps (Config list override)
-        if hasattr(config, 'SENSITIVE_APP_KEYWORDS'):
-            title_lower = title.lower()
-            for keyword in config.SENSITIVE_APP_KEYWORDS:
-                if keyword.lower() in title_lower:
-                    return "[REDACTED_SENSITIVE_APP]"
-
-        # 3. Redact Email Addresses
+        # 2. Redact Email Addresses
         # Improved regex for email (handles subdomains and common TLDs)
         title = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '[EMAIL_REDACTED]', title)
 
