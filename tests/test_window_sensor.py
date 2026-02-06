@@ -44,9 +44,31 @@ class TestWindowSensor(unittest.TestCase):
         mock_user32.GetWindowTextW.assert_called_once()
 
     @patch('platform.system')
+    @patch('shutil.which')
     @patch('subprocess.run')
-    def test_linux_success(self, mock_subprocess, mock_system):
+    def test_linux_missing_xprop(self, mock_subprocess, mock_which, mock_system):
         mock_system.return_value = 'Linux'
+        mock_which.return_value = None # xprop not found
+
+        sensor = WindowSensor(self.mock_logger)
+
+        # Verify warning logged (prefer log_warning if available, which MagicMock is)
+        self.mock_logger.log_warning.assert_called_with(
+            "WindowSensor: 'xprop' utility not found. Active window detection will be unavailable. (Hint: install x11-utils)"
+        )
+
+        # Verify result is unknown
+        self.assertEqual(sensor.get_active_window(), "Unknown")
+
+        # Verify subprocess.run is NOT called (safe execution)
+        mock_subprocess.assert_not_called()
+
+    @patch('platform.system')
+    @patch('subprocess.run')
+    @patch('shutil.which')
+    def test_linux_success(self, mock_which, mock_subprocess, mock_system):
+        mock_system.return_value = 'Linux'
+        mock_which.return_value = '/usr/bin/xprop'
 
         # Mock sequence of calls
         # 1. xprop -root _NET_ACTIVE_WINDOW
