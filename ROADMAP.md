@@ -16,10 +16,10 @@ The focus for this week is to give the LMM a "memory" of recent actions (Context
 
 ## 2. Top Milestones (Next 7 Days)
 
-### 🎯 Milestone 1: Context Intelligence V2 (History)
-*   **Goal**: Enable the LMM to see the "narrative" of the user's session (e.g., switching tasks vs. staying focused).
-*   **Deliverable**: A sliding window history (last 5 states/windows) in `LogicEngine`, injected into the LMM prompt.
-*   **Success Metric**: LMM response references "previous context" or "duration" in its reasoning.
+### ✅ Milestone 1: Context Intelligence V2 (History) - COMPLETED
+*   **Goal**: Enable the LMM to see the "narrative" of the user's session.
+*   **Deliverable**: Sliding window history + Rapid Task Switching heuristics + String Truncation.
+*   **Success Metric**: `tests/test_context_intelligence.py` passes; LMM receives truncated history and system alerts.
 
 ### 🎯 Milestone 2: Reflexive Triggers V2 (Window Rules)
 *   **Goal**: Instant reaction to blacklisted apps (e.g., Games, Social Media) without LMM latency.
@@ -49,7 +49,6 @@ The focus for this week is to give the LMM a "memory" of recent actions (Context
 | **Refine LMM Prompt for History** | Teach LMM to use history. | System prompt includes instructions on "Recent History". | S | Low | Navigator |
 | **Update User Guide** | Documentation. | `README.md` reflects Eco Mode and Window Sensor. | S | Low | Scribe |
 | **Add Wayland Support** | Future-proofing Linux. | `WindowSensor` handles Wayland gracefully (or warns). | M | High | Navigator |
-| **LMM History Truncation** | Cost/Performance. | `LMMInterface` limits history tokens. | S | Low | Profiler |
 | **Audit Sensitive Keywords** | Privacy. | `config.py` includes more default sensitive apps. | S | Low | Sentinel |
 | **Unit Test Context History** | Reliability. | `test_logic_engine_history.py` verifies state tracking. | S | Low | Testsmith |
 | **Profile Window Sensor** | Performance. | Ensure `get_active_window` takes <50ms. | S | Low | Profiler |

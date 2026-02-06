@@ -79,6 +79,14 @@ class LMMInterface:
         elif self.logger and hasattr(self.logger, 'log_level') and self.logger.log_level == "DEBUG":
              self.logger.log_info(f"LMMInterface-DEBUG: {message}")
 
+    def _truncate_text(self, text: str, max_len: int = 100) -> str:
+        """Truncates text to max_len to save tokens, preserving the start."""
+        if not text:
+            return ""
+        if len(text) <= max_len:
+            return text
+        return text[:max_len-3] + "..."
+
     def check_connection(self) -> bool:
         """Checks if the LMM server is reachable."""
         try:
@@ -301,6 +309,7 @@ class LMMInterface:
 
             # Context Intelligence: Active Window
             active_window = user_context.get('active_window', 'Unknown')
+            active_window = self._truncate_text(active_window)
             context_str += f"Active Window: {active_window}\n"
 
             metrics = user_context.get('sensor_metrics', {})
@@ -347,6 +356,7 @@ class LMMInterface:
                     # Format simplified line
                     ts = snapshot.get('timestamp', 0)
                     win = snapshot.get('active_window', 'Unknown')
+                    win = self._truncate_text(win)
                     # Relative time is better for LMM
                     rel_time = int(time.time() - ts)
                     context_str += f"- T-{rel_time}s: Window='{win}', Mode={snapshot.get('mode')}, Face={snapshot.get('face_detected')}\n"

@@ -44,3 +44,8 @@
 **Learning:** `tools/replay_harness.py` was functional but lacked standardized execution and verification commands. Also, repo hygiene was difficult to maintain without a dedicated cleanup script.
 **Action:** Created `tools/cleanup.py` and a `Makefile` to standardize `install`, `test`, `replay`, and `clean` commands. Verified `ReplayHarness` functionality (100% accuracy on synthetic events). Fixed an indentation error in `tests/test_logic_engine_coverage.py` that was causing `make test` to fail.
 **Outcome:** `make test` now passes cleanly (323 tests).
+
+## 2026-02-06 - [Context Intelligence & Safety]
+**Learning:** Verified that `WindowSensor` gracefully handles missing `xprop` on Linux by returning "Unknown". `LogicEngine` relies on `context_history` for heuristics; tests must carefully mock this state.
+**Action:** Implemented "Rapid Task Switching" heuristic (>=4 unique windows/5 snapshots) and `LMMInterface` string truncation (100 chars).
+**Verification:** Added `tests/test_context_intelligence.py`. Passed 331 tests.

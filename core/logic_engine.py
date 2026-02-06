@@ -283,6 +283,9 @@ class LogicEngine:
             if self.context_persistence.get("phone_usage", 0) >= self.doom_scroll_trigger_threshold:
                  system_alerts.append("Persistent Phone Usage Detected (Potential Doom Scrolling)")
 
+            if self._detect_rapid_task_switching():
+                 system_alerts.append("High Rate of Task Switching Detected")
+
             active_window = "Unknown"
             if self.window_sensor:
                 try:
@@ -432,6 +435,29 @@ class LogicEngine:
             return "doom_scroll_breaker"
 
         return None
+
+    def _detect_rapid_task_switching(self) -> bool:
+        """
+        Detects if the user is switching tasks rapidly based on context history.
+        Heuristic: If the number of unique active windows in the history buffer is high (>=4).
+        """
+        if not self.context_history or len(self.context_history) < 3:
+            return False
+
+        # Extract windows, ignoring "Unknown" and None
+        windows = [snap.get('active_window') for snap in self.context_history]
+        valid_windows = [w for w in windows if w and w != "Unknown"]
+
+        if not valid_windows:
+            return False
+
+        unique_windows = set(valid_windows)
+
+        # If we have at least 4 unique windows in the last 5 snapshots (approx 50s)
+        if len(unique_windows) >= 4:
+            return True
+
+        return False
 
     def _check_window_reflexes(self, active_window: str) -> Optional[str]:
         """
