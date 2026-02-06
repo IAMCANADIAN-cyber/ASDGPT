@@ -3,13 +3,14 @@ import subprocess
 import re
 import sys
 import os
+import shutil
 import logging
-from typing import Optional
+from typing import Optional, Any
 import config
 from typing import Optional, List
 
 class WindowSensor:
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(self, logger: Optional[Any] = None):
         self.logger = logger
         self.os_type = platform.system()
         # Define sensitive keywords (case-insensitive checks)
@@ -17,7 +18,22 @@ class WindowSensor:
             "password", "keepass", "bitwarden", "1password",
             "lastpass", "vault", "private", "incognito", "tor browser"
         ]
+        self.xprop_available = False
         self._setup_platform()
+
+    def _log_warning(self, msg: str):
+        if self.logger:
+            if hasattr(self.logger, 'log_warning'):
+                self.logger.log_warning(msg)
+            elif hasattr(self.logger, 'warning'):
+                self.logger.warning(msg)
+
+    def _log_debug(self, msg: str):
+        if self.logger:
+            if hasattr(self.logger, 'log_debug'):
+                self.logger.log_debug(msg)
+            elif hasattr(self.logger, 'debug'):
+                self.logger.debug(msg)
 
     def _setup_platform(self):
         if self.os_type == 'Windows':
@@ -26,14 +42,19 @@ class WindowSensor:
                 self.user32 = ctypes.windll.user32
             except ImportError:
                 self.user32 = None
-                if self.logger:
-                    self.logger.warning("ctypes not available on Windows. WindowSensor disabled.")
+                self._log_warning("ctypes not available on Windows. WindowSensor disabled.")
         elif self.os_type == 'Linux':
+             # Check for xprop
+             if shutil.which("xprop"):
+                 self.xprop_available = True
+             else:
+                 self.xprop_available = False
+                 self._log_warning("WindowSensor: 'xprop' utility not found. Active window detection will be unavailable. (Hint: install x11-utils)")
+
              # Check for Wayland
              session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
              if "wayland" in session_type:
-                 if self.logger:
-                     self.logger.warning("Wayland detected. 'xprop' based window detection may fail or return generic values.")
+                 self._log_warning("Wayland detected. 'xprop' based window detection may fail or return generic values.")
 
     def get_active_window(self) -> str:
         """
@@ -49,8 +70,7 @@ class WindowSensor:
             elif self.os_type == 'Darwin': # macOS
                 title = self._get_active_window_macos()
         except Exception as e:
-            if self.logger:
-                self.logger.debug(f"Error getting active window: {e}")
+            self._log_debug(f"Error getting active window: {e}")
 
         return self._sanitize_title(title)
 
@@ -72,6 +92,9 @@ class WindowSensor:
         return "Unknown"
 
     def _get_active_window_linux(self) -> str:
+        if not self.xprop_available:
+            return "Unknown"
+
         # Try using xprop
         try:
             # 1. Get ID of active window
