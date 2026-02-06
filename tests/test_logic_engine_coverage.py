@@ -43,6 +43,7 @@ class TestLogicEngineCoverage:
         with patch.dict(sys.modules, {'config': mock_config}):
             mock_config.HISTORY_WINDOW_SIZE = 5
             mock_config.HISTORY_SAMPLE_INTERVAL = 10
+            mock_config.RAPID_SWITCHING_THRESHOLD = 4
 
         # Prepare mock cv2 to avoid dependency issues in test env
         mock_cv2 = MagicMock()
