@@ -7,7 +7,6 @@ import shutil
 import logging
 from typing import Optional, Any
 import config
-from typing import Optional, List
 
 class WindowSensor:
     def __init__(self, logger: Optional[Any] = None):

@@ -11,6 +11,8 @@ ASDGPT is a Python application designed to act as an autonomous co-regulator. It
 *   **Hotkey Controls**: Easily manage application state and provide feedback without GUI interaction.
 *   **System Tray Icon**: Provides a visual indicator of the application's status and quick access to controls.
 *   **Data Logging**: Logs application events, errors, and sensor data for debugging and analysis.
+*   **Context Intelligence**: Uses active window titles to infer user context (Work, Leisure, Doom Scrolling) and build a history narrative.
+*   **Reflexive Triggers**: Instantly reacts to specific window titles (e.g., distraction apps) with pre-defined interventions.
 
 ## How it Works
 
@@ -24,6 +26,21 @@ ASDGPT operates as a continuous loop:
 For a detailed breakdown of the internal architecture and data flow, see [Architecture & Data Flow](docs/ARCHITECTURE.md).
 
 ## Setup and Installation
+
+### System Requirements
+
+*   **OS**: Windows, Linux, or macOS.
+*   **Python**: 3.8 or higher.
+*   **Hardware**: Webcam and Microphone.
+
+**Linux Users:**
+For active window detection to work, you must have `xprop` installed (part of `x11-utils` on Debian/Ubuntu).
+```bash
+sudo apt-get install x11-utils
+```
+*Note: Window detection on Wayland is currently limited.*
+
+### Installation Steps
 
 1.  **Clone the repository:**
     ```bash
