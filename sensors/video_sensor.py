@@ -149,6 +149,8 @@ class VideoSensor:
             if self.error_state:
                 return None, self.last_error_message
 
+        # Capture reference locally to avoid holding lock during potentially blocking read()
+        cap_ref = None
         with self._lock:
             if self.cap is None or not self.cap.isOpened():
                  if not self.error_state:
@@ -156,28 +158,34 @@ class VideoSensor:
                      self.last_error_message = "Camera not initialized or closed."
                      self.last_retry_time = time.time()
                  return None, self.last_error_message
+            cap_ref = self.cap
 
-            try:
-                ret, frame = self.cap.read()
-                if not ret:
+        try:
+            # Read without holding the lock to prevent deadlock on shutdown
+            ret, frame = cap_ref.read()
+
+            if not ret:
+                with self._lock:
                     self._log_warning("Failed to capture video frame (read returned False).")
                     self.error_state = True
                     self.last_error_message = "Failed to capture video frame."
                     self.last_retry_time = time.time()
-                    return None, "Failed to capture video frame."
+                return None, "Failed to capture video frame."
 
-                # If we succeed, ensure error state is clear
-                if self.error_state:
+            # If we succeed, ensure error state is clear
+            if self.error_state:
+                with self._lock:
                     self.error_state = False
                     self.last_error_message = ""
 
-                return frame, None
-            except Exception as e:
+            return frame, None
+        except Exception as e:
+             with self._lock:
                  self._log_error(f"Error capturing frame: {e}")
                  self.error_state = True
                  self.last_error_message = str(e)
                  self.last_retry_time = time.time()
-                 return None, str(e)
+             return None, str(e)
 
     def has_error(self):
         return self.error_state
