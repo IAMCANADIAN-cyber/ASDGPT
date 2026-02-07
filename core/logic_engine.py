@@ -283,6 +283,14 @@ class LogicEngine:
             if self.context_persistence.get("phone_usage", 0) >= self.doom_scroll_trigger_threshold:
                  system_alerts.append("Persistent Phone Usage Detected (Potential Doom Scrolling)")
 
+            # Check for Rapid Task Switching
+            rapid_switch_threshold = getattr(config, 'RAPID_SWITCHING_THRESHOLD', 4)
+            # Only check if we have enough history to possibly meet the threshold
+            if len(self.context_history) >= rapid_switch_threshold:
+                unique_windows = {snap.get('active_window') for snap in self.context_history if snap.get('active_window')}
+                if len(unique_windows) >= rapid_switch_threshold:
+                    system_alerts.append("Rapid Task Switching Detected")
+
             active_window = "Unknown"
             if self.window_sensor:
                 try:
