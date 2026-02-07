@@ -7,6 +7,9 @@ import os
 import subprocess
 import platform
 from typing import Optional, Any, Dict, List
+from .voice_interface import VoiceInterface
+from .image_processing import ImageProcessor
+from .social_media_manager import SocialMediaManager
 
 # Conditional imports for optional dependencies
 try:
@@ -46,9 +49,13 @@ class InterventionEngine:
         self.intervention_thread: Optional[threading.Thread] = None
         self._current_intervention_details: Dict[str, Any] = {}
 
-        # Track the current blocking subprocess (e.g. speaking) for cleanup
-        self._current_subprocess: Optional[subprocess.Popen] = None
-        self._subprocess_lock: threading.Lock = threading.Lock()
+        # New Voice Interface
+        logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
+        self.voice_interface = VoiceInterface(logger=logger)
+
+        # Social Media Manager (Pass LMM Interface from Logic Engine)
+        lmm = getattr(logic_engine, 'lmm_interface', None)
+        self.social_media_manager = SocialMediaManager(lmm_interface=lmm, logger=logger)
 
         self.last_feedback_eligible_intervention: Dict[str, Any] = {
             "message": None,
@@ -148,84 +155,12 @@ class InterventionEngine:
 
     def _speak(self, text: str, blocking: bool = True) -> None:
         """
-        Uses platform-specific TTS commands to speak the text.
-        If blocking is True, waits for speech to finish.
-        If blocking is False, runs in background.
-        Stores the process to allow interruption.
+        Uses VoiceInterface to speak text.
         """
-        log_message = f"SPEAKING: '{text}'"
-        if self.app and self.app.data_logger:
-            self.app.data_logger.log_info(log_message)
+        if self.voice_interface:
+            self.voice_interface.speak(text, blocking)
         else:
-            print(log_message)
-
-        def speak_task():
-            system = platform.system()
-            command = []
-
-            if system == "Darwin":  # macOS
-                command = ["say", text]
-            elif system == "Linux":
-                # Try espeak or spd-say
-                # We need to determine which exists or just try one
-                # Note: This is simplified; robust check would verify executable existence
-                command = ["espeak", text] # Default to espeak
-                # If espeak fails, the Popen call might fail or return error, we can catch that
-            elif system == "Windows":
-                # PowerShell
-                ps_cmd = f'Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak("{text}")'
-                command = ["powershell", "-Command", ps_cmd]
-
-            if not command:
-                 return
-
-            try:
-                with self._subprocess_lock:
-                    if not self._intervention_active.is_set() and blocking:
-                        # Abort if stopped before start
-                        return
-                    # Use Popen to allow interruption
-                    self._current_subprocess = subprocess.Popen(
-                        command,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL
-                    )
-
-                if self._current_subprocess:
-                    self._current_subprocess.wait()
-
-            except FileNotFoundError:
-                # If linux default failed, try fallback
-                if system == "Linux" and command[0] == "espeak":
-                     try:
-                        command = ["spd-say", text]
-                        with self._subprocess_lock:
-                            if not self._intervention_active.is_set() and blocking: return
-                            self._current_subprocess = subprocess.Popen(
-                                command,
-                                stdout=subprocess.DEVNULL,
-                                stderr=subprocess.DEVNULL
-                            )
-                        if self._current_subprocess:
-                            self._current_subprocess.wait()
-                     except Exception as e:
-                         msg = f"TTS fallback failed: {e}"
-                         if self.app and self.app.data_logger: self.app.data_logger.log_warning(msg)
-            except Exception as e:
-                msg = f"TTS failed: {e}"
-                if self.app and self.app.data_logger:
-                    self.app.data_logger.log_warning(msg)
-                else:
-                    print(msg)
-            finally:
-                with self._subprocess_lock:
-                    self._current_subprocess = None
-
-        if blocking:
-            speak_task()
-        else:
-            threading.Thread(target=speak_task, daemon=True).start()
-
+            print(f"VoiceInterface unavailable. Would speak: {text}")
 
     def _play_sound(self, sound_file_path: str) -> None:
         """
@@ -329,8 +264,12 @@ class InterventionEngine:
         try:
             # Check if this is erotic content
             output_dir = "captures"
-            if "erotic" in details.lower() or "sultry" in details.lower() or "pose" in details.lower():
+            use_ptz = False
+            is_erotic = "erotic" in details.lower() or "sultry" in details.lower() or "pose" in details.lower()
+
+            if is_erotic:
                  output_dir = getattr(config, 'EROTIC_CONTENT_OUTPUT_DIR', "captures/erotic")
+                 use_ptz = True
 
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
@@ -339,13 +278,33 @@ class InterventionEngine:
             safe_details = "".join([c if c.isalnum() else "_" for c in details])
             filename = f"{output_dir}/capture_{timestamp}_{safe_details}.jpg"
 
-            cv2.imwrite(filename, self.logic_engine.last_video_frame)
+            image_to_save = self.logic_engine.last_video_frame
+
+            # Apply PTZ if requested and metrics available
+            if use_ptz:
+                face_metrics = getattr(self.logic_engine, 'face_metrics', {})
+                if face_metrics.get('face_detected'):
+                    cropped = ImageProcessor.crop_to_subject(image_to_save, face_metrics)
+                    if cropped is not None:
+                        image_to_save = cropped
+                        if self.app and self.app.data_logger: self.app.data_logger.log_info("Applied Digital PTZ crop.")
+
+            cv2.imwrite(filename, image_to_save)
 
             msg = f"Image saved to {filename}"
             if self.app and self.app.data_logger:
                 self.app.data_logger.log_info(msg)
             else:
                 print(msg)
+
+            # Create Social Media Draft
+            if is_erotic:
+                # Run in background to avoid blocking intervention
+                threading.Thread(
+                    target=self.social_media_manager.create_draft,
+                    args=(filename, "instagram", details),
+                    daemon=True
+                ).start()
 
         except Exception as e:
             msg = f"Error saving captured image: {e}"
@@ -715,6 +674,9 @@ class InterventionEngine:
             self._intervention_active.clear()
 
             # Kill any active subprocess (TTS)
+            if self.voice_interface:
+                self.voice_interface.stop()
+
             with self._subprocess_lock:
                 if self._current_subprocess:
                     if logger: logger.log_info("Terminating active TTS subprocess.")

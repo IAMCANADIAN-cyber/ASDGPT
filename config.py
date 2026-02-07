@@ -164,6 +164,30 @@ REFLEXIVE_WINDOW_TRIGGERS = _get_conf("REFLEXIVE_WINDOW_TRIGGERS", {
 }, dict)
 REFLEXIVE_WINDOW_COOLDOWN = _get_conf("REFLEXIVE_WINDOW_COOLDOWN", 300, int) # 5 minutes
 
+# --- Voice Commands ---
+# Mapping of keywords to intervention IDs
+VOICE_COMMANDS = _get_conf("VOICE_COMMANDS", {
+    "take a picture": "erotic_auto_capture",
+    "capture this": "erotic_auto_capture",
+    "snap a photo": "erotic_auto_capture",
+    "record this": "erotic_auto_record",
+    "start recording": "erotic_auto_record",
+    "how do i look": "erotic_pose_suggestion",
+    "suggest a pose": "erotic_pose_suggestion"
+}, dict)
+
+# --- TTS Configuration ---
+# "system" (pyttsx3) or "coqui" (requires python < 3.12 and TTS package)
+TTS_ENGINE = _get_conf("TTS_ENGINE", "system")
+# Voice ID for system TTS (exact ID string or partial name)
+TTS_VOICE_ID = _get_conf("TTS_VOICE_ID", None)
+# For cloning (Coqui only)
+TTS_MODEL_NAME = _get_conf("TTS_MODEL_NAME", "tts_models/multilingual/multi-dataset/xtts_v2")
+TTS_VOICE_CLONE_SOURCE = _get_conf("TTS_VOICE_CLONE_SOURCE", None)
+
+# --- Performance ---
+PERFORMANCE_MODE = _get_conf("PERFORMANCE_MODE", "high") # "high" or "low" (eco)
+
 # --- API Keys ---
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
