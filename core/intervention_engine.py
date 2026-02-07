@@ -327,14 +327,17 @@ class InterventionEngine:
              return
 
         try:
-            captures_dir = "captures"
-            if not os.path.exists(captures_dir):
-                os.makedirs(captures_dir)
+            # Check if this is erotic content
+            output_dir = "captures"
+            if "erotic" in details.lower() or "sultry" in details.lower() or "pose" in details.lower():
+                 output_dir = getattr(config, 'EROTIC_CONTENT_OUTPUT_DIR', "captures/erotic")
+
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
 
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            # Sanitize details for filename
             safe_details = "".join([c if c.isalnum() else "_" for c in details])
-            filename = f"{captures_dir}/capture_{timestamp}_{safe_details}.jpg"
+            filename = f"{output_dir}/capture_{timestamp}_{safe_details}.jpg"
 
             cv2.imwrite(filename, self.logic_engine.last_video_frame)
 
@@ -375,13 +378,16 @@ class InterventionEngine:
              return
 
         try:
-            captures_dir = "captures"
-            if not os.path.exists(captures_dir):
-                os.makedirs(captures_dir)
+            output_dir = "captures"
+            if "erotic" in details.lower() or "sultry" in details.lower():
+                 output_dir = getattr(config, 'EROTIC_CONTENT_OUTPUT_DIR', "captures/erotic")
+
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
 
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             safe_details = "".join([c if c.isalnum() else "_" for c in details])
-            filename = f"{captures_dir}/video_{timestamp}_{safe_details}.avi"
+            filename = f"{output_dir}/video_{timestamp}_{safe_details}.avi"
 
             # Get dimensions from current frame
             first_frame = self.logic_engine.last_video_frame

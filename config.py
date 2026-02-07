@@ -133,6 +133,10 @@ BASELINE_POSTURE = _get_conf("BASELINE_POSTURE", {}, dict)
 MIN_TIME_BETWEEN_INTERVENTIONS = _get_conf("MIN_TIME_BETWEEN_INTERVENTIONS", 300, int)
 DEFAULT_INTERVENTION_DURATION = _get_conf("DEFAULT_INTERVENTION_DURATION", 30, int)
 
+# --- Erotic Content Creation ---
+EROTIC_CONTENT_OUTPUT_DIR = _get_conf("EROTIC_CONTENT_OUTPUT_DIR", "captures/erotic")
+SEXUAL_AROUSAL_THRESHOLD = _get_conf("SEXUAL_AROUSAL_THRESHOLD", 50, int)
+
 # --- LMM Configuration ---
 # Note: API Keys should ideally be strictly ENV for security, but we allow config for local URLs.
 LOCAL_LLM_URL = _get_conf("LOCAL_LLM_URL", "http://127.0.0.1:1234")

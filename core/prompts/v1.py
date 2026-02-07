@@ -21,7 +21,8 @@ Output a valid JSON object with the following structure:
     "overload": <int 0-100>,
     "focus": <int 0-100>,
     "energy": <int 0-100>,
-    "mood": <int 0-100>
+    "mood": <int 0-100>,
+    "sexual_arousal": <int 0-100>
   },
   "visual_context": ["<tag1>", "<tag2>"],
   "suggestion": {
@@ -42,6 +43,9 @@ Output a valid JSON object with the following structure:
 - "drinking": User is drinking.
 - "camera_interaction": User is talking to or interacting with the camera/recording equipment.
 - "studio_lighting": Lighting appears professional or arranged for content creation.
+- "partial_nudity": User appears to be partially undressed (e.g. shirtless).
+- "sexual_activity": User appears to be engaging in sexual activity.
+- "erotic_pose": User is posing in a suggestive manner.
 
 State Estimation Guidance:
 - High Arousal + High Overload + High Speech Rate -> Anxiety/Panic.
@@ -49,6 +53,8 @@ State Estimation Guidance:
 - High Focus + High Video Activity + High Arousal -> Flow State/Excitement (Positive).
 - High Focus + Low Video Activity + Leaning In -> Deep Work.
 - High Energy + High Mood + Camera Interaction -> Content Creation Mode.
+- Low Lighting + Partial Nudity + High Mood -> High Sexual Arousal.
+- "sexual_arousal": Estimate based on nudity, suggestive poses, specific verbal context, or late-night low-light settings with high mood/focus but low overload. Default to 0 if unsure.
 
 Active Window Context:
 - Productivity Apps (e.g., VS Code, Word, Slack): Implies "Deep Work" or "Focus". Raise intervention threshold unless Overload is high.
