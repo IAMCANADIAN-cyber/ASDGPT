@@ -171,6 +171,14 @@ class LMMInterface:
         text = re.sub(r'```$', '', text, flags=re.MULTILINE)
         return text.strip()
 
+    def _truncate_text(self, text: str, max_length: int = 100) -> str:
+        """Truncates text to max_length and adds ellipsis if needed."""
+        if not text:
+            return ""
+        if len(text) <= max_length:
+            return text
+        return text[:max_length] + "..."
+
     def _send_request_with_retry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Sends request to LMM with manual retry logic."""
         retries = 3
@@ -301,7 +309,8 @@ class LMMInterface:
 
             # Context Intelligence: Active Window
             active_window = user_context.get('active_window', 'Unknown')
-            context_str += f"Active Window: {active_window}\n"
+            truncated_window = self._truncate_text(active_window)
+            context_str += f"Active Window: {truncated_window}\n"
 
             metrics = user_context.get('sensor_metrics', {})
             context_str += f"Audio Level (RMS): {metrics.get('audio_level', 0.0):.4f}\n"
@@ -347,9 +356,10 @@ class LMMInterface:
                     # Format simplified line
                     ts = snapshot.get('timestamp', 0)
                     win = snapshot.get('active_window', 'Unknown')
+                    truncated_win = self._truncate_text(win)
                     # Relative time is better for LMM
                     rel_time = int(time.time() - ts)
-                    context_str += f"- T-{rel_time}s: Window='{win}', Mode={snapshot.get('mode')}, Face={snapshot.get('face_detected')}\n"
+                    context_str += f"- T-{rel_time}s: Window='{truncated_win}', Mode={snapshot.get('mode')}, Face={snapshot.get('face_detected')}\n"
 
             est = user_context.get('current_state_estimation')
             if est:
