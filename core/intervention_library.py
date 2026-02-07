@@ -259,6 +259,65 @@ class InterventionLibrary:
                         {"action": "visual_prompt", "content": "Send a meme/hello to a friend."}
                     ]
                 }
+            ],
+            "erotic_content_creation": [
+                {
+                    "id": "erotic_pose_suggestion",
+                    "tier": 1,
+                    "description": "Suggests a pose for content.",
+                    "sequence": [
+                         {"action": "speak", "content": "The lighting is great. Try arching your back slightly and look over your shoulder at the camera."},
+                         {"action": "wait", "duration": 3},
+                         {"action": "speak", "content": "Perfect. Hold that."},
+                         {"action": "capture_image", "content": "pose_suggestion"}
+                    ]
+                },
+                {
+                    "id": "environment_cleanup_prompt",
+                    "tier": 1,
+                    "description": "Prompt to clean up background for better aesthetics.",
+                    "sequence": [
+                        {"action": "speak", "content": "You look incredible, but that pile of clothes in the corner is distracting. Let's move it real quick so the focus is all on you."},
+                        {"action": "wait", "duration": 10},
+                        {"action": "speak", "content": "Much better."}
+                    ]
+                },
+                {
+                    "id": "auto_capture_erotic",
+                    "tier": 2,
+                    "description": "Automatic capture of erotic moment.",
+                    "sequence": [
+                        {"action": "speak", "content": "Don't move. This angle is too good to miss."},
+                        {"action": "capture_image", "content": "erotic_auto_capture"}
+                    ]
+                },
+                {
+                    "id": "auto_record_erotic",
+                    "tier": 2,
+                    "description": "Automatic video recording of activity.",
+                    "sequence": [
+                        {"action": "speak", "content": "I'm going to record this for you. Just keep doing what you're doing."},
+                        {"action": "record_video", "content": "erotic_auto_record"}
+                    ]
+                },
+                {
+                    "id": "dirty_talk_encouragement",
+                    "tier": 1,
+                    "description": "Verbal encouragement.",
+                    "sequence": [
+                        {"action": "speak", "content": "God, you look so good right now."}
+                    ]
+                },
+                {
+                     "id": "masturbation_guidance",
+                     "tier": 3,
+                     "description": "Guided session.",
+                     "sequence": [
+                         {"action": "speak", "content": "Slow down a bit. Take a deep breath. Focus on the sensation."},
+                         {"action": "wait", "duration": 5},
+                         {"action": "speak", "content": "That's it."}
+                     ]
+                }
             ]
         }
 

@@ -6,12 +6,7 @@ import config
 
 class StateEngine:
     """
-    Manages the 5-dimensional state of the user:
-    1. Arousal (0-100)
-    2. Overload (0-100)
-    3. Focus (0-100)
-    4. Energy (0-100)
-    5. Mood (0-100)
+    Manages the user's state dimensions.
     """
 
     def __init__(self, logger=None, history_size: int = 5):
@@ -25,10 +20,13 @@ class StateEngine:
             "overload": 0,
             "focus": 50,
             "energy": 80,
-            "mood": 50
+            "mood": 50,
+            "sexual_arousal": 0
         }
 
         baseline = getattr(config, 'BASELINE_STATE', default_baseline)
+        if "sexual_arousal" not in baseline:
+             baseline["sexual_arousal"] = 0
 
         # Ensure all keys exist in baseline, fall back to default if missing
         self.state = {}
@@ -50,7 +48,7 @@ class StateEngine:
     def update(self, lmm_analysis: Optional[Dict[str, Any]]) -> None:
         """
         Updates the state based on LMM analysis.
-        Expects lmm_analysis to contain a "state_estimation" key with the 5 dimensions.
+        Expects lmm_analysis to contain a "state_estimation" key with the dimensions.
         """
         if not lmm_analysis:
             return

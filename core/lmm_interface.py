@@ -3,7 +3,6 @@ import json
 import re
 import time
 from typing import Optional, Dict, Any, List, TypedDict, Union
-from typing import Optional, Dict, Any, TypedDict, List
 import config
 from .intervention_library import InterventionLibrary
 from .prompts.v1 import SYSTEM_INSTRUCTION_V1
@@ -15,6 +14,7 @@ class StateEstimation(TypedDict):
     focus: int
     energy: int
     mood: int
+    sexual_arousal: int
 
 class Suggestion(TypedDict, total=False):
     id: Optional[str]
@@ -124,6 +124,16 @@ class LMMInterface:
                 self._log_warning(f"Validation Error: State key '{key}' out of bounds (0-100). Got: {val}")
                 return False
 
+        # Optional check for sexual_arousal
+        if "sexual_arousal" in state:
+             val = state["sexual_arousal"]
+             if not isinstance(val, (int, float)):
+                self._log_warning(f"Validation Error: State key 'sexual_arousal' is not a number. Got: {val}")
+                return False
+             if not (0 <= val <= 100):
+                self._log_warning(f"Validation Error: State key 'sexual_arousal' out of bounds (0-100). Got: {val}")
+                return False
+
         # Check visual_context (Optional, but if present must be list of strings)
         visual_context = data.get("visual_context")
         if visual_context is not None:
@@ -225,7 +235,8 @@ class LMMInterface:
             "overload": 0,
             "focus": 50,
             "energy": 50,
-            "mood": 50
+            "mood": 50,
+            "sexual_arousal": 0
         }
         suggestion = None
 
