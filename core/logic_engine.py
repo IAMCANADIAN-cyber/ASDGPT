@@ -11,6 +11,7 @@ from .lmm_interface import LMMInterface
 from .intervention_engine import InterventionEngine
 from .state_engine import StateEngine
 from .stt_interface import STTInterface
+from .music_interface import MusicInterface
 
 
 class LogicEngine:
@@ -29,6 +30,7 @@ class LogicEngine:
         self.intervention_engine: Optional[InterventionEngine] = None
         self.state_engine: StateEngine = StateEngine(logger=self.logger)
         self.stt_interface: STTInterface = STTInterface(logger=self.logger)
+        self.music_interface: MusicInterface = MusicInterface(logger=self.logger)
         self._lock: threading.Lock = threading.Lock()
 
         # Async LMM handling
@@ -54,8 +56,15 @@ class LogicEngine:
 
         # LMM trigger logic
         self.last_lmm_call_time: float = 0
-        self.lmm_call_interval: int = 5  # Periodic check interval (seconds)
-        self.min_lmm_interval: int = 2   # Minimum time between calls even for triggers (seconds)
+
+        # Adjust intervals based on performance mode
+        perf_mode = getattr(config, 'PERFORMANCE_MODE', 'high')
+        if perf_mode == 'low':
+            self.lmm_call_interval: int = 10
+            self.min_lmm_interval: int = 5
+        else:
+            self.lmm_call_interval: int = 5
+            self.min_lmm_interval: int = 2
 
         # Thresholds
         # Thresholds (loaded from config)
@@ -445,6 +454,15 @@ class LogicEngine:
 
                 # Log state update event
                 self.logger.log_event("state_update", self.state_engine.get_state())
+
+                # Trigger Mood Playlist (Music Integration)
+                if self.music_interface:
+                    state = self.state_engine.get_state()
+                    self.music_interface.play_mood_playlist(
+                        mood=state.get("mood", 50),
+                        arousal=state.get("arousal", 50),
+                        sexual_arousal=state.get("sexual_arousal", 0)
+                    )
 
                 # Update tray tooltip with new state
                 if hasattr(self, 'state_update_callback') and self.state_update_callback:

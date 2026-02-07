@@ -9,6 +9,7 @@ import platform
 from typing import Optional, Any, Dict, List
 from .voice_interface import VoiceInterface
 from .image_processing import ImageProcessor
+from .social_media_manager import SocialMediaManager
 
 # Conditional imports for optional dependencies
 try:
@@ -51,6 +52,10 @@ class InterventionEngine:
         # New Voice Interface
         logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
         self.voice_interface = VoiceInterface(logger=logger)
+
+        # Social Media Manager (Pass LMM Interface from Logic Engine)
+        lmm = getattr(logic_engine, 'lmm_interface', None)
+        self.social_media_manager = SocialMediaManager(lmm_interface=lmm, logger=logger)
 
         self.last_feedback_eligible_intervention: Dict[str, Any] = {
             "message": None,
@@ -260,7 +265,9 @@ class InterventionEngine:
             # Check if this is erotic content
             output_dir = "captures"
             use_ptz = False
-            if "erotic" in details.lower() or "sultry" in details.lower() or "pose" in details.lower():
+            is_erotic = "erotic" in details.lower() or "sultry" in details.lower() or "pose" in details.lower()
+
+            if is_erotic:
                  output_dir = getattr(config, 'EROTIC_CONTENT_OUTPUT_DIR', "captures/erotic")
                  use_ptz = True
 
@@ -289,6 +296,15 @@ class InterventionEngine:
                 self.app.data_logger.log_info(msg)
             else:
                 print(msg)
+
+            # Create Social Media Draft
+            if is_erotic:
+                # Run in background to avoid blocking intervention
+                threading.Thread(
+                    target=self.social_media_manager.create_draft,
+                    args=(filename, "instagram", details),
+                    daemon=True
+                ).start()
 
         except Exception as e:
             msg = f"Error saving captured image: {e}"
@@ -322,10 +338,8 @@ class InterventionEngine:
 
         try:
             output_dir = "captures"
-            use_ptz = False
             if "erotic" in details.lower() or "sultry" in details.lower():
                  output_dir = getattr(config, 'EROTIC_CONTENT_OUTPUT_DIR', "captures/erotic")
-                 use_ptz = True
 
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
@@ -335,13 +349,6 @@ class InterventionEngine:
             filename = f"{output_dir}/video_{timestamp}_{safe_details}.avi"
 
             # Get dimensions from current frame
-            # Note: If using PTZ, dimensions might change per frame if we track dynamically,
-            # but standard VideoWriter needs fixed dimensions.
-            # Digital PTZ for video is complex (needs resizing to fixed output).
-            # For now, we will SKIP PTZ for video to avoid complexity of resizing every frame to match output.
-            # OR we stick to the initial crop?
-            # Let's skip PTZ for video for robustness in this iteration.
-
             first_frame = self.logic_engine.last_video_frame
             if first_frame is None:
                 msg = "Cannot record video: Signal lost."

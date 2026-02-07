@@ -185,6 +185,9 @@ TTS_VOICE_ID = _get_conf("TTS_VOICE_ID", None)
 TTS_MODEL_NAME = _get_conf("TTS_MODEL_NAME", "tts_models/multilingual/multi-dataset/xtts_v2")
 TTS_VOICE_CLONE_SOURCE = _get_conf("TTS_VOICE_CLONE_SOURCE", None)
 
+# --- Performance ---
+PERFORMANCE_MODE = _get_conf("PERFORMANCE_MODE", "high") # "high" or "low" (eco)
+
 # --- API Keys ---
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
