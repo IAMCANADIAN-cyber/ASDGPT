@@ -40,3 +40,8 @@ Here are the reviews and recommendations for the open Pull Requests (branches) a
 *   **Status:** **Merged**
 *   **Recommendation:** **2: Accept Incoming**
 *   **Reasoning:** Updates `ROADMAP.md` (Jan 29 refresh) and includes critical reliability fixes for `tests/test_lmm_timeout.py` (using `SynchronousThread`). Supersedes `origin/roadmapper/weekly-refresh-jan-29-3747202026440890670`. **Verified content is in HEAD and tests pass.**
+
+## 8. `origin/sentinel-reliability-fix-video-deadlock-5358150879031931299`
+*   **Status:** **Merged**
+*   **Recommendation:** **2: Accept Incoming**
+*   **Reasoning:** Critical fix for deadlock in `VideoSensor.get_frame` during shutdown by releasing lock before blocking read. Also adds `tools/verify_crash.py` for verification. **Verified fix with stress test.**
