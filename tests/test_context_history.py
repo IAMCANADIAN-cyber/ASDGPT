@@ -45,11 +45,27 @@ class TestContextHistory(unittest.TestCase):
         """Verify LMM Interface formats the history correctly."""
         lmm = LMMInterface()
 
-        # Construct a fake history
+        # Construct a fake history with richer metrics
         now = time.time()
         history = [
-            {'timestamp': now - 40, 'active_window': 'Old App', 'mode': 'active', 'face_detected': True},
-            {'timestamp': now - 10, 'active_window': 'New App', 'mode': 'active', 'face_detected': False},
+            {
+                'timestamp': now - 40,
+                'active_window': 'Old App',
+                'mode': 'active',
+                'face_detected': True,
+                'posture': 'neutral',
+                'audio_level': 0.05,
+                'video_activity': 2.5
+            },
+            {
+                'timestamp': now - 10,
+                'active_window': 'New App',
+                'mode': 'active',
+                'face_detected': False,
+                'posture': 'slouching',
+                'audio_level': 0.55,
+                'video_activity': 15.2
+            },
         ]
 
         user_context = {
@@ -80,9 +96,20 @@ class TestContextHistory(unittest.TestCase):
                     text_part = part['text']
                     break
 
+            # Debug output if needed
+            # print(text_part)
+
             self.assertIn("Recent History (Last 5 snapshots):", text_part)
             self.assertIn("- T-40s: Window='Old App'", text_part)
+            # Verify new fields are present
+            self.assertIn("Posture=neutral", text_part)
+            self.assertIn("Audio=0.05", text_part)
+            self.assertIn("Motion=2.5", text_part)
+
             self.assertIn("- T-10s: Window='New App'", text_part)
+            self.assertIn("Posture=slouching", text_part)
+            self.assertIn("Audio=0.55", text_part)
+            self.assertIn("Motion=15.2", text_part)
 
 if __name__ == '__main__':
     unittest.main()
