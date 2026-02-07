@@ -10,3 +10,5 @@ pillow
 pytest
 numpy
 SpeechRecognition
+openai-whisper
+pyttsx3

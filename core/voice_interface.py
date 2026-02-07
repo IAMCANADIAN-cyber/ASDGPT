@@ -1,29 +1,66 @@
 import platform
-import subprocess
 import threading
 import os
 import time
-import base64
-from typing import Optional, Dict, Any, List
+from typing import Optional
+import config
 
-# Placeholder for potential API-based TTS imports
-# e.g., import elevenlabs, openai
+# Imports
+try:
+    import pyttsx3
+except ImportError:
+    pyttsx3 = None
+
+try:
+    from TTS.api import TTS
+except ImportError:
+    TTS = None
 
 class VoiceInterface:
     """
     Handles Text-to-Speech (TTS) operations.
-    Designed to be modular:
-    - Default: System TTS (say, espeak, PowerShell)
-    - Future: API-based TTS (OpenAI, ElevenLabs)
+    Supports:
+    - System TTS (via pyttsx3)
+    - Coqui TTS (Voice Cloning) - Optional
     """
 
     def __init__(self, logger=None):
         self.logger = logger
         self._lock = threading.Lock()
-        self._current_subprocess: Optional[subprocess.Popen] = None
 
-        # Default configuration
-        self.tts_engine = "system" # or "openai", "elevenlabs"
+        self.engine_type = getattr(config, 'TTS_ENGINE', 'system')
+
+        # System TTS Setup
+        self.pyttsx_engine = None
+        if pyttsx3:
+            try:
+                # Initialize pyttsx3 (it needs to be on main thread typically, but we wrap calls)
+                # Note: pyttsx3 on Linux (espeak) is fine in threads, but COM on Windows might have issues.
+                # Usually we initialize it once.
+                self.pyttsx_engine = pyttsx3.init()
+
+                # Set Voice
+                voice_id = getattr(config, 'TTS_VOICE_ID', None)
+                if voice_id:
+                    self._set_system_voice(voice_id)
+            except Exception as e:
+                self._log_warning(f"pyttsx3 initialization failed: {e}")
+
+        # Coqui TTS Setup
+        self.coqui_engine = None
+        if self.engine_type == "coqui":
+            if TTS:
+                try:
+                    model_name = getattr(config, 'TTS_MODEL_NAME', "tts_models/multilingual/multi-dataset/xtts_v2")
+                    self._log_info(f"Loading Coqui TTS model: {model_name}...")
+                    self.coqui_engine = TTS(model_name=model_name).to("cuda" if os.environ.get("USE_CUDA") == "1" else "cpu")
+                    self._log_info("Coqui TTS loaded.")
+                except Exception as e:
+                    self._log_warning(f"Coqui TTS failed to load: {e}. Falling back to system.")
+                    self.engine_type = "system"
+            else:
+                self._log_warning("Coqui TTS not installed. Falling back to system.")
+                self.engine_type = "system"
 
     def _log_info(self, msg: str) -> None:
         if self.logger:
@@ -37,11 +74,18 @@ class VoiceInterface:
         else:
             print(f"VoiceInterface: {msg}")
 
-    def _log_error(self, msg: str) -> None:
-        if self.logger:
-            self.logger.log_error(f"VoiceInterface: {msg}")
-        else:
-            print(f"VoiceInterface: {msg}")
+    def _set_system_voice(self, voice_id: str):
+        if not self.pyttsx_engine: return
+        try:
+            voices = self.pyttsx_engine.getProperty('voices')
+            for voice in voices:
+                if voice_id in voice.id or voice_id in voice.name:
+                    self.pyttsx_engine.setProperty('voice', voice.id)
+                    self._log_info(f"Selected system voice: {voice.name}")
+                    return
+            self._log_warning(f"System voice '{voice_id}' not found.")
+        except Exception as e:
+            self._log_warning(f"Error setting system voice: {e}")
 
     def speak(self, text: str, blocking: bool = True) -> None:
         """
@@ -52,80 +96,74 @@ class VoiceInterface:
 
         self._log_info(f"Speaking: '{text}'")
 
-        if self.tts_engine == "system":
+        if self.engine_type == "coqui" and self.coqui_engine:
+            if blocking:
+                self._speak_coqui(text)
+            else:
+                threading.Thread(target=self._speak_coqui, args=(text,), daemon=True).start()
+
+        elif self.pyttsx_engine:
+            # pyttsx3 runAndWait blocks
             if blocking:
                 self._speak_system(text)
             else:
                 threading.Thread(target=self._speak_system, args=(text,), daemon=True).start()
         else:
-            self._log_warning(f"TTS Engine '{self.tts_engine}' not implemented. Falling back to system.")
-            if blocking:
-                self._speak_system(text)
-            else:
-                threading.Thread(target=self._speak_system, args=(text,), daemon=True).start()
+            self._log_warning("No TTS engine available.")
 
     def _speak_system(self, text: str) -> None:
-        """
-        Uses platform-specific TTS commands.
-        """
-        system = platform.system()
-        command = []
+        with self._lock:
+            try:
+                # Re-init if loop already closed (quirk of pyttsx3)
+                # Actually, simpler to just use say() and runAndWait()
+                self.pyttsx_engine.say(text)
+                self.pyttsx_engine.runAndWait()
+            except RuntimeError:
+                # Loop already running?
+                pass
+            except Exception as e:
+                self._log_warning(f"System TTS error: {e}")
 
-        if system == "Darwin":  # macOS
-            command = ["say", text]
-        elif system == "Linux":
-            # Try espeak or spd-say
-            command = ["espeak", text] # Default to espeak
-        elif system == "Windows":
-            # PowerShell with SINGLE QUOTES to prevent variable expansion injection
-            # In PowerShell '...' treats content literally (no $var expansion)
-            # To escape a single quote inside single quotes, use two single quotes ''
-            safe_text = text.replace("'", "''")
-            ps_cmd = f"Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('{safe_text}')"
-            command = ["powershell", "-Command", ps_cmd]
+    def _speak_coqui(self, text: str) -> None:
+        with self._lock:
+            try:
+                # Clone path
+                ref_path = getattr(config, 'TTS_VOICE_CLONE_SOURCE', None)
+                output_file = "temp_tts_output.wav"
 
-        if not command:
-             return
+                if ref_path and os.path.exists(ref_path):
+                    self.coqui_engine.tts_to_file(text=text, speaker_wav=ref_path, language="en", file_path=output_file)
+                else:
+                    # Generic or speaker name if multi-speaker but no clone
+                    # Fallback to first speaker?
+                    self.coqui_engine.tts_to_file(text=text, file_path=output_file)
 
+                # Play audio
+                # Using simple playback
+                # We can reuse the play_sound logic or a simple os command
+                # Ideally, InterventionEngine handles playback, but VoiceInterface is self contained here
+                self._play_wav(output_file)
+
+            except Exception as e:
+                self._log_warning(f"Coqui TTS error: {e}")
+
+    def _play_wav(self, path):
+        # Fallback player
         try:
-            with self._lock:
-                # Use Popen to allow interruption
-                self._current_subprocess = subprocess.Popen(
-                    command,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
-                )
-
-            if self._current_subprocess:
-                self._current_subprocess.wait()
-
-        except FileNotFoundError:
-            # If linux default failed, try fallback
-            if system == "Linux" and command[0] == "espeak":
-                    try:
-                        command = ["spd-say", text]
-                        with self._lock:
-                            self._current_subprocess = subprocess.Popen(
-                                command,
-                                stdout=subprocess.DEVNULL,
-                                stderr=subprocess.DEVNULL
-                            )
-                        if self._current_subprocess:
-                            self._current_subprocess.wait()
-                    except Exception as e:
-                        self._log_warning(f"TTS fallback failed: {e}")
-        except Exception as e:
-            self._log_warning(f"TTS failed: {e}")
-        finally:
-            with self._lock:
-                self._current_subprocess = None
+            if platform.system() == "Linux":
+                os.system(f"aplay {path} > /dev/null 2>&1")
+            elif platform.system() == "Darwin":
+                os.system(f"afplay {path}")
+            elif platform.system() == "Windows":
+                # PowerShell play
+                os.system(f'powershell -c (New-Object Media.SoundPlayer "{path}").PlaySync()')
+        except:
+            pass
 
     def stop(self) -> None:
         """Stops any active speech."""
-        with self._lock:
-            if self._current_subprocess:
-                self._log_info("Terminating active TTS subprocess.")
-                try:
-                    self._current_subprocess.terminate()
-                except Exception as e:
-                    self._log_warning(f"Error terminating TTS subprocess: {e}")
+        if self.pyttsx_engine:
+            try:
+                self.pyttsx_engine.stop()
+            except:
+                pass

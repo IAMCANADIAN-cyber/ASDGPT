@@ -176,6 +176,15 @@ VOICE_COMMANDS = _get_conf("VOICE_COMMANDS", {
     "suggest a pose": "erotic_pose_suggestion"
 }, dict)
 
+# --- TTS Configuration ---
+# "system" (pyttsx3) or "coqui" (requires python < 3.12 and TTS package)
+TTS_ENGINE = _get_conf("TTS_ENGINE", "system")
+# Voice ID for system TTS (exact ID string or partial name)
+TTS_VOICE_ID = _get_conf("TTS_VOICE_ID", None)
+# For cloning (Coqui only)
+TTS_MODEL_NAME = _get_conf("TTS_MODEL_NAME", "tts_models/multilingual/multi-dataset/xtts_v2")
+TTS_VOICE_CLONE_SOURCE = _get_conf("TTS_VOICE_CLONE_SOURCE", None)
+
 # --- API Keys ---
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
