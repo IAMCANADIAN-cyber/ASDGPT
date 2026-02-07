@@ -349,7 +349,17 @@ class LMMInterface:
                     win = snapshot.get('active_window', 'Unknown')
                     # Relative time is better for LMM
                     rel_time = int(time.time() - ts)
-                    context_str += f"- T-{rel_time}s: Window='{win}', Mode={snapshot.get('mode')}, Face={snapshot.get('face_detected')}\n"
+
+                    # Extract richer metrics if available
+                    posture = snapshot.get('posture', 'unknown')
+                    audio_level = snapshot.get('audio_level', 0.0)
+                    video_activity = snapshot.get('video_activity', 0.0)
+
+                    context_str += (
+                        f"- T-{rel_time}s: Window='{win}', Mode={snapshot.get('mode')}, "
+                        f"Face={snapshot.get('face_detected')}, Posture={posture}, "
+                        f"Audio={audio_level:.2f}, Motion={video_activity:.1f}\n"
+                    )
 
             est = user_context.get('current_state_estimation')
             if est:
