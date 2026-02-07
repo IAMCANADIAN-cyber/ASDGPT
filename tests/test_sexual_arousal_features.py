@@ -57,6 +57,8 @@ class TestSexualArousalFeatures(unittest.TestCase):
         # Setup LogicEngine with a mock frame
         logic_engine = MagicMock()
         logic_engine.last_video_frame = np.zeros((100, 100, 3), dtype=np.uint8)
+        # Ensure face_metrics is a dict, not a Mock, to avoid iteration errors in ImageProcessor
+        logic_engine.face_metrics = {"face_detected": False, "face_locations": []}
 
         intervention_engine = InterventionEngine(logic_engine=logic_engine, app_instance=MagicMock())
         intervention_engine.app.data_logger = self.mock_logger

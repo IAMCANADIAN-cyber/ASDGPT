@@ -10,6 +10,7 @@ from .data_logger import DataLogger
 from .lmm_interface import LMMInterface
 from .intervention_engine import InterventionEngine
 from .state_engine import StateEngine
+from .stt_interface import STTInterface
 
 
 class LogicEngine:
@@ -27,15 +28,22 @@ class LogicEngine:
         self.lmm_interface: Optional[LMMInterface] = lmm_interface
         self.intervention_engine: Optional[InterventionEngine] = None
         self.state_engine: StateEngine = StateEngine(logger=self.logger)
+        self.stt_interface: STTInterface = STTInterface(logger=self.logger)
         self._lock: threading.Lock = threading.Lock()
 
         # Async LMM handling
         self.lmm_thread: Optional[threading.Thread] = None
+        self.stt_thread: Optional[threading.Thread] = None
 
         # Sensor data storage
         self.last_video_frame: Optional[np.ndarray] = None
         self.previous_video_frame: Optional[np.ndarray] = None
         self.last_audio_chunk: Optional[np.ndarray] = None
+        self.audio_buffer_for_stt: deque = deque(maxlen=int(44100 * 30)) # 30 sec max buffer
+        self.last_speech_state: bool = False
+        self.speech_start_time: float = 0
+        self.last_transcription: Optional[str] = None
+        self.last_transcription_time: float = 0
 
         # Sensor metrics
         self.audio_level: float = 0.0
@@ -89,6 +97,10 @@ class LogicEngine:
         # Reflexive Triggers (Window Rules)
         self.last_reflexive_trigger_time: float = 0
         self.reflexive_trigger_cooldown: int = getattr(config, 'REFLEXIVE_WINDOW_COOLDOWN', 300)
+
+        # Voice Triggers
+        self.last_voice_trigger_time: float = 0
+        self.voice_trigger_cooldown: int = 5 # seconds
 
         # Content Creation Mode Heuristic
         self.sexual_arousal_threshold = getattr(config, 'SEXUAL_AROUSAL_THRESHOLD', 50)
@@ -227,6 +239,33 @@ class LogicEngine:
             if self.audio_sensor and hasattr(self.audio_sensor, 'analyze_chunk'):
                 self.audio_analysis = self.audio_sensor.analyze_chunk(audio_chunk)
                 self.audio_level = self.audio_analysis.get('rms', 0.0)
+
+                # STT Buffer logic
+                # Only buffer if there's speech confidence or sufficient energy
+                is_speech = self.audio_analysis.get("is_speech", False)
+
+                # State transition detection
+                if is_speech and not self.last_speech_state:
+                    self.speech_start_time = time.time()
+
+                # Append to buffer if speech detected or trailing silence (to complete sentence)
+                # Simple logic: if speech, add.
+                if is_speech:
+                    if len(audio_chunk.shape) > 1:
+                        self.audio_buffer_for_stt.extend(audio_chunk[:, 0])
+                    else:
+                        self.audio_buffer_for_stt.extend(audio_chunk)
+
+                # Trigger logic based on state change (Falling Edge)
+                # If speech ENDS (was True, now False), we process the buffer
+                if self.last_speech_state and not is_speech:
+                    # Delay slightly or check buffer length to ensure we have a sentence?
+                    # For now, trigger processing if buffer is big enough
+                    if len(self.audio_buffer_for_stt) > 22050: # > 0.5s @ 44.1k
+                        self._trigger_stt_processing()
+
+                self.last_speech_state = is_speech
+
             else:
                 # Fallback calculation
                 if len(audio_chunk) > 0:
@@ -236,6 +275,50 @@ class LogicEngine:
                 self.audio_analysis = {"rms": self.audio_level}
 
         self.logger.log_debug(f"Processed audio chunk. Level: {self.audio_level:.4f}")
+
+    def _trigger_stt_processing(self):
+        """Copies buffer and launches background STT thread."""
+        if self.stt_thread and self.stt_thread.is_alive():
+            # If busy, maybe skip or queue? For now, skip to avoid lag
+            self.logger.log_debug("STT thread busy, skipping chunk.")
+            return
+
+        # Copy buffer and clear
+        audio_data = np.array(self.audio_buffer_for_stt)
+        self.audio_buffer_for_stt.clear()
+
+        sample_rate = 44100
+        if self.audio_sensor and hasattr(self.audio_sensor, 'sample_rate'):
+            sample_rate = self.audio_sensor.sample_rate
+
+        self.stt_thread = threading.Thread(
+            target=self._run_stt_async,
+            args=(audio_data, sample_rate),
+            daemon=True
+        )
+        self.stt_thread.start()
+
+    def _run_stt_async(self, audio_data, sample_rate):
+        try:
+            text = self.stt_interface.transcribe(audio_data, sample_rate)
+            if text:
+                with self._lock:
+                    self.last_transcription = text
+                    self.last_transcription_time = time.time()
+
+                self.logger.log_info(f"User Speech Detected: '{text}'")
+
+                # Check Voice Commands Immediately
+                if self.intervention_engine:
+                    voice_intervention_id = self._check_voice_commands(text)
+                    if voice_intervention_id:
+                        self.logger.log_info(f"Triggering Voice Command Intervention: {voice_intervention_id}")
+                        self.intervention_engine.start_intervention({"id": voice_intervention_id, "tier": 2})
+                        with self._lock:
+                            self.last_voice_trigger_time = time.time()
+
+        except Exception as e:
+            self.logger.log_warning(f"STT Async Error: {e}")
 
     def _prepare_lmm_data(self, trigger_reason: str = "periodic") -> Optional[dict]:
         with self._lock:
@@ -256,6 +339,12 @@ class LogicEngine:
                 # Downsample or limit audio data size if needed for LMM
                 # For now, sending raw list
                 audio_data_list = self.last_audio_chunk.tolist()
+
+            # Retrieve recent speech context
+            # Only send if recent (< 30s)
+            speech_context = None
+            if self.last_transcription and (time.time() - self.last_transcription_time < 30):
+                speech_context = self.last_transcription
 
             # Fetch suppressed interventions if available
             suppressed_list = []
@@ -302,7 +391,8 @@ class LogicEngine:
                 "current_state_estimation": self.state_engine.get_state(),
                 "suppressed_interventions": suppressed_list,
                 "system_alerts": system_alerts,
-                "preferred_interventions": preferred_list
+                "preferred_interventions": preferred_list,
+                "user_speech": speech_context
             }
 
             return {
@@ -442,6 +532,26 @@ class LogicEngine:
         for keyword, intervention_id in reflex_rules.items():
             if keyword.lower() in active_window_lower:
                 self.logger.log_info(f"Reflexive Window Match: '{keyword}' found in '{active_window}'")
+                return intervention_id
+
+        return None
+
+    def _check_voice_commands(self, text: str) -> Optional[str]:
+        """
+        Checks if transcribed text matches any voice commands.
+        """
+        current_time = time.time()
+        if current_time - self.last_voice_trigger_time < self.voice_trigger_cooldown:
+            return None
+
+        commands = getattr(config, 'VOICE_COMMANDS', {})
+        if not commands or not text:
+            return None
+
+        text_lower = text.lower()
+        for phrase, intervention_id in commands.items():
+            if phrase.lower() in text_lower:
+                self.logger.log_info(f"Voice Command Match: '{phrase}' found in speech.")
                 return intervention_id
 
         return None
@@ -727,3 +837,9 @@ class LogicEngine:
                 self.logger.log_warning("LMM analysis thread did not finish in time (will be killed as daemon).")
             else:
                 self.logger.log_info("LMM analysis thread finished.")
+
+        if self.stt_thread and self.stt_thread.is_alive():
+            self.logger.log_info("Waiting for STT thread to finish...")
+            self.stt_thread.join(timeout=2.0)
+            if self.stt_thread.is_alive():
+                self.logger.log_warning("STT thread did not finish in time.")

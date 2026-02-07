@@ -164,6 +164,18 @@ REFLEXIVE_WINDOW_TRIGGERS = _get_conf("REFLEXIVE_WINDOW_TRIGGERS", {
 }, dict)
 REFLEXIVE_WINDOW_COOLDOWN = _get_conf("REFLEXIVE_WINDOW_COOLDOWN", 300, int) # 5 minutes
 
+# --- Voice Commands ---
+# Mapping of keywords to intervention IDs
+VOICE_COMMANDS = _get_conf("VOICE_COMMANDS", {
+    "take a picture": "erotic_auto_capture",
+    "capture this": "erotic_auto_capture",
+    "snap a photo": "erotic_auto_capture",
+    "record this": "erotic_auto_record",
+    "start recording": "erotic_auto_record",
+    "how do i look": "erotic_pose_suggestion",
+    "suggest a pose": "erotic_pose_suggestion"
+}, dict)
+
 # --- API Keys ---
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
