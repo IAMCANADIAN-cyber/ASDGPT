@@ -11,6 +11,25 @@ ASDGPT is a Python application designed to act as an autonomous co-regulator. It
 *   **Music Control**: Changes music playlists based on your detected mood and arousal levels (supports Spotify).
 *   **Configuration GUI**: A visual tool to easily manage settings.
 
+## Core Features (v1)
+
+*   **State Management**: Tracks user state (Active, Snoozed, Paused, DND).
+*   **Sensor Input**: Captures data from camera (video) and microphone (audio).
+*   **Intervention System**: Provides notifications and interventions (TTS, audio prompts).
+*   **User Feedback**: Allows users to provide feedback on interventions via hotkeys.
+*   **System Tray Icon**: Provides a visual indicator of the application's status and quick access to controls.
+*   **Context Intelligence**: Uses active window titles to infer user context (Work, Leisure, Doom Scrolling).
+*   **Reflexive Triggers**: Instantly reacts to specific window titles (e.g., distraction apps).
+
+## How it Works
+
+ASDGPT operates as a continuous loop:
+1.  **Senses**: Monitors audio (speech rate, tone) and video (posture, activity).
+2.  **Analyzes**: Sends aggregated data to a local Large Multi-modal Model (LMM).
+3.  **Updates State**: Tracks 6 internal dimensions (Arousal, Sexual Arousal, Overload, Focus, Energy, Mood).
+4.  **Intervenes**: Suggests micro-regulations (breathing, breaks) or creative actions (poses, captures) if state thresholds are crossed.
+5.  **Learns**: You use hotkeys to mark interventions as "Helpful" or "Unhelpful".
+
 ## Setup and Installation
 
 ### System Requirements
@@ -21,7 +40,7 @@ ASDGPT is a Python application designed to act as an autonomous co-regulator. It
 *   **System Libraries**:
     *   **Linux**: `x11-utils` (for window detection), `espeak` (TTS), `ffmpeg` (Audio), `portaudio19-dev` (Audio).
     *   **macOS**: `ffmpeg`, `portaudio`.
-    *   **Windows**: Visual C++ Build Tools (often needed for audio libraries).
+    *   **Windows**: Visual C++ Build Tools.
 
 **Linux Dependencies Command:**
 ```bash
@@ -50,7 +69,7 @@ sudo apt-get install x11-utils espeak ffmpeg portaudio19-dev
     *Note: Installing `openai-whisper` and `TTS` (Coqui) may download significant model data.*
 
 4.  **Install Optional Dependencies (Voice Cloning):**
-    If you want advanced voice cloning, ensure `TTS` is installed correctly. It is included in `requirements.txt`, but requires a compatible Python version (< 3.12).
+    If you want advanced voice cloning, ensure `TTS` is installed correctly. It is included in `requirements.txt`.
 
 ## Configuration
 
@@ -81,16 +100,17 @@ Example configuration for new features:
       "take a picture": "erotic_auto_capture",
       "how do i look": "erotic_pose_suggestion"
   },
-  "PERFORMANCE_MODE": "high"
+  "PERFORMANCE_MODE": "high",
+  "ENABLE_MUSIC_CONTROL": false
 }
 ```
 
 ### Music Integration (Spotify)
 
 To enable music control:
-1.  Ensure you have a way to handle `spotify:` URIs (official Spotify app installed).
-2.  On Linux, install `spotify-client`.
-3.  The system currently uses system commands (`open`, `start`, `spotify`) to trigger playlists.
+1.  Set `ENABLE_MUSIC_CONTROL` to `true` in config (default is `false`).
+2.  Ensure you have a way to handle `spotify:` URIs (official Spotify app installed).
+3.  The system uses system commands (`open`, `start`, `spotify`) to trigger playlists.
 
 ### Social Media Integration
 
@@ -121,13 +141,21 @@ Drafts are automatically saved to `drafts/instagram/` (or other platforms) when 
     *   Install system audio libraries (see System Requirements).
 *   **"TTS not found" / Import Errors:**
     *   Ensure you are using Python 3.9-3.11. Python 3.12+ has compatibility issues with the `TTS` library.
-    *   If using `system` TTS, ensure `espeak` is installed (Linux).
-*   **Xlib / Display Errors (Linux):**
-    *   If running headless (no monitor), `pyautogui` features like media keys will fail. Run with a display or use `xvfb`.
+*   **LMM Connection Errors (404/400):**
+    *   Ensure your local LLM (e.g., LM Studio) is running.
+    *   Check `LOCAL_LLM_URL` in config. It should usually be `http://127.0.0.1:1234`. The system automatically handles `/v1/chat/completions`.
+    *   Verify `LOCAL_LLM_MODEL_ID` matches the loaded model name, or use `local-model` if generic.
 
 ## Testing
 
 Run unit tests to verify installation:
 ```bash
 python -m pytest tests/
+```
+
+### Stress Testing
+
+To verify system reliability and clean shutdown behavior:
+```bash
+python tools/verify_crash.py
 ```
