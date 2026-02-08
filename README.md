@@ -54,6 +54,8 @@ sudo apt-get install x11-utils espeak ffmpeg portaudio19-dev
 
 ## Configuration
 
+For a comprehensive guide on all available settings, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+
 You can configure ASDGPT using the new Graphical Interface or by editing config files manually.
 
 ### Using the GUI (Recommended)
@@ -68,9 +70,11 @@ This allows you to set:
 *   **Voice**: Choose between 'system' (default) or 'coqui' (cloning) engines.
 *   **Performance**: Toggle 'High' or 'Low' resource usage.
 
-### Manual Configuration (`user_data/config.json`)
+### Manual Configuration
 
-Example configuration for new features:
+You can override defaults by creating `user_data/config.json`. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for the full list of options.
+
+Example `user_data/config.json`:
 ```json
 {
   "EROTIC_CONTENT_OUTPUT_DIR": "my_private_folder/captures",
