@@ -47,10 +47,19 @@ class LMMInterface:
 
         # Ensure URL ends with v1/chat/completions for OpenAI compatibility
         base_url = config.LOCAL_LLM_URL.rstrip('/')
-        if not base_url.endswith("/v1/chat/completions"):
-             self.llm_url = f"{base_url}/v1/chat/completions"
-        else:
+
+        if base_url.endswith("/v1/chat/completions"):
+            self.llm_url = base_url
+        elif base_url.endswith("/chat/completions"):
              self.llm_url = base_url
+        elif base_url.endswith("/v1/chat"):
+             self.llm_url = f"{base_url}/completions"
+        elif base_url.endswith("/chat"):
+             self.llm_url = f"{base_url}/completions"
+        elif base_url.endswith("/v1"):
+             self.llm_url = f"{base_url}/chat/completions"
+        else:
+             self.llm_url = f"{base_url}/v1/chat/completions"
 
         # Circuit Breaker State
         self.circuit_failures = 0

@@ -456,13 +456,18 @@ class LogicEngine:
                 self.logger.log_event("state_update", self.state_engine.get_state())
 
                 # Trigger Mood Playlist (Music Integration)
-                if self.music_interface:
-                    state = self.state_engine.get_state()
-                    self.music_interface.play_mood_playlist(
-                        mood=state.get("mood", 50),
-                        arousal=state.get("arousal", 50),
-                        sexual_arousal=state.get("sexual_arousal", 0)
-                    )
+                # Only play music if enabled in config and not in fallback mode (to avoid startup noise)
+                music_enabled = getattr(config, 'ENABLE_MUSIC_CONTROL', False)
+                if self.music_interface and music_enabled and not is_fallback:
+                    try:
+                        state = self.state_engine.get_state()
+                        self.music_interface.play_mood_playlist(
+                            mood=state.get("mood", 50),
+                            arousal=state.get("arousal", 50),
+                            sexual_arousal=state.get("sexual_arousal", 0)
+                        )
+                    except Exception as e:
+                        self.logger.log_warning(f"Music Interface Error: {e}")
 
                 # Update tray tooltip with new state
                 if hasattr(self, 'state_update_callback') and self.state_update_callback:
