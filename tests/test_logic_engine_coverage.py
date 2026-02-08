@@ -38,12 +38,16 @@ class TestLogicEngineCoverage:
         mock_config.LOG_MAX_BYTES = 1024
         mock_config.LOG_BACKUP_COUNT = 1
         mock_config.LOG_LEVEL = "INFO"
-
-        # Patch sys.modules['config'] just for this test execution
-        with patch.dict(sys.modules, {'config': mock_config}):
-            mock_config.HISTORY_WINDOW_SIZE = 5
-            mock_config.HISTORY_SAMPLE_INTERVAL = 10
-            mock_config.RAPID_SWITCHING_THRESHOLD = 4
+        mock_config.HISTORY_WINDOW_SIZE = 5
+        mock_config.HISTORY_SAMPLE_INTERVAL = 10
+        mock_config.RAPID_SWITCHING_THRESHOLD = 4
+        mock_config.SEXUAL_AROUSAL_THRESHOLD = 50
+        mock_config.MEETING_MODE_SPEECH_DURATION_THRESHOLD = 3.0
+        mock_config.MEETING_MODE_IDLE_KEYBOARD_THRESHOLD = 10.0
+        mock_config.MEETING_MODE_SPEECH_GRACE_PERIOD = 2.0
+        mock_config.REFLEXIVE_WINDOW_COOLDOWN = 300
+        mock_config.ENABLE_MUSIC_CONTROL = False
+        mock_config.PERFORMANCE_MODE = 'high'
 
         # Prepare mock cv2 to avoid dependency issues in test env
         mock_cv2 = MagicMock()
@@ -54,32 +58,24 @@ class TestLogicEngineCoverage:
         mock_cv2.COLOR_BGR2GRAY = 6
         mock_cv2.IMWRITE_JPEG_QUALITY = 1
 
-        # Patch sys.modules['config'] and 'cv2' just for this test execution
-        # We need to ensure we don't pollute other tests
-        with patch.dict(sys.modules, {'config': mock_config, 'cv2': mock_cv2}):
-            # We must import LogicEngine HERE, so it uses the patched config
-            # If it was already imported, we might need to reload it,
-            # but usually in pytest fixtures, this provides isolation if modules aren't already cached globally in a bad state.
-            # To be safe, we can try to reload or just import.
-            if 'core.logic_engine' in sys.modules:
-                del sys.modules['core.logic_engine']
+        # Patch core.logic_engine dependencies directly to avoid reloading module
+        # This prevents 'torch' re-initialization issues in STTInterface
+        with patch('core.logic_engine.config', mock_config), \
+             patch('core.logic_engine.cv2', mock_cv2), \
+             patch('core.logic_engine.DataLogger') as MockLogger, \
+             patch('core.logic_engine.StateEngine') as MockStateEngine, \
+             patch('core.logic_engine.STTInterface'), \
+             patch('core.logic_engine.MusicInterface'):
 
             from core.logic_engine import LogicEngine
 
-            # We need to mock DataLogger inside logic_engine init or handle its dependencies
-            with patch('core.logic_engine.DataLogger') as MockLogger, \
-                 patch('core.logic_engine.StateEngine') as MockStateEngine:
+            # Setup Mock State Engine
+            mock_se = MockStateEngine.return_value
+            mock_se.get_state.return_value = {"arousal": 50}
 
-                # Setup Mock State Engine
-                mock_se = MockStateEngine.return_value
-                mock_se.get_state.return_value = {"arousal": 50}
-
-                engine = LogicEngine(lmm_interface=mock_lmm)
-                engine.set_intervention_engine(mock_intervention_engine)
-                yield engine
-
-            if 'core.logic_engine' in sys.modules:
-                del sys.modules['core.logic_engine']
+            engine = LogicEngine(lmm_interface=mock_lmm)
+            engine.set_intervention_engine(mock_intervention_engine)
+            yield engine
 
     def test_init(self, logic_engine):
         assert logic_engine.current_mode == "active"
