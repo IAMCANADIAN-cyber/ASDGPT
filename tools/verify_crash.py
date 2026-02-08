@@ -16,6 +16,8 @@ sys.modules['PIL.Image'] = MagicMock()
 sys.modules['scipy'] = MagicMock()
 sys.modules['scipy.io'] = MagicMock()
 sys.modules['scipy.io.wavfile'] = MagicMock()
+sys.modules['pyautogui'] = MagicMock()
+sys.modules['mouseinfo'] = MagicMock()
 
 # Now we can import the app code safely
 # We need to ensure we can import config, so add root to path

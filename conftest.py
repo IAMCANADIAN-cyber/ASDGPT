@@ -25,6 +25,4 @@ sys.modules["TTS.api"] = MagicMock()
 sys.modules["pyttsx3"] = MagicMock()
 
 # Add project root to sys.path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
-# Add the project root directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__))))
