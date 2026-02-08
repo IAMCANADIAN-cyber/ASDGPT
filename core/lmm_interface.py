@@ -190,6 +190,14 @@ class LMMInterface:
         text = re.sub(r'```$', '', text, flags=re.MULTILINE)
         return text.strip()
 
+    def _truncate_text(self, text: str, max_length: int = 50) -> str:
+        """Truncates text to max_length, adding '...' if truncated."""
+        if not text:
+            return ""
+        if len(text) <= max_length:
+            return text
+        return text[:max_length-3] + "..."
+
     def _send_request_with_retry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Sends request to LMM with manual retry logic."""
         retries = 3
@@ -337,6 +345,8 @@ class LMMInterface:
 
             # Context Intelligence: Active Window
             active_window = user_context.get('active_window', 'Unknown')
+            # Truncate current window title generously (80 chars) to allow context but prevent token bloat
+            active_window = self._truncate_text(active_window, max_length=80)
             context_str += f"Active Window: {active_window}\n"
 
             metrics = user_context.get('sensor_metrics', {})
@@ -383,6 +393,9 @@ class LMMInterface:
                     # Format simplified line
                     ts = snapshot.get('timestamp', 0)
                     win = snapshot.get('active_window', 'Unknown')
+                    # Truncate history window titles more aggressively (50 chars)
+                    win = self._truncate_text(win, max_length=50)
+
                     # Relative time is better for LMM
                     rel_time = int(time.time() - ts)
 
