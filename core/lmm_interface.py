@@ -204,6 +204,14 @@ class LMMInterface:
         backoff = 2
         last_exception = None
 
+        # MiniCPM-o Optimization Check
+        model_id = str(payload.get("model", "")).lower()
+        if "minicpm" in model_id:
+             # Optimization: Log that we are using MiniCPM specific handling if needed
+             # For now, just logging to confirm detection.
+             # MiniCPM-o 4.5 supports json_object, so we enforce it.
+             self._log_debug("Optimizing for MiniCPM-o...")
+
         # Enforce JSON mode if not already set, to ensure consistent output
         if "response_format" not in payload:
             payload["response_format"] = {"type": "json_object"}

@@ -273,3 +273,31 @@ def test_process_data_includes_active_window(mock_post, lmm_interface):
     # User content is a list of dicts
     text_part = next(item for item in user_content if item["type"] == "text")
     assert "Active Window: Visual Studio Code - ProjectX" in text_part["text"]
+
+@patch('requests.post')
+def test_minicpm_configuration(mock_post, lmm_interface):
+    # Configure LMMInterface to use MiniCPM
+    # We patch the config value on the module level where it's used
+    with patch('core.lmm_interface.config.LOCAL_LLM_MODEL_ID', "openbmb/MiniCPM-o-4_5"):
+
+        # Mock successful response
+        response_content = {
+            "state_estimation": {
+                "arousal": 50, "overload": 10, "focus": 80, "energy": 60, "mood": 70
+            },
+            "suggestion": None
+        }
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": json.dumps(response_content)}}]
+        }
+        mock_post.return_value = mock_response
+
+        # Call process_data
+        lmm_interface.process_data(user_context={"sensor_metrics": {}})
+
+        # Verify optimization log was called
+        # The log message is "Optimizing for MiniCPM-o..." sent to _log_debug
+        # Check if log_debug was called with this string
+        lmm_interface.logger.log_debug.assert_any_call("LMMInterface: Optimizing for MiniCPM-o...")

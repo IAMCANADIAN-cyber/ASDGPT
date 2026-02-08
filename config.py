@@ -140,6 +140,9 @@ SEXUAL_AROUSAL_THRESHOLD = _get_conf("SEXUAL_AROUSAL_THRESHOLD", 50, int)
 # --- LMM Configuration ---
 # Note: API Keys should ideally be strictly ENV for security, but we allow config for local URLs.
 LOCAL_LLM_URL = _get_conf("LOCAL_LLM_URL", "http://127.0.0.1:1234")
+# Recommended Models:
+# - "deepseek/deepseek-r1-0528-qwen3-8b" (Default)
+# - "openbmb/MiniCPM-o-4_5" (For superior vision & multimodal capabilities)
 LOCAL_LLM_MODEL_ID = _get_conf("LOCAL_LLM_MODEL_ID", "deepseek/deepseek-r1-0528-qwen3-8b")
 
 LMM_FALLBACK_ENABLED = _get_conf("LMM_FALLBACK_ENABLED", True, bool)
