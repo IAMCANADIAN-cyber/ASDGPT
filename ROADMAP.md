@@ -1,56 +1,60 @@
 # ASDGPT Weekly Roadmap Refresh
 
-**Date:** 2026-02-05
+**Date:** 2026-02-12
 **Status:** ACTIVE
 
 ## 🗺️ Executive Summary
-The system has achieved basic **Context Awareness** (Active Window Detection) and **Efficiency** (Video Eco Mode). We are now moving to **Deep Context** and **Robustness**.
-The focus for this week is to give the LMM a "memory" of recent actions (Context History) so it can detect trends, and to implement "Reflexive Triggers" that react instantly to specific apps without waiting for the LMM. We will also prioritize **Test Hygiene** to speed up development.
+The system has successfully integrated **Context History** and **Reflexive Triggers**, enabling both deep narrative understanding and instant reactions.
+The focus for this week shifts from "New Features" to **"Hardening & Control"**. We must ensure the system respects privacy (scrubbing history), works on more platforms (Wayland), and gives users granular control over what constitutes "Focus" vs. "Distraction".
 
 ## 1. Change Summary (Last 7 Days)
-*   **Merged**: **Context Intelligence V1**: `WindowSensor` is live, sanitizing and reporting the active window title.
-*   **Merged**: **Resource Optimization**: `Video Eco Mode` (Dynamic FPS) is live in `main.py`, reducing idle CPU usage.
-*   **Merged**: **Adaptive Policy**: `InterventionEngine` now supports "Cooling" (suppression) based on "Unhelpful" feedback.
-*   **Merged**: **Test Hygiene**: Added `tools/cleanup.py` and `Makefile`. Verified `ReplayHarness` functionality.
-*   **Consolidated**: Routine maintenance merges (test fixes, cleanup) have been consolidated into `main`.
+*   **Merged**: **Context Intelligence V2 (History)**: `LogicEngine` now maintains a sliding window of session history, providing the LMM with a "narrative" view.
+*   **Merged**: **Reflexive Triggers V2**: `LogicEngine` now supports immediate, rule-based interventions for specific windows (e.g., games), bypassing LMM latency.
+*   **Merged**: **Reliability Fix**: Critical deadlock in `VideoSensor` during shutdown was resolved.
+*   **Verified**: **Test Harness**: `tools/replay_harness.py` is functional and ready for tuning tasks.
 
 ## 2. Top Milestones (Next 7 Days)
 
-### 🎯 Milestone 1: Context Intelligence V2 (History)
-*   **Goal**: Enable the LMM to see the "narrative" of the user's session (e.g., switching tasks vs. staying focused).
-*   **Deliverable**: A sliding window history (last 5 states/windows) in `LogicEngine`, injected into the LMM prompt.
-*   **Success Metric**: LMM response references "previous context" or "duration" in its reasoning.
+### 🎯 Milestone 1: Privacy & Platform Hardening
+*   **Goal**: Ensure the system is safe to use on personal devices and supports modern Linux environments.
+*   **Deliverable**:
+    1. `WindowSensor` support for Wayland (or graceful fallback).
+    2. **Privacy Scrubber**: Automatically redact sensitive window titles (e.g., "Bank", "Password") *before* they enter Context History.
+*   **Success Metric**: `WindowSensor` works on Wayland; Sensitive keywords are replaced with "[REDACTED]" in logs/history.
 
-### 🎯 Milestone 2: Reflexive Triggers V2 (Window Rules)
-*   **Goal**: Instant reaction to blacklisted apps (e.g., Games, Social Media) without LMM latency.
-*   **Deliverable**: `LogicEngine` triggers specific interventions immediately when `active_window` matches a rule set.
-*   **Success Metric**: Latency < 100ms for detecting and reacting to a blacklisted app.
+### 🎯 Milestone 2: User Control V2 (Configurability)
+*   **Goal**: Allow users to easily define their own "Focus" and "Distraction" apps without editing code.
+*   **Deliverable**:
+    1. Refactored `config.py` to load "Focus/Distraction" lists from `user_data/config.json`.
+    2. Updated `tools/config_gui.py` to support editing these lists.
+*   **Success Metric**: User can add a custom game to the blacklist via GUI/JSON and have it trigger immediately.
 
-### ✅ Milestone 3: Test Hygiene & Harness (Completed)
-*   **Goal**: Eliminate "flaky" tests and repo clutter to improve developer velocity.
-*   **Deliverable**: `tools/cleanup.py` to remove artifacts; verification of `tools/replay_harness.py`.
-*   **Success Metric**: `make clean` works; Replay Harness runs a scenario successfully.
+### 🎯 Milestone 3: Tuning with Harness
+*   **Goal**: Reduce false positives for "Doom Scrolling" and "Distraction" triggers.
+*   **Deliverable**:
+    1. A synthetic dataset (`datasets/doom_scroll.json`) for the Replay Harness.
+    2. Tuned thresholds/prompts based on harness results.
+*   **Success Metric**: >90% accuracy on "Doom Scroll" detection in the harness.
 
 ## 3. De-risk List (Unknowns)
 
 | Unknown | Impact | Mitigation |
 | :--- | :--- | :--- |
-| **LMM Token Cost/Latency** | Med | History adds tokens. Limit history to last 3-5 entries or summarize if needed. |
-| **Privacy (History)** | High | Ensure `WindowSensor` sanitization is robust before storing in history. |
-| **Reflexive vs. LMM Conflict** | Med | Ensure Reflexive Triggers (Tier 2/3) correctly preempt or inform LMM (Tier 1). |
+| **Wayland Support** | High | `xprop` fails on Wayland. Investigate `gnome-shell` extensions or `kwin` scripts. Fallback to "Unknown" if necessary. |
+| **LMM Hallucinations (History)** | Med | With more text context, LMM might invent patterns. Tune system prompt to be strictly factual about history. |
+| **Performance (String Ops)** | Low | History formatting adds string overhead. Profile `_prepare_lmm_data` to ensure it stays <5ms. |
 
 ## 4. Backlog (Selected High Priority)
 
 | Title | Why | Acceptance Criteria | Estimate | Risk | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Implement Context History** | LMM needs "narrative". | `user_context` includes `history` list in prompt. | M | Low | Navigator |
-| **Implement Reflexive Window Triggers** | Fast reaction to games/distractions. | `LogicEngine` triggers on specific window titles. | M | Low | Sentinel |
-| **Verify WindowSensor on Linux** | Cross-platform compatibility. | `xprop` returns correct titles on CI/Dev machine. | S | Med | Testsmith |
-| **Refine LMM Prompt for History** | Teach LMM to use history. | System prompt includes instructions on "Recent History". | S | Low | Navigator |
-| **Update User Guide** | Documentation. | `README.md` reflects Eco Mode and Window Sensor. | S | Low | Scribe |
-| **Add Wayland Support** | Future-proofing Linux. | `WindowSensor` handles Wayland gracefully (or warns). | M | High | Navigator |
-| **LMM History Truncation** | Cost/Performance. | `LMMInterface` limits history tokens. | S | Low | Profiler |
-| **Audit Sensitive Keywords** | Privacy. | `config.py` includes more default sensitive apps. | S | Low | Sentinel |
-| **Unit Test Context History** | Reliability. | `test_logic_engine_history.py` verifies state tracking. | S | Low | Testsmith |
-| **Profile Window Sensor** | Performance. | Ensure `get_active_window` takes <50ms. | S | Low | Profiler |
-| **Add 'Game Mode' Trigger** | User Value. | Detect 'Steam'/'Epic' and switch mode/suppress. | S | Low | Sentinel |
+| **Implement Privacy Scrubber** | User Trust. | Window titles matching sensitive keywords are redacted in `LogicEngine`. | S | Low | Sentinel |
+| **Add Wayland Support** | Linux Compat. | `WindowSensor` detects active window on Wayland (GNOME/KDE). | L | High | Navigator |
+| **Update Config GUI** | Usability. | `config_gui.py` allows editing `REFLEXIVE_WINDOW_TRIGGERS`. | M | Low | Scribe |
+| **Create 'Doom Scroll' Dataset** | Tuning. | `datasets/doom_scroll.json` exists with realistic event sequences. | S | Low | Testsmith |
+| **Refine LMM Prompt for History** | Accuracy. | System prompt includes specific instructions on interpreting "Recent History". | S | Low | Navigator |
+| **Profile Window Sensor** | Performance. | Ensure `get_active_window` latency is acceptable (<50ms). | S | Low | Profiler |
+| **Audit Sensitive Keywords** | Privacy. | Expand default `SENSITIVE_APP_KEYWORDS` list. | S | Low | Sentinel |
+| **Unit Test Context History** | Reliability. | `test_logic_engine_history.py` covers edge cases (empty history, rapid switching). | S | Low | Testsmith |
+| **Add 'Game Mode' Trigger** | User Value. | Pre-configured reflex triggers for popular launchers (Steam, Epic). | S | Low | Sentinel |
+| **Update User Guide** | Documentation. | `README.md` explains how to configure Reflexive Triggers. | S | Low | Scribe |
