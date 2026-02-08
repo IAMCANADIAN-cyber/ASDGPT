@@ -113,21 +113,29 @@ class WindowSensor:
             window_id = parts[-1]
 
             # 2. Get title of that window
-            name_res = subprocess.run(
-                ['xprop', '-id', window_id, 'WM_NAME'],
-                capture_output=True, text=True, timeout=1
-            )
-            if name_res.returncode != 0:
-                return "Unknown"
+            # Try _NET_WM_NAME first (UTF-8), then WM_NAME (Legacy)
+            for prop in ['_NET_WM_NAME', 'WM_NAME']:
+                name_res = subprocess.run(
+                    ['xprop', '-id', window_id, prop],
+                    capture_output=True, text=True, timeout=1
+                )
+                if name_res.returncode == 0:
+                    output = name_res.stdout.strip()
+                    # Match: PROPERTY_NAME(TYPE) = "VALUE"
+                    # Regex: property_name\(type\) = "(.*)"
+                    pattern = re.escape(prop) + r'\(.*?\)\s*=\s*"(.*)"'
+                    match = re.search(pattern, output, re.DOTALL)
+                    if match:
+                        title = match.group(1)
+                        try:
+                            # xprop escapes quotes as \", and backslashes as \\.
+                            # We unescape to get the human-readable title.
+                            # encode('utf-8') converts str to bytes, allowing decode('unicode_escape')
+                            title = bytes(title, "utf-8").decode("unicode_escape")
+                        except Exception:
+                            pass # Keep original if unescape fails
 
-            # Output: WM_NAME(STRING) = "Title"
-            # or WM_NAME(UTF8_STRING) = "Title"
-            output = name_res.stdout.strip()
-
-            # Use regex to extract title inside quotes
-            match = re.search(r'WM_NAME\(.*?\) = "(.*)"', output)
-            if match:
-                return match.group(1)
+                        return title
 
         except FileNotFoundError:
             # xprop not installed

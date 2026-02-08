@@ -160,7 +160,9 @@ REFLEXIVE_WINDOW_TRIGGERS = _get_conf("REFLEXIVE_WINDOW_TRIGGERS", {
     "Facebook": "distraction_alert",
     "Instagram": "distraction_alert",
     "Civilization": "distraction_alert",
-    "Minecraft": "distraction_alert"
+    "Minecraft": "distraction_alert",
+    "Epic Games Launcher": "distraction_alert",
+    "Battle.net": "distraction_alert"
 }, dict)
 REFLEXIVE_WINDOW_COOLDOWN = _get_conf("REFLEXIVE_WINDOW_COOLDOWN", 300, int) # 5 minutes
 

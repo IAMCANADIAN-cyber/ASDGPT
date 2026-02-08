@@ -49,6 +49,10 @@ class InterventionEngine:
         self.intervention_thread: Optional[threading.Thread] = None
         self._current_intervention_details: Dict[str, Any] = {}
 
+        # Lock for subprocess management (TTS)
+        self._subprocess_lock: threading.Lock = threading.Lock()
+        self._current_subprocess: Optional[subprocess.Popen] = None
+
         # New Voice Interface
         logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
         self.voice_interface = VoiceInterface(logger=logger)

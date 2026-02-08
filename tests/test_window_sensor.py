@@ -72,22 +72,79 @@ class TestWindowSensor(unittest.TestCase):
 
         # Mock sequence of calls
         # 1. xprop -root _NET_ACTIVE_WINDOW
-        # 2. xprop -id <id> WM_NAME
+        # 2. xprop -id <id> _NET_WM_NAME (fails or succeeds) -> let's say fail to test fallback
+        # 3. xprop -id <id> WM_NAME (succeeds)
 
         mock_res_root = MagicMock()
         mock_res_root.returncode = 0
         mock_res_root.stdout = "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x12345"
 
+        mock_res_net = MagicMock()
+        mock_res_net.returncode = 1 # _NET_WM_NAME fails
+
         mock_res_name = MagicMock()
         mock_res_name.returncode = 0
         mock_res_name.stdout = 'WM_NAME(STRING) = "Firefox - Reddit"'
 
-        mock_subprocess.side_effect = [mock_res_root, mock_res_name]
+        mock_subprocess.side_effect = [mock_res_root, mock_res_net, mock_res_name]
 
         sensor = WindowSensor(self.mock_logger)
         title = sensor.get_active_window()
 
         self.assertEqual(title, "Firefox - Reddit")
+        self.assertEqual(mock_subprocess.call_count, 3)
+
+    @patch('platform.system')
+    @patch('subprocess.run')
+    @patch('shutil.which')
+    def test_linux_success_escaped_quotes(self, mock_which, mock_subprocess, mock_system):
+        mock_system.return_value = 'Linux'
+        mock_which.return_value = '/usr/bin/xprop'
+
+        mock_res_root = MagicMock()
+        mock_res_root.returncode = 0
+        mock_res_root.stdout = "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x12345"
+
+        mock_res_net = MagicMock()
+        mock_res_net.returncode = 1 # _NET_WM_NAME fails
+
+        mock_res_name = MagicMock()
+        mock_res_name.returncode = 0
+        # xprop output with escaped quotes: "Title \"Quote\""
+        mock_res_name.stdout = r'WM_NAME(STRING) = "Title \"Quote\""'
+
+        mock_subprocess.side_effect = [mock_res_root, mock_res_net, mock_res_name]
+
+        sensor = WindowSensor(self.mock_logger)
+        title = sensor.get_active_window()
+
+        # Should be unescaped to: Title "Quote"
+        self.assertEqual(title, 'Title "Quote"')
+        self.assertEqual(mock_subprocess.call_count, 3)
+
+    @patch('platform.system')
+    @patch('subprocess.run')
+    @patch('shutil.which')
+    def test_linux_net_wm_name_priority(self, mock_which, mock_subprocess, mock_system):
+        mock_system.return_value = 'Linux'
+        mock_which.return_value = '/usr/bin/xprop'
+
+        mock_res_root = MagicMock()
+        mock_res_root.returncode = 0
+        mock_res_root.stdout = "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x12345"
+
+        mock_res_net = MagicMock()
+        mock_res_net.returncode = 0
+        mock_res_net.stdout = r'_NET_WM_NAME(UTF8_STRING) = "Better Title"'
+
+        # mock_res_name should not be called if net succeeds
+        mock_subprocess.side_effect = [mock_res_root, mock_res_net]
+
+        sensor = WindowSensor(self.mock_logger)
+        title = sensor.get_active_window()
+
+        self.assertEqual(title, "Better Title")
+        # Should call root, then net. Not name.
         self.assertEqual(mock_subprocess.call_count, 2)
 
     @patch('platform.system')

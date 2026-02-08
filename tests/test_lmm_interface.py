@@ -237,7 +237,7 @@ def test_validate_response_schema_edge_cases(lmm_interface):
     assert lmm_interface._validate_response_schema(bad_suggestion_obj) is False
 
 @patch('requests.post')
-def test_process_data_includes_active_window(mock_post, lmm_interface):
+def test_process_data_truncates_active_window(mock_post, lmm_interface):
     # Setup mock response
     response_content = {
         "state_estimation": {
@@ -253,9 +253,14 @@ def test_process_data_includes_active_window(mock_post, lmm_interface):
     mock_post.return_value = mock_response
 
     # Define context with active window
+    long_window_title = "A" * 100
     user_context = {
-        "active_window": "Visual Studio Code - ProjectX",
-        "sensor_metrics": {}
+        "active_window": long_window_title,
+        "sensor_metrics": {},
+        # Test history truncation too
+        "context_history": [
+             {"timestamp": time.time(), "active_window": "B" * 100, "mode": "active"}
+        ]
     }
 
     # Call process_data
@@ -266,10 +271,28 @@ def test_process_data_includes_active_window(mock_post, lmm_interface):
     args, kwargs = mock_post.call_args
     payload = kwargs['json']
 
-    # Check that messages list contains the active window string
     messages = payload['messages']
-    user_content = messages[1]['content'] # 0 is system, 1 is user
-
-    # User content is a list of dicts
+    user_content = messages[1]['content']
     text_part = next(item for item in user_content if item["type"] == "text")
-    assert "Active Window: Visual Studio Code - ProjectX" in text_part["text"]
+
+    # Verify main window truncation (limit 60)
+    expected_window = "A" * 57 + "..."
+    assert f"Active Window: {expected_window}" in text_part["text"]
+
+    # Verify history truncation (limit 40)
+    expected_hist_window = "B" * 37 + "..."
+    assert f"Window='{expected_hist_window}'" in text_part["text"]
+
+def test_truncate_text_method(lmm_interface):
+    # Short text
+    assert lmm_interface._truncate_text("Hello", 10) == "Hello"
+
+    # Exact length
+    assert lmm_interface._truncate_text("Hello", 5) == "Hello"
+
+    # Truncated
+    assert lmm_interface._truncate_text("Hello World", 5) == "He..."
+
+    # Empty
+    assert lmm_interface._truncate_text("", 10) == ""
+    assert lmm_interface._truncate_text(None, 10) == ""

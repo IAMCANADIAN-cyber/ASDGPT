@@ -20,36 +20,15 @@ class TestSensoryOutputs(unittest.TestCase):
         # Ensure intervention is considered active so _speak doesn't abort early
         self.engine._intervention_active.set()
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
-    def test_speak_macos(self, mock_popen, mock_system):
-        mock_system.return_value = "Darwin"
-        self.engine._speak("Hello World", blocking=True)
-        mock_popen.assert_called_with(["say", "Hello World"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    def test_speak_delegates_to_voice_interface(self):
+        # We only need to test delegation, as platform specifics are in VoiceInterface tests
+        self.engine.voice_interface = MagicMock()
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
-    def test_speak_linux(self, mock_popen, mock_system):
-        mock_system.return_value = "Linux"
         self.engine._speak("Hello World", blocking=True)
-        # Should try espeak first
-        mock_popen.assert_called_with(["espeak", "Hello World"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.engine.voice_interface.speak.assert_called_with("Hello World", True)
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
-    def test_speak_windows(self, mock_popen, mock_system):
-        mock_system.return_value = "Windows"
-        self.engine._speak("Hello World", blocking=True)
-        expected_command = 'Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak("Hello World")'
-        mock_popen.assert_called_with(["powershell", "-Command", expected_command], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    @patch('platform.system')
-    def test_speak_non_blocking(self, mock_system):
-        mock_system.return_value = "Linux"
-        # Mock thread start to verify it is called
-        with patch('threading.Thread') as mock_thread:
-            self.engine._speak("Hello World", blocking=False)
-            mock_thread.assert_called_once()
+        self.engine._speak("Hello Again", blocking=False)
+        self.engine.voice_interface.speak.assert_called_with("Hello Again", False)
 
     @patch('core.intervention_engine.sd')
     @patch('core.intervention_engine.wavfile')
