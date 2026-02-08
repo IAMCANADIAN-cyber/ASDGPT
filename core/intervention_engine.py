@@ -676,15 +676,6 @@ class InterventionEngine:
             # Kill any active subprocess (TTS)
             if self.voice_interface:
                 self.voice_interface.stop()
-
-            with self._subprocess_lock:
-                if self._current_subprocess:
-                    if logger: logger.log_info("Terminating active TTS subprocess.")
-                    try:
-                        self._current_subprocess.terminate()
-                        # self._current_subprocess.wait(timeout=1) # Don't block here, just kill
-                    except Exception as e:
-                        if logger: logger.log_warning(f"Error terminating TTS subprocess: {e}")
         else:
             if logger:
                 logger.log_info("No active intervention to stop.")

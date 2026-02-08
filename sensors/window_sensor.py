@@ -5,7 +5,7 @@ import sys
 import os
 import shutil
 import logging
-from typing import Optional, Any
+from typing import Optional, Any, List
 import config
 
 class WindowSensor:

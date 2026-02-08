@@ -17,6 +17,13 @@ sys.modules["PIL.ImageDraw"] = MagicMock()
 sys.modules["pyautogui"] = MagicMock()
 sys.modules["mouseinfo"] = MagicMock()
 
+# Mock torch, whisper, TTS, pyttsx3 to prevent heavy/missing dependency loads
+sys.modules["torch"] = MagicMock()
+sys.modules["whisper"] = MagicMock()
+sys.modules["TTS"] = MagicMock()
+sys.modules["TTS.api"] = MagicMock()
+sys.modules["pyttsx3"] = MagicMock()
+
 # Add project root to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 # Add the project root directory to sys.path
