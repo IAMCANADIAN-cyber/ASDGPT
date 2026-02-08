@@ -38,6 +38,7 @@ class TestLogicEngineCoverage:
         mock_config.LOG_MAX_BYTES = 1024
         mock_config.LOG_BACKUP_COUNT = 1
         mock_config.LOG_LEVEL = "INFO"
+        mock_config.SEXUAL_AROUSAL_THRESHOLD = 50
 
         # Patch sys.modules['config'] just for this test execution
         with patch.dict(sys.modules, {'config': mock_config}):

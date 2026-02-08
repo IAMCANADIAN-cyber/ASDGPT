@@ -16,40 +16,27 @@ class TestSensoryOutputs(unittest.TestCase):
         self.mock_logic = MagicMock()
         self.mock_logic.get_mode.return_value = "active"
         self.mock_app = MagicMock()
+
+        # Patch VoiceInterface at the source before InterventionEngine imports/uses it
+        # Actually, InterventionEngine imports VoiceInterface. We can mock the instance.
         self.engine = InterventionEngine(self.mock_logic, self.mock_app)
+        self.engine.voice_interface = MagicMock() # Mock the voice interface directly on the instance
+
         # Ensure intervention is considered active so _speak doesn't abort early
         self.engine._intervention_active.set()
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
-    def test_speak_macos(self, mock_popen, mock_system):
-        mock_system.return_value = "Darwin"
+    def test_speak_delegates_to_voice_interface(self):
         self.engine._speak("Hello World", blocking=True)
-        mock_popen.assert_called_with(["say", "Hello World"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.engine.voice_interface.speak.assert_called_with("Hello World", True)
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
-    def test_speak_linux(self, mock_popen, mock_system):
-        mock_system.return_value = "Linux"
+    def test_speak_non_blocking_delegates(self):
+        self.engine._speak("Hello World", blocking=False)
+        self.engine.voice_interface.speak.assert_called_with("Hello World", False)
+
+    def test_speak_handles_missing_interface(self):
+        self.engine.voice_interface = None
+        # Should not crash
         self.engine._speak("Hello World", blocking=True)
-        # Should try espeak first
-        mock_popen.assert_called_with(["espeak", "Hello World"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    @patch('platform.system')
-    @patch('subprocess.Popen')
-    def test_speak_windows(self, mock_popen, mock_system):
-        mock_system.return_value = "Windows"
-        self.engine._speak("Hello World", blocking=True)
-        expected_command = 'Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak("Hello World")'
-        mock_popen.assert_called_with(["powershell", "-Command", expected_command], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    @patch('platform.system')
-    def test_speak_non_blocking(self, mock_system):
-        mock_system.return_value = "Linux"
-        # Mock thread start to verify it is called
-        with patch('threading.Thread') as mock_thread:
-            self.engine._speak("Hello World", blocking=False)
-            mock_thread.assert_called_once()
 
     @patch('core.intervention_engine.sd')
     @patch('core.intervention_engine.wavfile')

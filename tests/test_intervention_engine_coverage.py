@@ -85,42 +85,6 @@ class TestInterventionEngineCoverage(unittest.TestCase):
                 args, _ = self.mock_app.data_logger.log_warning.call_args
                 assert "sounddevice" in args[0]
 
-    @patch('platform.system', return_value='Linux')
-    def test_tts_fallback_linux(self, mock_system):
-        """Test fallback from espeak to spd-say on Linux."""
-
-        # We need to test _speak, but it launches a thread or runs directly.
-        # It calls Popen. We want to simulate Popen failing for espeak (FileNotFoundError)
-        # and succeeding for spd-say.
-
-        # The _speak method constructs command=["espeak", text]
-
-        def side_effect(command, **kwargs):
-            if command[0] == "espeak":
-                raise FileNotFoundError("espeak not found")
-            return MagicMock() # Return a mock process for spd-say
-
-        with patch('subprocess.Popen', side_effect=side_effect) as mock_popen:
-            self.engine._speak("Hello", blocking=True)
-
-            # Verify attempts
-            # Should have tried espeak first
-            calls = mock_popen.call_args_list
-            assert len(calls) == 2
-            assert calls[0][0][0][0] == "espeak"
-            assert calls[1][0][0][0] == "spd-say"
-
-    @patch('platform.system', return_value='Darwin')
-    def test_tts_failure_macos(self, mock_system):
-        """Test generic TTS failure handling (e.g. on macOS)."""
-
-        with patch('subprocess.Popen', side_effect=Exception("General failure")):
-            self.engine._speak("Hello", blocking=True)
-
-            self.mock_app.data_logger.log_warning.assert_called()
-            args, _ = self.mock_app.data_logger.log_warning.call_args
-            assert "TTS failed" in args[0]
-
     def test_record_video_no_frame(self):
         """Test _record_video logic when no frame is available."""
         self.engine.logic_engine.last_video_frame = None

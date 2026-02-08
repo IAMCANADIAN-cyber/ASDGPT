@@ -48,6 +48,8 @@ class InterventionEngine:
         self._intervention_active: threading.Event = threading.Event()
         self.intervention_thread: Optional[threading.Thread] = None
         self._current_intervention_details: Dict[str, Any] = {}
+        self._subprocess_lock = threading.Lock()
+        self._current_subprocess = None
 
         # New Voice Interface
         logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None

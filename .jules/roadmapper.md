@@ -32,3 +32,9 @@
 *   **Context Amnesia**: While we now have `active_window`, the LMM sees it as a single snapshot. It lacks the "narrative" of the session (e.g., "User was coding for 2 hours, then switched to Reddit"). We need **Context History** to enable smarter interventions.
 *   **Test Hygiene**: The repository is accumulating artifacts (`captures/`, `*.log`, `__pycache__`) and flaky tests are emerging. A dedicated cleanup tool and harness verification are needed to maintain Navigator velocity.
 *   **Reflexive Triggers**: Relying solely on the LMM for "Doom Scroll" detection via visual tags is too slow. We should use the new `active_window` data for immediate, rule-based "Reflexive Triggers" (e.g., specific game or social media titles).
+
+## Weekly Refresh (2026-02-12)
+*   **Rapid Integration**: Both "Context History" and "Reflexive Triggers" were implemented and merged within the week. This velocity suggests the `LogicEngine` architecture is maturing and easier to extend.
+*   **Shift to Hardening**: With the core features for "Context Awareness" now in place, the system is functional but "raw". The focus must now shift to "Hardening" (Privacy, Platform Compatibility) and "Tuning" (reducing false positives) rather than adding new sensing capabilities.
+*   **Harness Validation**: The `ReplayHarness` is now verified. We must pivot from "Writing Tests" to "Creating Datasets" (e.g., Doom Scroll scenarios) to truly leverage it for tuning.
+*   **User Control Gap**: While `config.py` is powerful, editing it is not user-friendly. We need to expose key lists (Focus/Distraction apps) via JSON/GUI to make the system usable for non-developers.

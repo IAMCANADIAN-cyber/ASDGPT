@@ -12,6 +12,10 @@ sys.modules["PIL"] = MagicMock()
 sys.modules["PIL.Image"] = MagicMock()
 sys.modules["PIL.ImageDraw"] = MagicMock()
 
+# Mock pyautogui to prevent Xlib/Display errors in headless env
+sys.modules["pyautogui"] = MagicMock()
+sys.modules["mouseinfo"] = MagicMock()
+
 # Add project root to sys.path
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
