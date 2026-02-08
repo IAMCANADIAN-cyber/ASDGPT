@@ -185,6 +185,9 @@ TTS_VOICE_ID = _get_conf("TTS_VOICE_ID", None)
 TTS_MODEL_NAME = _get_conf("TTS_MODEL_NAME", "tts_models/multilingual/multi-dataset/xtts_v2")
 TTS_VOICE_CLONE_SOURCE = _get_conf("TTS_VOICE_CLONE_SOURCE", None)
 
+# --- Music Control ---
+ENABLE_MUSIC_CONTROL = _get_conf("ENABLE_MUSIC_CONTROL", False, bool)
+
 # --- Performance ---
 PERFORMANCE_MODE = _get_conf("PERFORMANCE_MODE", "high") # "high" or "low" (eco)
 
