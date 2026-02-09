@@ -97,7 +97,10 @@ VIDEO_WAKE_THRESHOLD = _get_conf("VIDEO_WAKE_THRESHOLD", 5.0, float)
 DOOM_SCROLL_THRESHOLD = _get_conf("DOOM_SCROLL_THRESHOLD", 3, int)
 
 # Privacy
-SENSITIVE_APP_KEYWORDS = _get_conf("SENSITIVE_APP_KEYWORDS", ["Keepass", "LastPass", "1Password", "Bitwarden", "Incognito", "InPrivate", "Tor Browser"])
+SENSITIVE_APP_KEYWORDS = _get_conf("SENSITIVE_APP_KEYWORDS", [
+    "Keepass", "LastPass", "1Password", "Bitwarden", "Incognito", "InPrivate", "Tor Browser",
+    "Password", "Vault", "Private", "Bank", "Wallet", "Tax", "Financial", "SSN", "Credit Card"
+])
 
 # Video Polling Delays (Eco Mode)
 VIDEO_ACTIVE_DELAY = _get_conf("VIDEO_ACTIVE_DELAY", 0.05, float) # 20 FPS
