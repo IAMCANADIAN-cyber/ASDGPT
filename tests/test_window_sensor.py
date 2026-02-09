@@ -149,7 +149,12 @@ class TestWindowSensor(unittest.TestCase):
 
             # Test no match
             self.assertEqual(sensor._sanitize_title("Normal App"), "Normal App")
-        # Test known sensitive keywords
+
+    def test_default_config_keywords(self):
+        """Verify that the default configuration correctly redacts standard sensitive apps."""
+        sensor = WindowSensor(self.mock_logger)
+
+        # Test known sensitive keywords (including new additions)
         sensitive_titles = [
             "KeePassXC - Database.kdbx",
             "Bitwarden - My Vault",
@@ -158,7 +163,11 @@ class TestWindowSensor(unittest.TestCase):
             "Incognito Tab - Google Chrome",
             "Tor Browser",
             "LastPass",
-            "My Secret Vault"
+            "My Secret Vault",
+            "My Bank - Account Summary",
+            "Login to Google",
+            "User Authentication",
+            "My Profile Settings"
         ]
 
         for title in sensitive_titles:
