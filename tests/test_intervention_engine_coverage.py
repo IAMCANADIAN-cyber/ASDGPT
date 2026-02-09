@@ -85,7 +85,6 @@ class TestInterventionEngineCoverage(unittest.TestCase):
                 args, _ = self.mock_app.data_logger.log_warning.call_args
                 assert "sounddevice" in args[0]
 
-
     def test_record_video_no_frame(self):
         """Test _record_video logic when no frame is available."""
         self.engine.logic_engine.last_video_frame = None
