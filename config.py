@@ -100,6 +100,8 @@ DOOM_SCROLL_THRESHOLD = _get_conf("DOOM_SCROLL_THRESHOLD", 3, int)
 SENSITIVE_APP_KEYWORDS = _get_conf("SENSITIVE_APP_KEYWORDS", [
     "Keepass", "LastPass", "1Password", "Bitwarden", "Incognito", "InPrivate", "Tor Browser",
     "Password", "Vault", "Private", "Bank", "Sign In", "Login", "Authentication", "Profile", "Setting"
+    "Bank", "Wallet", "Tax", "Financial", "SSN", "Credit Card", "Social Security", "Secret",
+    "Vault", "Private", "Password"
 ])
 
 # Video Polling Delays (Eco Mode)

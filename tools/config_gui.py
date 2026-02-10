@@ -8,11 +8,85 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import config
 
+class DictionaryEditor(ttk.Frame):
+    def __init__(self, parent, data=None):
+        super().__init__(parent)
+        self.data = data.copy() if data else {}
+        self.setup_ui()
+        self.refresh_list()
+
+    def setup_ui(self):
+        # Treeview for Key-Value pairs
+        columns = ('Key', 'Value')
+        self.tree = ttk.Treeview(self, columns=columns, show='headings')
+        self.tree.heading('Key', text='Window Keyword')
+        self.tree.heading('Value', text='Intervention ID')
+        self.tree.pack(fill='both', expand=True, padx=5, pady=5)
+
+        self.tree.bind('<<TreeviewSelect>>', self.on_select)
+
+        # Edit Frame
+        edit_frame = ttk.Frame(self)
+        edit_frame.pack(fill='x', padx=5, pady=5)
+
+        ttk.Label(edit_frame, text="Keyword:").pack(side='left')
+        self.key_entry = ttk.Entry(edit_frame)
+        self.key_entry.pack(side='left', fill='x', expand=True, padx=5)
+
+        ttk.Label(edit_frame, text="Intervention:").pack(side='left')
+        self.val_entry = ttk.Entry(edit_frame)
+        self.val_entry.pack(side='left', fill='x', expand=True, padx=5)
+
+        ttk.Button(edit_frame, text="Add/Update", command=self.add_update_item).pack(side='left', padx=5)
+        ttk.Button(edit_frame, text="Delete Selected", command=self.delete_item).pack(side='left', padx=5)
+
+    def refresh_list(self):
+        # Clear tree
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        # Populate
+        for key, val in self.data.items():
+            self.tree.insert('', 'end', values=(key, val))
+
+    def on_select(self, event):
+        selected = self.tree.selection()
+        if selected:
+            item = self.tree.item(selected[0])
+            key, val = item['values']
+            self.key_entry.delete(0, 'end')
+            self.key_entry.insert(0, key)
+            self.val_entry.delete(0, 'end')
+            self.val_entry.insert(0, val)
+
+    def add_update_item(self):
+        key = self.key_entry.get().strip()
+        val = self.val_entry.get().strip()
+        if key and val:
+            self.data[key] = val
+            self.refresh_list()
+            # Clear entries
+            self.key_entry.delete(0, 'end')
+            self.val_entry.delete(0, 'end')
+        else:
+            messagebox.showwarning("Input Error", "Both Keyword and Intervention ID are required.")
+
+    def delete_item(self):
+        selected = self.tree.selection()
+        if selected:
+            item = self.tree.item(selected[0])
+            key = item['values'][0]
+            if key in self.data:
+                del self.data[key]
+                self.refresh_list()
+
+    def get_data(self):
+        return self.data
+
 class ConfigGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("ACR Configuration")
-        self.root.geometry("600x500")
+        self.root.geometry("800x600")
 
         self.config_data = {}
         self.load_current_config()
@@ -23,8 +97,12 @@ class ConfigGUI:
         """Loads current user config from disk or defaults."""
         config_path = os.path.join("user_data", "config.json")
         if os.path.exists(config_path):
-            with open(config_path, 'r') as f:
-                self.config_data = json.load(f)
+            try:
+                with open(config_path, 'r') as f:
+                    self.config_data = json.load(f)
+            except Exception as e:
+                print(f"Error loading config: {e}")
+                self.config_data = {}
         else:
             self.config_data = {}
 
@@ -93,6 +171,17 @@ class ConfigGUI:
         if val: self.entries['TTS_VOICE_CLONE_SOURCE'].insert(0, str(val))
         self.entries['TTS_VOICE_CLONE_SOURCE'].grid(row=row, column=1, sticky='ew', padx=5)
 
+        # --- Tab 4: Reflexive Triggers ---
+        tab_triggers = ttk.Frame(notebook)
+        notebook.add(tab_triggers, text='Triggers')
+
+        # Helper text
+        ttk.Label(tab_triggers, text="Define window titles that trigger immediate interventions (Focus/Distraction control).").pack(anchor='w', padx=5, pady=5)
+
+        triggers_data = self.get_val('REFLEXIVE_WINDOW_TRIGGERS', {})
+        self.triggers_editor = DictionaryEditor(tab_triggers, data=triggers_data)
+        self.triggers_editor.pack(fill='both', expand=True)
+
         # Save Button
         btn_frame = ttk.Frame(self.root)
         btn_frame.pack(fill='x', padx=10, pady=10)
@@ -106,8 +195,14 @@ class ConfigGUI:
                 val = widget.get()
                 # Simple type inference
                 if key.endswith("THRESHOLD") or key.endswith("THRESHOLD_HIGH"):
-                    val = float(val) if "." in val else int(val)
+                    try:
+                        val = float(val) if "." in val else int(val)
+                    except ValueError:
+                        pass # Keep as string if conversion fails
                 new_config[key] = val
+
+            # Get Triggers Data
+            new_config['REFLEXIVE_WINDOW_TRIGGERS'] = self.triggers_editor.get_data()
 
             # Merge with existing
             self.config_data.update(new_config)
