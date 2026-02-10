@@ -120,7 +120,7 @@ class TestWindowSensor(unittest.TestCase):
         self.assertEqual(sensor._sanitize_title("Contact alice@example.com now"), "Contact [EMAIL_REDACTED] now")
 
         # Windows Path
-        self.assertEqual(sensor._sanitize_title("Editing C:\\Users\\Alice\\Documents\\secret.txt"), "Editing [PATH_REDACTED]")
+        self.assertEqual(sensor._sanitize_title("Editing C:\\Users\\Alice\\Documents\\report.txt"), "Editing [PATH_REDACTED]")
 
         # Linux Path
         self.assertEqual(sensor._sanitize_title("vim /home/alice/projects/code.py"), "vim [PATH_REDACTED]")
