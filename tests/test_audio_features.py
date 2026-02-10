@@ -38,6 +38,23 @@ class TestAudioFeatures(unittest.TestCase):
         # RMS should be ~0.5 / sqrt(2) = 0.3535
         self.assertAlmostEqual(metrics['rms'], 0.3535, places=1)
 
+    def test_pitch_interpolation(self):
+        # 445 Hz is exactly between 440Hz (bin 44) and 450Hz (bin 45) for 0.1s chunk at 44100Hz
+        fs = 44100
+        duration = 0.1
+        t = np.linspace(0, duration, int(fs*duration), endpoint=False)
+
+        # Use a pure sine wave at 445 Hz
+        target_freq = 445.0
+        chunk = 0.5 * np.sin(2 * np.pi * target_freq * t)
+
+        metrics = self.sensor.analyze_chunk(chunk)
+        estimated_pitch = metrics['pitch_estimation']
+
+        # We assert that the error is less than 1.0 Hz (verifies interpolation works)
+        self.assertLess(abs(estimated_pitch - target_freq), 1.0,
+                        f"Pitch estimation error too high: {abs(estimated_pitch - target_freq)} Hz. Expected close to 0.")
+
     def test_pitch_variance(self):
         # Generate two chunks with different pitches to trigger variance
         fs = 44100
