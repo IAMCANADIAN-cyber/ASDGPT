@@ -172,11 +172,11 @@ class WindowSensor:
                     if keyword.lower() in title_lower:
                         return "[REDACTED_SENSITIVE_APP]"
 
-        # 3. Redact Email Addresses
+        # 2. Redact Email Addresses
         # Improved regex for email (handles subdomains and common TLDs)
         title = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '[EMAIL_REDACTED]', title)
 
-        # 4. Redact File Paths
+        # 3. Redact File Paths
         # Windows paths (e.g. C:\Users\...)
         title = re.sub(r'[a-zA-Z]:\\[\w\\\.\s-]+', '[PATH_REDACTED]', title)
         # Unix paths (e.g. /home/user/...) - Be careful not to match simple words, look for at least 2 levels
