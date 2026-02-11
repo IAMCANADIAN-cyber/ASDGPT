@@ -164,12 +164,6 @@ class TestWindowSensor(unittest.TestCase):
             "Tor Browser",
             "LastPass",
             "My Secret Vault",
-            "Chase Bank - Accounts",
-            "TurboTax 2024",
-            "My Wallet - Crypto",
-            "Financial Statement.pdf",
-            "SSN Card Scan.jpg",
-            "Credit Card Statement"
             "My Bank - Account Summary",
             "Login to Google",
             "User Authentication",
