@@ -107,22 +107,42 @@ class WindowSensor:
 
             window_id = parts[-1]
 
-            # 2. Get title of that window
+            # 2. Get title of that window (Prioritize _NET_WM_NAME for UTF-8 support)
+            # Try _NET_WM_NAME first
             name_res = subprocess.run(
-                ['xprop', '-id', window_id, 'WM_NAME'],
+                ['xprop', '-id', window_id, '_NET_WM_NAME'],
                 capture_output=True, text=True, timeout=1
             )
-            if name_res.returncode != 0:
+
+            output = ""
+            if name_res.returncode == 0:
+                output = name_res.stdout.strip()
+
+            # Fallback to WM_NAME if _NET_WM_NAME is missing or empty
+            if not output or "not found" in output.lower() or "=" not in output:
+                name_res = subprocess.run(
+                    ['xprop', '-id', window_id, 'WM_NAME'],
+                    capture_output=True, text=True, timeout=1
+                )
+                if name_res.returncode == 0:
+                    output = name_res.stdout.strip()
+
+            if not output:
                 return "Unknown"
 
-            # Output: WM_NAME(STRING) = "Title"
-            # or WM_NAME(UTF8_STRING) = "Title"
-            output = name_res.stdout.strip()
-
-            # Use regex to extract title inside quotes
-            match = re.search(r'WM_NAME\(.*?\) = "(.*)"', output)
+            # Use robust regex to extract title inside quotes, handling escaped quotes
+            # Pattern: matches ' = "' followed by any char (except " or \) OR an escaped char, ending with '"'
+            match = re.search(r'=\s*"((?:[^"\\]|\\.)*)"', output)
             if match:
-                return match.group(1)
+                raw_title = match.group(1)
+                # Unescape xprop's output (basic unescape for \" and \\)
+                try:
+                    # Using codecs to decode unicode escapes if present, though xprop usually outputs literals
+                    # For safety, just simple replacement for common escapes
+                    title = raw_title.replace('\\"', '"').replace('\\\\', '\\')
+                    return title
+                except Exception:
+                    return raw_title
 
         except FileNotFoundError:
             # xprop not installed
