@@ -8,6 +8,70 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import config
 
+class ListEditor(ttk.Frame):
+    def __init__(self, parent, data=None):
+        super().__init__(parent)
+        self.data = data.copy() if data else []
+        self.setup_ui()
+        self.refresh_list()
+
+    def setup_ui(self):
+        # Treeview for List Items
+        columns = ('Item',)
+        self.tree = ttk.Treeview(self, columns=columns, show='headings')
+        self.tree.heading('Item', text='Keyword / Pattern')
+        self.tree.pack(fill='both', expand=True, padx=5, pady=5)
+
+        self.tree.bind('<<TreeviewSelect>>', self.on_select)
+
+        # Edit Frame
+        edit_frame = ttk.Frame(self)
+        edit_frame.pack(fill='x', padx=5, pady=5)
+
+        ttk.Label(edit_frame, text="Value:").pack(side='left')
+        self.entry = ttk.Entry(edit_frame)
+        self.entry.pack(side='left', fill='x', expand=True, padx=5)
+
+        ttk.Button(edit_frame, text="Add", command=self.add_item).pack(side='left', padx=5)
+        ttk.Button(edit_frame, text="Delete Selected", command=self.delete_item).pack(side='left', padx=5)
+
+    def refresh_list(self):
+        # Clear tree
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        # Populate
+        for item in self.data:
+            self.tree.insert('', 'end', values=(item,))
+
+    def on_select(self, event):
+        selected = self.tree.selection()
+        if selected:
+            item_id = selected[0]
+            val = self.tree.item(item_id)['values'][0]
+            self.entry.delete(0, 'end')
+            self.entry.insert(0, val)
+
+    def add_item(self):
+        val = self.entry.get().strip()
+        if val:
+            if val not in self.data:
+                self.data.append(val)
+                self.refresh_list()
+            # Clear entry
+            self.entry.delete(0, 'end')
+
+    def delete_item(self):
+        selected = self.tree.selection()
+        if selected:
+            item_id = selected[0]
+            val = self.tree.item(item_id)['values'][0]
+            if val in self.data:
+                self.data.remove(val)
+                self.refresh_list()
+
+    def get_data(self):
+        return self.data
+
 class DictionaryEditor(ttk.Frame):
     def __init__(self, parent, data=None):
         super().__init__(parent)
@@ -107,7 +171,10 @@ class ConfigGUI:
             self.config_data = {}
 
     def get_val(self, key, default):
-        return self.config_data.get(key, getattr(config, key, default))
+        # Helper to get from user config or fallback to config.py
+        if key in self.config_data:
+            return self.config_data[key]
+        return getattr(config, key, default)
 
     def create_widgets(self):
         notebook = ttk.Notebook(self.root)
@@ -182,6 +249,20 @@ class ConfigGUI:
         self.triggers_editor = DictionaryEditor(tab_triggers, data=triggers_data)
         self.triggers_editor.pack(fill='both', expand=True)
 
+        # --- Tab 5: Privacy (New) ---
+        tab_privacy = ttk.Frame(notebook)
+        notebook.add(tab_privacy, text='Privacy')
+
+        ttk.Label(tab_privacy, text="Sensitive Apps & Keywords (Redacted from History):").pack(anchor='w', padx=5, pady=5)
+
+        privacy_data = self.get_val('SENSITIVE_APP_KEYWORDS', [])
+        # Ensure it's a list (handle potential conflicts if config has it as something else)
+        if not isinstance(privacy_data, list):
+            privacy_data = []
+
+        self.privacy_editor = ListEditor(tab_privacy, data=privacy_data)
+        self.privacy_editor.pack(fill='both', expand=True)
+
         # Save Button
         btn_frame = ttk.Frame(self.root)
         btn_frame.pack(fill='x', padx=10, pady=10)
@@ -193,7 +274,7 @@ class ConfigGUI:
             # Parse values
             for key, widget in self.entries.items():
                 val = widget.get()
-                # Simple type inference
+                # Simple type inference (string to float/int if possible)
                 if key.endswith("THRESHOLD") or key.endswith("THRESHOLD_HIGH"):
                     try:
                         val = float(val) if "." in val else int(val)
@@ -203,6 +284,9 @@ class ConfigGUI:
 
             # Get Triggers Data
             new_config['REFLEXIVE_WINDOW_TRIGGERS'] = self.triggers_editor.get_data()
+
+            # Get Privacy Data
+            new_config['SENSITIVE_APP_KEYWORDS'] = self.privacy_editor.get_data()
 
             # Merge with existing
             self.config_data.update(new_config)
