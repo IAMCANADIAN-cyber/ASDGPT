@@ -263,6 +263,7 @@ class ConfigGUI:
         self.privacy_editor = ListEditor(tab_privacy, data=privacy_data)
         self.privacy_editor.pack(fill='both', expand=True)
 
+
         # Save Button
         btn_frame = ttk.Frame(self.root)
         btn_frame.pack(fill='x', padx=10, pady=10)
