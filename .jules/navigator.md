@@ -44,3 +44,8 @@
 **Learning:** `tools/replay_harness.py` was functional but lacked standardized execution and verification commands. Also, repo hygiene was difficult to maintain without a dedicated cleanup script.
 **Action:** Created `tools/cleanup.py` and a `Makefile` to standardize `install`, `test`, `replay`, and `clean` commands. Verified `ReplayHarness` functionality (100% accuracy on synthetic events). Fixed an indentation error in `tests/test_logic_engine_coverage.py` that was causing `make test` to fail.
 **Outcome:** `make test` now passes cleanly (323 tests).
+
+## 2026-02-12 - [Config List Pitfall]
+**Learning:** `config.SENSITIVE_APP_KEYWORDS` contained missing commas, causing implicit string concatenation (e.g., "Credit CardPassword") and silently failing to redact intended keywords like "Credit Card" and "System Settings".
+**Action:** Fixed `config.py` syntax and created `tests/test_privacy_scrubber_fixes.py` to catch this regression.
+**Pitfall:** Python list definitions without commas between string literals are valid syntax but create concatenated strings, which is dangerous for configuration lists.
