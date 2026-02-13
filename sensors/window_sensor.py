@@ -50,10 +50,11 @@ class WindowSensor:
              if "wayland" in session_type:
                  self._log_warning("Wayland detected. 'xprop' based window detection may fail or return generic values.")
 
-    def get_active_window(self) -> str:
+    def get_active_window(self, sanitize: bool = True) -> str:
         """
-        Returns the sanitized title of the currently active window.
+        Returns the title of the currently active window.
         Returns "Unknown" if detection fails or is unsupported.
+        :param sanitize: If True, redaction rules are applied.
         """
         title = "Unknown"
         try:
@@ -66,7 +67,9 @@ class WindowSensor:
         except Exception as e:
             self._log_debug(f"Error getting active window: {e}")
 
-        return self._sanitize_title(title)
+        if sanitize:
+            return self._sanitize_title(title)
+        return title
 
     def _get_active_window_windows(self) -> str:
         if not self.user32:
@@ -190,7 +193,7 @@ class WindowSensor:
                 title_lower = title.lower()
                 for keyword in sensitive_keywords:
                     if keyword.lower() in title_lower:
-                        return "[REDACTED_SENSITIVE_APP]"
+                        return "[REDACTED]"
 
         # 2. Redact Email Addresses
         # Improved regex for email (handles subdomains and common TLDs)
