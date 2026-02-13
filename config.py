@@ -102,8 +102,6 @@ SENSITIVE_APP_KEYWORDS = _get_conf("SENSITIVE_APP_KEYWORDS", [
     "Password", "Vault", "Private", "Bank", "Wallet", "Tax", "Financial", "SSN", "Credit Card",
     "Sign In", "Login", "Authentication", "Profile", "Setting",
     "Social Security", "Secret"
-    "Password", "Vault", "Private", "Bank", "Sign In", "Login", "Authentication", "Profile", "Setting",
-    "Wallet", "Tax", "Financial", "SSN", "Credit Card", "Social Security", "Secret"
 ])
 
 # Video Polling Delays (Eco Mode)

@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch, mock_open, ANY
 import sys
 import os
 import json
@@ -16,7 +16,6 @@ class TestCalibration(unittest.TestCase):
         self.mock_video = MagicMock()
         self.mock_input = MagicMock()
         self.mock_print = MagicMock()
-        self.mock_json_dump = MagicMock()
 
         # Patch dependencies
         self.patchers = []
@@ -39,36 +38,35 @@ class TestCalibration(unittest.TestCase):
     def test_calibrate_audio_silence(self):
         engine = CalibrationEngine()
 
-        # Mock the delegation to the sensor
-        # Verification of the math is handled in tests/test_sensor_calibration.py
-        expected_threshold = 0.03
-        self.mock_audio.calibrate.return_value = expected_threshold
+        # Mock the sensor's calibrate method to return a known float
+        self.mock_audio.calibrate.return_value = 0.03
 
-        with patch('time.time', side_effect=[0, 1, 2, 11]): # Control loop if needed, or simple delegation
-             threshold = engine.calibrate_audio_silence(duration=10)
+        # Run calibration
+        threshold = engine.calibrate_audio_silence(duration=10)
 
-        # Verify delegation
-        self.mock_audio.calibrate.assert_called_once()
-        self.assertEqual(threshold, expected_threshold)
+        # Verify delegation (allowing for extra args like progress_callback and type conversion)
+        self.mock_audio.calibrate.assert_called()
+        args, kwargs = self.mock_audio.calibrate.call_args
+        # Verify duration is passed (might be float)
+        self.assertIn('duration', kwargs)
+        self.assertEqual(float(kwargs['duration']), 10.0)
+        self.assertEqual(threshold, 0.03)
 
     def test_calibrate_video_posture(self):
         engine = CalibrationEngine()
 
-        # Mock the delegation
-        expected_baseline = {
-             "face_detected": True,
-             "face_roll_angle": 5.0,
-             "face_size_ratio": 0.2,
-             "vertical_position": 0.4,
-             "horizontal_position": 0.5
-        }
+        # Mock the sensor's calibrate method to return a known dict
+        expected_baseline = {"face_roll_angle": 5.0, "face_size_ratio": 0.2}
         self.mock_video.calibrate.return_value = expected_baseline
 
-        with patch('time.time', side_effect=[0, 1, 6]):
-             baseline = engine.calibrate_video_posture(duration=5)
+        # Run calibration
+        baseline = engine.calibrate_video_posture(duration=5)
 
         # Verify delegation
-        self.mock_video.calibrate.assert_called_once()
+        self.mock_video.calibrate.assert_called()
+        args, kwargs = self.mock_video.calibrate.call_args
+        self.assertIn('duration', kwargs)
+        self.assertEqual(float(kwargs['duration']), 5.0)
         self.assertEqual(baseline, expected_baseline)
 
     def test_save_config(self):
