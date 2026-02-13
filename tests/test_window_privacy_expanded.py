@@ -17,15 +17,15 @@ class TestWindowPrivacyExpanded(unittest.TestCase):
     def test_financial_keywords(self):
         # These should now be redacted by default config
         cases = [
-            ("Chase Bank - Login", "[REDACTED_SENSITIVE_APP]"),
-            ("Bank of America", "[REDACTED_SENSITIVE_APP]"),
-            ("My Crypto Wallet", "[REDACTED_SENSITIVE_APP]"),
-            ("IRS Tax Return 2025.pdf", "[REDACTED_SENSITIVE_APP]"),
-            ("TurboTax", "[REDACTED_SENSITIVE_APP]"),
-            ("Financial Statement.xlsx", "[REDACTED_SENSITIVE_APP]"),
-            ("Credit Card Bill", "[REDACTED_SENSITIVE_APP]"),
-            ("SSN Application", "[REDACTED_SENSITIVE_APP]"),
-            ("Social Security Administration", "[REDACTED_SENSITIVE_APP]")
+            ("Chase Bank - Login", "[REDACTED]"),
+            ("Bank of America", "[REDACTED]"),
+            ("My Crypto Wallet", "[REDACTED]"),
+            ("IRS Tax Return 2025.pdf", "[REDACTED]"),
+            ("TurboTax", "[REDACTED]"),
+            ("Financial Statement.xlsx", "[REDACTED]"),
+            ("Credit Card Bill", "[REDACTED]"),
+            ("SSN Application", "[REDACTED]"),
+            ("Social Security Administration", "[REDACTED]")
         ]
 
         for input_title, expected in cases:
@@ -35,14 +35,14 @@ class TestWindowPrivacyExpanded(unittest.TestCase):
     def test_legacy_keywords(self):
         # Verify old keywords still work
         cases = [
-            ("KeePassXC", "[REDACTED_SENSITIVE_APP]"),
-            ("LastPass Vault", "[REDACTED_SENSITIVE_APP]"),
-            ("1Password", "[REDACTED_SENSITIVE_APP]"),
-            ("Bitwarden", "[REDACTED_SENSITIVE_APP]"),
-            ("Incognito Tab", "[REDACTED_SENSITIVE_APP]"),
-            ("InPrivate Browsing", "[REDACTED_SENSITIVE_APP]"),
-            ("Tor Browser", "[REDACTED_SENSITIVE_APP]"),
-            ("Private Document", "[REDACTED_SENSITIVE_APP]")
+            ("KeePassXC", "[REDACTED]"),
+            ("LastPass Vault", "[REDACTED]"),
+            ("1Password", "[REDACTED]"),
+            ("Bitwarden", "[REDACTED]"),
+            ("Incognito Tab", "[REDACTED]"),
+            ("InPrivate Browsing", "[REDACTED]"),
+            ("Tor Browser", "[REDACTED]"),
+            ("Private Document", "[REDACTED]")
         ]
 
         for input_title, expected in cases:
@@ -66,7 +66,7 @@ class TestWindowPrivacyExpanded(unittest.TestCase):
     def test_custom_config_override(self):
         # Verify that if we patch config, it respects the patch
         with patch('sensors.window_sensor.config.SENSITIVE_APP_KEYWORDS', ["Minecraft"]):
-            self.assertEqual(self.sensor._sanitize_title("Minecraft"), "[REDACTED_SENSITIVE_APP]")
+            self.assertEqual(self.sensor._sanitize_title("Minecraft"), "[REDACTED]")
             # Default keywords should NOT work if list is overridden completely
             self.assertEqual(self.sensor._sanitize_title("Chase Bank"), "Chase Bank")
 

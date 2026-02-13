@@ -329,6 +329,23 @@ class LogicEngine:
         except Exception as e:
             self.logger.log_warning(f"STT Async Error: {e}")
 
+    def _scrub_window_title(self, title: str) -> str:
+        """
+        Scrubs sensitive information from window titles based on configured keywords.
+        Returns "[REDACTED]" if any sensitive keyword is found.
+        """
+        if not title:
+            return title
+
+        # Check against SENSITIVE_APP_KEYWORDS
+        title_lower = title.lower()
+        # Ensure we have a list to iterate over
+        keywords = getattr(config, 'SENSITIVE_APP_KEYWORDS', [])
+        for keyword in keywords:
+            if keyword.lower() in title_lower:
+                return "[REDACTED]"
+        return title
+
     def _prepare_lmm_data(self, trigger_reason: str = "periodic") -> Optional[dict]:
         with self._lock:
             if self.last_video_frame is None and self.last_audio_chunk is None:
@@ -380,7 +397,8 @@ class LogicEngine:
             active_window = "Unknown"
             if self.window_sensor:
                 try:
-                    active_window = self.window_sensor.get_active_window()
+                    raw_window = self.window_sensor.get_active_window()
+                    active_window = self._scrub_window_title(raw_window)
                 except Exception as e:
                     self.logger.log_debug(f"Error fetching active window: {e}")
 
@@ -554,7 +572,8 @@ class LogicEngine:
         active_window_lower = active_window.lower()
         for keyword, intervention_id in reflex_rules.items():
             if keyword.lower() in active_window_lower:
-                self.logger.log_info(f"Reflexive Window Match: '{keyword}' found in '{active_window}'")
+                # Log safe message
+                self.logger.log_info(f"Reflexive Window Match: '{keyword}' found in active window.")
                 return intervention_id
 
         return None
@@ -664,7 +683,9 @@ class LogicEngine:
             # Check Reflexive Window Triggers
             if self.window_sensor and self.intervention_engine:
                 try:
-                    active_win = self.window_sensor.get_active_window()
+                    # Use raw window title for checking reflexes (we need the app name)
+                    # Note: _check_window_reflexes logs safely (without exposing title)
+                    active_win = self.window_sensor.get_active_window(sanitize=False)
                     reflex_id = self._check_window_reflexes(active_win)
                     if reflex_id:
                         self.logger.log_info(f"Triggering Reflexive Intervention: {reflex_id}")
@@ -706,7 +727,8 @@ class LogicEngine:
                     hist_active_window = "Unknown"
                     if self.window_sensor:
                         try:
-                            hist_active_window = self.window_sensor.get_active_window()
+                            raw_hist_window = self.window_sensor.get_active_window()
+                            hist_active_window = self._scrub_window_title(raw_hist_window)
                         except: pass
 
                     snapshot = {
