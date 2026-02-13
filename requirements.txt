@@ -13,3 +13,4 @@ SpeechRecognition
 openai-whisper
 pyttsx3
 pyautogui
+pytest-mock
