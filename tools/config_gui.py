@@ -171,7 +171,10 @@ class ConfigGUI:
             self.config_data = {}
 
     def get_val(self, key, default):
-        return self.config_data.get(key, getattr(config, key, default))
+        # Helper to get from user config or fallback to config.py
+        if key in self.config_data:
+            return self.config_data[key]
+        return getattr(config, key, default)
 
     def create_widgets(self):
         notebook = ttk.Notebook(self.root)
@@ -253,8 +256,13 @@ class ConfigGUI:
         ttk.Label(tab_privacy, text="Sensitive Apps & Keywords (Redacted from History):").pack(anchor='w', padx=5, pady=5)
 
         privacy_data = self.get_val('SENSITIVE_APP_KEYWORDS', [])
+        # Ensure it's a list (handle potential conflicts if config has it as something else)
+        if not isinstance(privacy_data, list):
+            privacy_data = []
+
         self.privacy_editor = ListEditor(tab_privacy, data=privacy_data)
         self.privacy_editor.pack(fill='both', expand=True)
+
 
         # Save Button
         btn_frame = ttk.Frame(self.root)
@@ -267,7 +275,7 @@ class ConfigGUI:
             # Parse values
             for key, widget in self.entries.items():
                 val = widget.get()
-                # Simple type inference
+                # Simple type inference (string to float/int if possible)
                 if key.endswith("THRESHOLD") or key.endswith("THRESHOLD_HIGH"):
                     try:
                         val = float(val) if "." in val else int(val)
