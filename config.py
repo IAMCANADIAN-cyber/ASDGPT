@@ -161,17 +161,20 @@ HISTORY_SAMPLE_INTERVAL = _get_conf("HISTORY_SAMPLE_INTERVAL", 10, int) # Second
 HISTORY_WINDOW_SIZE = _get_conf("HISTORY_WINDOW_SIZE", 5, int) # Number of snapshots to keep
 RAPID_SWITCHING_THRESHOLD = _get_conf("RAPID_SWITCHING_THRESHOLD", 4, int) # Unique windows to trigger alert
 
-# --- Reflexive Triggers ---
+# --- Reflexive Triggers & App Lists ---
 # Triggers that bypass LMM for instant response based on window title
-REFLEXIVE_WINDOW_TRIGGERS = _get_conf("REFLEXIVE_WINDOW_TRIGGERS", {
-    "Steam": "distraction_alert",
-    "Reddit": "distraction_alert",
-    "Twitter": "distraction_alert",
-    "Facebook": "distraction_alert",
-    "Instagram": "distraction_alert",
-    "Civilization": "distraction_alert",
-    "Minecraft": "distraction_alert"
-}, dict)
+# NOTE: REFLEXIVE_WINDOW_TRIGGERS defaults to empty as we now use DISTRACTION_APPS for common cases.
+REFLEXIVE_WINDOW_TRIGGERS = _get_conf("REFLEXIVE_WINDOW_TRIGGERS", {}, dict)
+
+# Simple lists for "Focus" and "Distraction" apps
+DISTRACTION_APPS = _get_conf("DISTRACTION_APPS", [
+    "Steam", "Reddit", "Twitter", "Facebook", "Instagram", "Civilization", "Minecraft"
+], list)
+
+FOCUS_APPS = _get_conf("FOCUS_APPS", [
+    "VS Code", "PyCharm", "Terminal", "Sublime Text", "Cursor", "Obsidian"
+], list)
+
 REFLEXIVE_WINDOW_COOLDOWN = _get_conf("REFLEXIVE_WINDOW_COOLDOWN", 300, int) # 5 minutes
 
 # --- Voice Commands ---

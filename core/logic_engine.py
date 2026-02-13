@@ -402,6 +402,15 @@ class LogicEngine:
                 except Exception as e:
                     self.logger.log_debug(f"Error fetching active window: {e}")
 
+            # Check for Focus Apps to add context
+            if active_window != "Unknown":
+                focus_apps = getattr(config, 'FOCUS_APPS', [])
+                active_lower = active_window.lower()
+                for app in focus_apps:
+                    if app.lower() in active_lower:
+                        system_alerts.append(f"Focus App Active: {app}")
+                        break
+
             context = {
                 "current_mode": self.current_mode,
                 "context_history": list(self.context_history),
@@ -556,25 +565,32 @@ class LogicEngine:
 
     def _check_window_reflexes(self, active_window: str) -> Optional[str]:
         """
-        Checks if the active window matches any reflexive trigger rules.
+        Checks if the active window matches any reflexive trigger rules or distraction lists.
         Returns the intervention ID if matched and eligible (cooldown), else None.
         """
         current_time = time.time()
         if current_time - self.last_reflexive_trigger_time < self.reflexive_trigger_cooldown:
             return None
 
-        reflex_rules = getattr(config, 'REFLEXIVE_WINDOW_TRIGGERS', {})
-        if not reflex_rules or not active_window:
+        if not active_window:
             return None
 
-        # Check for keyword match
-        # Logic: If rule key is in active_window (case-insensitive)
         active_window_lower = active_window.lower()
-        for keyword, intervention_id in reflex_rules.items():
-            if keyword.lower() in active_window_lower:
-                # Log safe message
-                self.logger.log_info(f"Reflexive Window Match: '{keyword}' found in active window.")
-                return intervention_id
+
+        # 1. Check Custom Reflexive Triggers (Advanced) - Priority
+        reflex_rules = getattr(config, 'REFLEXIVE_WINDOW_TRIGGERS', {})
+        if reflex_rules:
+            for keyword, intervention_id in reflex_rules.items():
+                if keyword.lower() in active_window_lower:
+                    self.logger.log_info(f"Reflexive Window Match: '{keyword}' found in active window.")
+                    return intervention_id
+
+        # 2. Check Simplified Distraction List (Default)
+        distraction_apps = getattr(config, 'DISTRACTION_APPS', [])
+        for app in distraction_apps:
+            if app.lower() in active_window_lower:
+                self.logger.log_info(f"Distraction App Match: '{app}' found in active window.")
+                return "distraction_alert"
 
         return None
 

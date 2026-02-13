@@ -149,6 +149,32 @@ class TestConfigGUILogic(unittest.TestCase):
         self.assertIn("NewSecretApp", saved_data["SENSITIVE_APP_KEYWORDS"])
         self.assertIn("TestSensitive", saved_data["SENSITIVE_APP_KEYWORDS"])
 
+    def test_save_config_with_app_lists(self):
+        mock_root = MockWidget()
+        app = ConfigGUI(mock_root)
+
+        # Verify editors exist
+        self.assertTrue(hasattr(app, 'distraction_editor'))
+        self.assertTrue(hasattr(app, 'focus_editor'))
+
+        # Modify data
+        app.distraction_editor.data.append("NewDistraction")
+        app.focus_editor.data.append("NewFocus")
+
+        # Clear entries
+        app.entries = {}
+
+        app.save_config()
+
+        with open(os.path.join("user_data", "config.json"), 'r') as f:
+            saved_data = json.load(f)
+
+        if "DISTRACTION_APPS" in saved_data:
+             self.assertIn("NewDistraction", saved_data["DISTRACTION_APPS"])
+
+        if "FOCUS_APPS" in saved_data:
+             self.assertIn("NewFocus", saved_data["FOCUS_APPS"])
+
     def test_dictionary_editor_logic(self):
         mock_parent = MockWidget()
         initial_data = {"Key1": "Val1"}
