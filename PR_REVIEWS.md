@@ -1,7 +1,7 @@
 # Pull Request Reviews
 
-Here are the reviews and recommendations for the open Pull Requests (branches) as of 2026-01-29.
-**Update:** All PRs have been processed/verified as of 2026-01-29.
+Here are the reviews and recommendations for the open Pull Requests (branches) as of 2026-02-12.
+**Update:** All PRs have been processed/verified as of 2026-02-12.
 
 ## 1. `origin/navigator/fix-video-sensor-init-redundancy-11728158637017467784`
 *   **Status:** **Closed**
@@ -45,3 +45,23 @@ Here are the reviews and recommendations for the open Pull Requests (branches) a
 *   **Status:** **Merged**
 *   **Recommendation:** **2: Accept Incoming**
 *   **Reasoning:** Critical fix for deadlock in `VideoSensor.get_frame` during shutdown by releasing lock before blocking read. Also adds `tools/verify_crash.py` for verification. **Verified fix with stress test.**
+
+## 9. `origin/merge-pending-fixes-feb-12-8343582048493928329`
+*   **Status:** **Merged (Manually Applied)**
+*   **Recommendation:** **2: Accept Incoming**
+*   **Reasoning:** Fixes redundant keywords and implicit string concatenation in `config.py`. Changes applied via patch to `config.py` and `tests/test_window_sensor.py`. **Verified fix is in HEAD and tests pass.**
+
+## 10. `origin/fix/audio-sensor-pitch-bug-15490376612265338324`
+*   **Status:** **Closed (Already Merged)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The fix for parabolic interpolation in `sensors/audio_sensor.py` and the test `tests/test_audio_features.py` are already present in HEAD.
+
+## 11. `origin/navigator/merge-pending-fixes-feb-06-consolidated-18328604325028654940`
+*   **Status:** **Closed (Stale)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** This branch is significantly behind HEAD (missing many features like Music, Voice, etc.) and its proposed changes are regressions.
+
+## 12. `origin/roadmapper/weekly-refresh-feb-12-14929537395837105426`
+*   **Status:** **Closed (Already Merged)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The `ROADMAP.md` updates in this branch are identical to the content already in HEAD.
