@@ -1,7 +1,8 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import sys
 import os
+import pytest
 
 # Ensure repo root is in path
 sys.path.append(os.getcwd())
@@ -22,15 +23,19 @@ class TestPrivacyScrubberFixes(unittest.TestCase):
 
         found_credit_card_password = False
         found_setting_bank = False
+        found_secret_password = False
 
         for k in keywords:
             if "Credit CardPassword" in k:
                 found_credit_card_password = True
             if "SettingBank" in k:
                 found_setting_bank = True
+            if "SecretPassword" in k:
+                found_secret_password = True
 
         self.assertFalse(found_credit_card_password, "Bug fixed: 'Credit CardPassword' should NOT exist")
         self.assertFalse(found_setting_bank, "Bug fixed: 'SettingBank' should NOT exist")
+        self.assertFalse(found_secret_password, "Bug fixed: 'SecretPassword' should NOT exist")
 
     def test_missing_keywords_are_restored(self):
         """
@@ -39,12 +44,12 @@ class TestPrivacyScrubberFixes(unittest.TestCase):
         # "System Settings" should NOW be redacted
         title = "System Settings"
         sanitized = self.sensor._sanitize_title(title)
-        self.assertEqual(sanitized, "[REDACTED_SENSITIVE_APP]", "'System Settings' should be redacted")
+        self.assertEqual(sanitized, "[REDACTED]", "'System Settings' should be redacted")
 
         # "Credit Card Statement" should be redacted
         title = "Credit Card Statement"
         sanitized = self.sensor._sanitize_title(title)
-        self.assertEqual(sanitized, "[REDACTED_SENSITIVE_APP]", "'Credit Card Statement' should be redacted")
+        self.assertEqual(sanitized, "[REDACTED]", "'Credit Card Statement' should be redacted")
 
     def test_duplicates_removed(self):
         """
@@ -53,12 +58,7 @@ class TestPrivacyScrubberFixes(unittest.TestCase):
         keywords = config.SENSITIVE_APP_KEYWORDS
         self.assertEqual(len(keywords), len(set(keywords)), "Keywords list should not have duplicates")
 
-if __name__ == '__main__':
-    unittest.main()
-import pytest
-from unittest.mock import MagicMock, patch
-import config
-from sensors.window_sensor import WindowSensor
+# Pytest style tests (kept for compatibility/extra coverage)
 
 def test_config_sensitive_app_keywords_no_concatenation():
     """Verify that SENSITIVE_APP_KEYWORDS does not contain concatenated strings due to missing commas."""
@@ -67,12 +67,14 @@ def test_config_sensitive_app_keywords_no_concatenation():
     # Check for known concatenation artifacts from the bug
     assert "Credit CardPassword" not in keywords
     assert "SettingBank" not in keywords
+    assert "SecretPassword" not in keywords
 
     # Check for presence of split keywords
     assert "Credit Card" in keywords
     assert "Password" in keywords
     assert "Setting" in keywords
     assert "Bank" in keywords
+    assert "Secret" in keywords
 
 @pytest.fixture
 def mock_window_sensor():
@@ -138,3 +140,6 @@ def test_window_sensor_linux_fallback_wm_name(mock_window_sensor):
         assert args_net[0] == ['xprop', '-id', '0x12345', '_NET_WM_NAME']
         args_wm, _ = mock_run.call_args_list[2]
         assert args_wm[0] == ['xprop', '-id', '0x12345', 'WM_NAME']
+
+if __name__ == '__main__':
+    unittest.main()
