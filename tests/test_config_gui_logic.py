@@ -70,7 +70,7 @@ sys.modules['tkinter.messagebox'] = MagicMock()
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import config_gui after mocking
-from tools.config_gui import ConfigGUI, DictionaryEditor
+from tools.config_gui import ConfigGUI, DictionaryEditor, ListEditor
 import config
 
 class TestConfigGUILogic(unittest.TestCase):
@@ -85,7 +85,8 @@ class TestConfigGUILogic(unittest.TestCase):
         # Create a dummy config file
         self.initial_config = {
             "AUDIO_THRESHOLD_HIGH": 0.8,
-            "REFLEXIVE_WINDOW_TRIGGERS": {"TestApp": "test_intervention"}
+            "REFLEXIVE_WINDOW_TRIGGERS": {"TestApp": "test_intervention"},
+            "SENSITIVE_APP_KEYWORDS": ["TestSensitive", "Bank"]
         }
         with open(os.path.join("user_data", "config.json"), 'w') as f:
             json.dump(self.initial_config, f)
@@ -100,6 +101,7 @@ class TestConfigGUILogic(unittest.TestCase):
 
         self.assertEqual(app.config_data.get("AUDIO_THRESHOLD_HIGH"), 0.8)
         self.assertEqual(app.config_data.get("REFLEXIVE_WINDOW_TRIGGERS"), {"TestApp": "test_intervention"})
+        self.assertIn("TestSensitive", app.config_data.get("SENSITIVE_APP_KEYWORDS"))
 
     def test_save_config_with_triggers(self):
         mock_root = MockWidget()
@@ -120,6 +122,32 @@ class TestConfigGUILogic(unittest.TestCase):
             saved_data = json.load(f)
 
         self.assertEqual(saved_data["REFLEXIVE_WINDOW_TRIGGERS"], {"NewApp": "new_intervention"})
+
+    def test_save_config_with_privacy(self):
+        mock_root = MockWidget()
+        app = ConfigGUI(mock_root)
+
+        # Check if privacy editor exists
+        self.assertTrue(hasattr(app, 'privacy_editor'), "ConfigGUI should have 'privacy_editor' attribute")
+
+        # Verify initial data load
+        self.assertEqual(set(app.privacy_editor.data), set(["TestSensitive", "Bank"]))
+
+        # Add a new keyword
+        app.privacy_editor.data.append("NewSecretApp")
+
+        # Clear entries
+        app.entries = {}
+
+        # Save
+        app.save_config()
+
+        # Verify persistence
+        with open(os.path.join("user_data", "config.json"), 'r') as f:
+            saved_data = json.load(f)
+
+        self.assertIn("NewSecretApp", saved_data["SENSITIVE_APP_KEYWORDS"])
+        self.assertIn("TestSensitive", saved_data["SENSITIVE_APP_KEYWORDS"])
 
     def test_dictionary_editor_logic(self):
         mock_parent = MockWidget()
@@ -147,6 +175,33 @@ class TestConfigGUILogic(unittest.TestCase):
         editor.delete_item()
 
         self.assertEqual(editor.get_data(), {"Key2": "Val2"})
+
+    def test_list_editor_logic(self):
+        mock_parent = MockWidget()
+        initial_data = ["Item1", "Item2"]
+        editor = ListEditor(mock_parent, initial_data)
+
+        self.assertEqual(editor.get_data(), initial_data)
+
+        # Test Add
+        editor.entry = MockEntry()
+        editor.entry.value = "Item3"
+
+        editor.add_item()
+
+        self.assertEqual(editor.get_data(), ["Item1", "Item2", "Item3"])
+
+        # Test Delete
+        mock_tree = MagicMock()
+        mock_tree.selection.return_value = ("I001",)
+        mock_tree.item.return_value = {'values': ["Item1"]}
+        mock_tree.get_children.return_value = []
+
+        editor.tree = mock_tree
+
+        editor.delete_item()
+
+        self.assertEqual(editor.get_data(), ["Item2", "Item3"])
 
 if __name__ == '__main__':
     unittest.main()
