@@ -58,6 +58,44 @@ The system loads configuration in the following priority order (highest to lowes
 | `REFLEXIVE_WINDOW_COOLDOWN` | 300 | Seconds before a reflexive trigger can fire again. |
 | `HISTORY_WINDOW_SIZE` | 5 | Number of context snapshots (approx 50s) sent to LMM. |
 
+## Focus & Distraction
+
+Configure lists of applications to automatically classify activities.
+
+| Key | Type | Description |
+| :--- | :--- | :--- |
+| `DISTRACTION_APPS` | List[str] | List of window titles that trigger a distraction alert. |
+| `FOCUS_APPS` | List[str] | List of window titles that are considered "safe" and suppress distraction checks. |
+
+### Example `user_data/config.json` with Lists
+
+```json
+{
+  "DISTRACTION_APPS": [
+    "Steam",
+    "Reddit",
+    "Twitter",
+    "Facebook",
+    "Instagram",
+    "Civilization",
+    "Minecraft"
+  ],
+  "FOCUS_APPS": [
+    "VS Code",
+    "Visual Studio",
+    "PyCharm",
+    "Word",
+    "Excel",
+    "Notion",
+    "Obsidian"
+  ],
+  "REFLEXIVE_WINDOW_TRIGGERS": {
+    "Specific Game": "force_shutdown_simulation",
+    "My Budget": "budget_reminder"
+  }
+}
+```
+
 ## Integrations
 
 ### LMM (Large Multi-modal Model)
