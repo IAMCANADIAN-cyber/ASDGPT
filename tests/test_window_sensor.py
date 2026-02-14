@@ -182,7 +182,7 @@ class TestWindowSensor(unittest.TestCase):
             "Notepad"
         ]
         for title in safe_titles:
-            self.assertNotEqual(sensor._sanitize_title(title), "[REDACTED_SENSITIVE_APP]", f"Incorrectly redacted: {title}")
+            self.assertNotEqual(sensor._sanitize_title(title), "[REDACTED]", f"Incorrectly redacted: {title}")
 
     def test_improved_email_redaction(self):
         sensor = WindowSensor(self.mock_logger)

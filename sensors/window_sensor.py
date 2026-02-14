@@ -45,10 +45,16 @@ class WindowSensor:
                  self.xprop_available = False
                  self._log_warning("WindowSensor: 'xprop' utility not found. Active window detection will be unavailable. (Hint: install x11-utils)")
 
+             # Check for gdbus (GNOME/GTK Wayland)
+             if shutil.which("gdbus"):
+                 self.gdbus_available = True
+             else:
+                 self.gdbus_available = False
+
              # Check for Wayland
              session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
              if "wayland" in session_type:
-                 self._log_warning("Wayland detected. 'xprop' based window detection may fail or return generic values.")
+                 self._log_debug("Wayland detected. Will prioritize Wayland-compatible detection methods.")
 
     def get_active_window(self, sanitize: bool = True) -> str:
         """
@@ -71,6 +77,48 @@ class WindowSensor:
             return self._sanitize_title(title)
         return title
 
+    def _get_active_window_gnome_wayland(self) -> str:
+        """
+        Attempts to get the active window title using gdbus on GNOME Shell (Wayland).
+        Requires org.gnome.Shell.Eval or similar exposure.
+        """
+        if not self.gdbus_available:
+            return "Unknown"
+
+        try:
+            # Command: gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval 'global.display.focus_window ? global.display.focus_window.get_title() : ""'
+            # Note: This is often restricted in newer GNOME versions.
+            cmd = [
+                'gdbus', 'call',
+                '--session',
+                '--dest', 'org.gnome.Shell',
+                '--object-path', '/org/gnome/Shell',
+                '--method', 'org.gnome.Shell.Eval',
+                'global.display.focus_window ? global.display.focus_window.get_title() : ""'
+            ]
+
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=1)
+            if res.returncode == 0:
+                # Output format is typically: (true, "Window Title")
+                output = res.stdout.strip()
+                # Parse the variant output
+                # We expect (true, 'String') or (true, "String")
+                if output.startswith("(true,"):
+                    # Extract the string part. It might be quoted.
+                    # Basic regex to grab content between quotes
+                    match = re.search(r'^\(true,\s*(?:\'|")(.+)(?:\'|")\)$', output)
+                    if match:
+                        return match.group(1)
+
+                    # Fallback for empty string or unquoted (unlikely for string return)
+                    if '""' in output or "''" in output:
+                        return "Unknown"
+
+        except Exception as e:
+            self._log_debug(f"GNOME Wayland detection failed: {e}")
+
+        return "Unknown"
+
     def _get_active_window_windows(self) -> str:
         if not self.user32:
             return "Unknown"
@@ -89,6 +137,13 @@ class WindowSensor:
         return "Unknown"
 
     def _get_active_window_linux(self) -> str:
+        # Check priority based on session type
+        session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
+        if "wayland" in session_type:
+            title = self._get_active_window_gnome_wayland()
+            if title and title != "Unknown":
+                return title
+
         if not self.xprop_available:
             return "Unknown"
 

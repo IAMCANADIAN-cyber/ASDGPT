@@ -238,18 +238,44 @@ class ConfigGUI:
         if val: self.entries['TTS_VOICE_CLONE_SOURCE'].insert(0, str(val))
         self.entries['TTS_VOICE_CLONE_SOURCE'].grid(row=row, column=1, sticky='ew', padx=5)
 
-        # --- Tab 4: Reflexive Triggers ---
+        # --- Tab 4: Focus & Distraction (New) ---
+        tab_lists = ttk.Frame(notebook)
+        notebook.add(tab_lists, text='Focus & Distraction')
+
+        # Split into two panes
+        paned_window = ttk.PanedWindow(tab_lists, orient=tk.HORIZONTAL)
+        paned_window.pack(fill='both', expand=True, padx=5, pady=5)
+
+        # Distraction Pane
+        distraction_frame = ttk.Labelframe(paned_window, text="Distraction Apps (Triggers Alerts)")
+        paned_window.add(distraction_frame, weight=1)
+
+        distraction_data = self.get_val('DISTRACTION_APPS', [])
+        if not isinstance(distraction_data, list): distraction_data = []
+        self.distraction_editor = ListEditor(distraction_frame, data=distraction_data)
+        self.distraction_editor.pack(fill='both', expand=True)
+
+        # Focus Pane
+        focus_frame = ttk.Labelframe(paned_window, text="Focus Apps (Safe List)")
+        paned_window.add(focus_frame, weight=1)
+
+        focus_data = self.get_val('FOCUS_APPS', [])
+        if not isinstance(focus_data, list): focus_data = []
+        self.focus_editor = ListEditor(focus_frame, data=focus_data)
+        self.focus_editor.pack(fill='both', expand=True)
+
+        # --- Tab 5: Advanced Triggers ---
         tab_triggers = ttk.Frame(notebook)
-        notebook.add(tab_triggers, text='Triggers')
+        notebook.add(tab_triggers, text='Advanced Triggers')
 
         # Helper text
-        ttk.Label(tab_triggers, text="Define window titles that trigger immediate interventions (Focus/Distraction control).").pack(anchor='w', padx=5, pady=5)
+        ttk.Label(tab_triggers, text="Define custom window titles that trigger specific interventions.").pack(anchor='w', padx=5, pady=5)
 
         triggers_data = self.get_val('REFLEXIVE_WINDOW_TRIGGERS', {})
         self.triggers_editor = DictionaryEditor(tab_triggers, data=triggers_data)
         self.triggers_editor.pack(fill='both', expand=True)
 
-        # --- Tab 5: Privacy (New) ---
+        # --- Tab 6: Privacy ---
         tab_privacy = ttk.Frame(notebook)
         notebook.add(tab_privacy, text='Privacy')
 
@@ -282,6 +308,10 @@ class ConfigGUI:
                     except ValueError:
                         pass # Keep as string if conversion fails
                 new_config[key] = val
+
+            # Get Focus/Distraction Data
+            new_config['DISTRACTION_APPS'] = self.distraction_editor.get_data()
+            new_config['FOCUS_APPS'] = self.focus_editor.get_data()
 
             # Get Triggers Data
             new_config['REFLEXIVE_WINDOW_TRIGGERS'] = self.triggers_editor.get_data()

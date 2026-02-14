@@ -563,18 +563,34 @@ class LogicEngine:
         if current_time - self.last_reflexive_trigger_time < self.reflexive_trigger_cooldown:
             return None
 
-        reflex_rules = getattr(config, 'REFLEXIVE_WINDOW_TRIGGERS', {})
-        if not reflex_rules or not active_window:
+        if not active_window:
             return None
 
-        # Check for keyword match
-        # Logic: If rule key is in active_window (case-insensitive)
         active_window_lower = active_window.lower()
-        for keyword, intervention_id in reflex_rules.items():
-            if keyword.lower() in active_window_lower:
-                # Log safe message
-                self.logger.log_info(f"Reflexive Window Match: '{keyword}' found in active window.")
-                return intervention_id
+
+        # 1. Custom/Advanced Triggers (Priority)
+        reflex_rules = getattr(config, 'REFLEXIVE_WINDOW_TRIGGERS', {})
+        if reflex_rules:
+            for keyword, intervention_id in reflex_rules.items():
+                if keyword.lower() in active_window_lower:
+                    # Log safe message
+                    self.logger.log_info(f"Reflexive Window Match (Advanced): '{keyword}' found in active window.")
+                    return intervention_id
+
+        # 2. Focus Apps (Safe List)
+        # If in a Focus App, suppress Distraction checks
+        focus_apps = getattr(config, 'FOCUS_APPS', [])
+        for app in focus_apps:
+            if app.lower() in active_window_lower:
+                self.logger.log_debug(f"Focus App Active: '{app}'. Suppressing distraction checks.")
+                return None # Explicitly safe
+
+        # 3. Distraction Apps (Standard)
+        distraction_apps = getattr(config, 'DISTRACTION_APPS', [])
+        for app in distraction_apps:
+            if app.lower() in active_window_lower:
+                self.logger.log_info(f"Distraction App Detected: '{app}'")
+                return "distraction_alert"
 
         return None
 
