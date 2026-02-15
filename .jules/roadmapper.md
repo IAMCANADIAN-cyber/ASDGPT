@@ -38,3 +38,9 @@
 *   **Shift to Hardening**: With the core features for "Context Awareness" now in place, the system is functional but "raw". The focus must now shift to "Hardening" (Privacy, Platform Compatibility) and "Tuning" (reducing false positives) rather than adding new sensing capabilities.
 *   **Harness Validation**: The `ReplayHarness` is now verified. We must pivot from "Writing Tests" to "Creating Datasets" (e.g., Doom Scroll scenarios) to truly leverage it for tuning.
 *   **User Control Gap**: While `config.py` is powerful, editing it is not user-friendly. We need to expose key lists (Focus/Distraction apps) via JSON/GUI to make the system usable for non-developers.
+
+## Weekly Refresh (2026-02-19)
+*   **Eco Mode Validation**: Verified that `VideoSensor` implements "Smart Face Check" using `VIDEO_ECO_HEARTBEAT_INTERVAL`. The hypothesis that we can skip expensive face detection during low motion was correct and is now live.
+*   **Intervention Decentralization**: Currently, `LogicEngine` manages some cooldowns (`reflexive_trigger_cooldown`) while `InterventionEngine` manages others (`suppressed_interventions`). This split responsibility makes "Escalation Policies" (e.g., ignoring a Tier 1 alert escalates to Tier 2) difficult. We must centralize this logic in `InterventionEngine`.
+*   **Tuning Blindspot**: We are shipping features (like "Doom Scroll Detection") without a ground-truth dataset. Creating `datasets/doom_scroll.json` is now the highest leverage activity to prevent user annoyance.
+*   **Meeting Mode False Positives**: The current heuristic (Face + Audio) triggers during video playback (e.g., YouTube). We need to tighten this, possibly by requiring "User Input" (keyboard/mouse) or more advanced VAD that filters system audio.
