@@ -51,6 +51,16 @@ class WindowSensor:
              else:
                  self.gdbus_available = False
 
+             # Check for qdbus (KDE Plasma Wayland)
+             if shutil.which("qdbus"):
+                 self.qdbus_available = True
+             elif shutil.which("qdbus-qt5"): # Fallback for some distros
+                 self.qdbus_command = "qdbus-qt5"
+                 self.qdbus_available = True
+             else:
+                 self.qdbus_available = False
+                 self.qdbus_command = "qdbus" # Default
+
              # Check for Wayland
              session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
              if "wayland" in session_type:
@@ -87,7 +97,7 @@ class WindowSensor:
 
         try:
             # Command: gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval 'global.display.focus_window ? global.display.focus_window.get_title() : ""'
-            # Note: This is often restricted in newer GNOME versions.
+            # Note: This is often restricted in newer GNOME versions (41+).
             cmd = [
                 'gdbus', 'call',
                 '--session',
@@ -113,9 +123,49 @@ class WindowSensor:
                     # Fallback for empty string or unquoted (unlikely for string return)
                     if '""' in output or "''" in output:
                         return "Unknown"
+            else:
+                 self._log_debug(f"GNOME Wayland call failed (Code {res.returncode}). Eval interface likely restricted.")
 
         except Exception as e:
             self._log_debug(f"GNOME Wayland detection failed: {e}")
+
+        return "Unknown"
+
+    def _get_active_window_kwin_wayland(self) -> str:
+        """
+        Attempts to get the active window title using qdbus on KDE Plasma (Wayland).
+        """
+        if not self.qdbus_available:
+            return "Unknown"
+
+        try:
+            cmd_name = getattr(self, 'qdbus_command', 'qdbus')
+            cmd = [cmd_name, 'org.kde.KWin', '/KWin', 'org.kde.KWin.activeWindow']
+
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=1)
+            if res.returncode == 0:
+                output = res.stdout
+                # KDE qdbus output for a map (a{sv}) typically looks like:
+                # argument 0: a{sv} {
+                #  "caption": [Variant(QString): "My Title"],
+                #  ...
+                # }
+
+                # Regex to find "caption" key and extract value
+                # Pattern looks for "caption": [Variant(QString): "VALUE"]
+                # or simplified: "caption": ... "VALUE"
+                match = re.search(r'"caption":\s*\[Variant\(QString\):\s*"(.*?)"\]', output)
+                if match:
+                    return match.group(1).replace('\\"', '"').replace('\\\\', '\\')
+
+                # Fallback: maybe format is simpler in some versions?
+                # "caption": "Value"
+                match_simple = re.search(r'"caption":\s*"(.*?)"', output)
+                if match_simple:
+                    return match_simple.group(1).replace('\\"', '"').replace('\\\\', '\\')
+
+        except Exception as e:
+             self._log_debug(f"KDE Wayland detection failed: {e}")
 
         return "Unknown"
 
@@ -140,9 +190,34 @@ class WindowSensor:
         # Check priority based on session type
         session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
         if "wayland" in session_type:
-            title = self._get_active_window_gnome_wayland()
-            if title and title != "Unknown":
-                return title
+            # Check Desktop Environment priority
+            desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
+
+            # KDE Plasma Wayland
+            if "KDE" in desktop:
+                title = self._get_active_window_kwin_wayland()
+                if title and title != "Unknown":
+                    return title
+
+            # GNOME Wayland
+            elif "GNOME" in desktop:
+                title = self._get_active_window_gnome_wayland()
+                if title and title != "Unknown":
+                    return title
+
+            # Generic/Fallback: Try available methods if DE is ambiguous
+            else:
+                # Try KDE first (cleaner interface if present)
+                if self.qdbus_available:
+                    title = self._get_active_window_kwin_wayland()
+                    if title and title != "Unknown":
+                        return title
+
+                # Try GNOME
+                if self.gdbus_available:
+                    title = self._get_active_window_gnome_wayland()
+                    if title and title != "Unknown":
+                        return title
 
         if not self.xprop_available:
             return "Unknown"

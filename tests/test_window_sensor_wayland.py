@@ -2,92 +2,173 @@ import unittest
 from unittest.mock import MagicMock, patch
 import sys
 import os
-
-# Ensure repo root is in path
-sys.path.append(os.getcwd())
-
 from sensors.window_sensor import WindowSensor
-import config
 
 class TestWindowSensorWayland(unittest.TestCase):
+
     def setUp(self):
         self.mock_logger = MagicMock()
-        self.sensor = WindowSensor(self.mock_logger)
-        # Force linux
-        self.sensor.os_type = 'Linux'
-        self.sensor.gdbus_available = True
 
+    @patch('platform.system')
+    @patch('shutil.which')
+    @patch.dict(os.environ, {"XDG_SESSION_TYPE": "wayland", "XDG_CURRENT_DESKTOP": "KDE"}, clear=True)
     @patch('subprocess.run')
-    @patch('os.environ.get')
-    def test_gnome_wayland_success_quoted_double(self, mock_env, mock_run):
-        # Setup Wayland environment
-        mock_env.return_value = "wayland"
+    def test_kde_wayland_success(self, mock_subprocess, mock_which, mock_system):
+        mock_system.return_value = 'Linux'
 
-        # Mock gdbus response: (true, "My App")
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = '(true, "My App")'
+        # Setup tools
+        def which_side_effect(cmd):
+            if cmd == 'qdbus': return '/usr/bin/qdbus'
+            return None
+        mock_which.side_effect = which_side_effect
 
-        title = self.sensor._get_active_window_gnome_wayland()
-        self.assertEqual(title, "My App")
+        # Setup qdbus output
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        # Simulated KDE qdbus output
+        mock_res.stdout = 'argument 0: a{sv} {\n "caption": [Variant(QString): "Dolphin - Home"],\n "resourceClass": [Variant(QString): "dolphin"]\n}'
+        mock_subprocess.return_value = mock_res
 
+        sensor = WindowSensor(self.mock_logger)
+        title = sensor.get_active_window(sanitize=False)
+
+        self.assertEqual(title, "Dolphin - Home")
+
+        # Verify calls
+        args, _ = mock_subprocess.call_args
+        cmd = args[0]
+        self.assertEqual(cmd, ['qdbus', 'org.kde.KWin', '/KWin', 'org.kde.KWin.activeWindow'])
+
+    @patch('platform.system')
+    @patch('shutil.which')
+    @patch.dict(os.environ, {"XDG_SESSION_TYPE": "wayland", "XDG_CURRENT_DESKTOP": "GNOME"}, clear=True)
     @patch('subprocess.run')
-    @patch('os.environ.get')
-    def test_gnome_wayland_success_quoted_single(self, mock_env, mock_run):
-        mock_env.return_value = "wayland"
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = "(true, 'My App')"
+    def test_gnome_wayland_success(self, mock_subprocess, mock_which, mock_system):
+        mock_system.return_value = 'Linux'
 
-        title = self.sensor._get_active_window_gnome_wayland()
-        self.assertEqual(title, "My App")
+        # Setup tools
+        def which_side_effect(cmd):
+            if cmd == 'gdbus': return '/usr/bin/gdbus'
+            return None
+        mock_which.side_effect = which_side_effect
 
+        # Setup gdbus output
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        mock_res.stdout = "(true, 'Firefox - Web Browser')"
+        mock_subprocess.return_value = mock_res
+
+        sensor = WindowSensor(self.mock_logger)
+        title = sensor.get_active_window(sanitize=False)
+
+        self.assertEqual(title, "Firefox - Web Browser")
+
+        # Verify calls
+        args, _ = mock_subprocess.call_args
+        cmd = args[0]
+        self.assertEqual(cmd[0], 'gdbus')
+        self.assertIn('org.gnome.Shell.Eval', cmd)
+
+    @patch('platform.system')
+    @patch('shutil.which')
+    @patch.dict(os.environ, {"XDG_SESSION_TYPE": "wayland", "XDG_CURRENT_DESKTOP": "GNOME"}, clear=True)
     @patch('subprocess.run')
-    def test_gnome_wayland_empty(self, mock_run):
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = '(true, "")'
+    def test_gnome_wayland_restricted(self, mock_subprocess, mock_which, mock_system):
+        """Test the case where GNOME Shell Eval is restricted (common in modern GNOME)."""
+        mock_system.return_value = 'Linux'
 
-        title = self.sensor._get_active_window_gnome_wayland()
+        def which_side_effect(cmd):
+            if cmd == 'gdbus': return '/usr/bin/gdbus'
+            return None
+        mock_which.side_effect = which_side_effect
+
+        # Setup gdbus failure
+        mock_res = MagicMock()
+        mock_res.returncode = 1
+        mock_res.stderr = "Error: GDBus.Error:org.gnome.Shell.EvalError: Eval is restricted"
+        mock_subprocess.return_value = mock_res
+
+        sensor = WindowSensor(self.mock_logger)
+        title = sensor.get_active_window(sanitize=False)
+
         self.assertEqual(title, "Unknown")
+        # Should log debug message about restriction
+        self.mock_logger.log_debug.assert_any_call("GNOME Wayland call failed (Code 1). Eval interface likely restricted.")
 
+    @patch('platform.system')
+    @patch('shutil.which')
+    @patch.dict(os.environ, {"XDG_SESSION_TYPE": "wayland", "XDG_CURRENT_DESKTOP": "UnknownDE"}, clear=True)
     @patch('subprocess.run')
-    def test_gnome_wayland_failure(self, mock_run):
-        mock_run.return_value.returncode = 1
+    def test_ambiguous_wayland_kde_fallback(self, mock_subprocess, mock_which, mock_system):
+        """Test fallback to KDE tool if DE is unknown but qdbus is present."""
+        mock_system.return_value = 'Linux'
 
-        title = self.sensor._get_active_window_gnome_wayland()
-        self.assertEqual(title, "Unknown")
+        # Only qdbus available
+        def which_side_effect(cmd):
+            if cmd == 'qdbus': return '/usr/bin/qdbus'
+            return None
+        mock_which.side_effect = which_side_effect
 
-    @patch('sensors.window_sensor.WindowSensor._get_active_window_gnome_wayland')
-    @patch('os.environ.get')
-    def test_get_active_window_priority(self, mock_env, mock_get_gnome):
-        # Test that Wayland method is called first if session is wayland
-        mock_env.return_value = "wayland"
-        mock_get_gnome.return_value = "Wayland Window"
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        mock_res.stdout = '"caption": "Ambiguous Window"'
+        mock_subprocess.return_value = mock_res
 
-        title = self.sensor._get_active_window_linux()
-        self.assertEqual(title, "Wayland Window")
-        mock_get_gnome.assert_called_once()
+        sensor = WindowSensor(self.mock_logger)
+        title = sensor.get_active_window(sanitize=False)
 
-    @patch('sensors.window_sensor.WindowSensor._get_active_window_gnome_wayland')
-    @patch('os.environ.get')
+        self.assertEqual(title, "Ambiguous Window")
+        # Ensure it called qdbus
+        args, _ = mock_subprocess.call_args
+        self.assertEqual(args[0][0], 'qdbus')
+
+    @patch('platform.system')
+    @patch('shutil.which')
+    @patch.dict(os.environ, {"XDG_SESSION_TYPE": "wayland", "XDG_CURRENT_DESKTOP": "KDE"}, clear=True)
     @patch('subprocess.run')
-    def test_fallback_to_xprop(self, mock_run, mock_env, mock_get_gnome):
-        # Test fallback if Wayland method fails
-        mock_env.return_value = "wayland"
-        mock_get_gnome.return_value = "Unknown"
+    def test_kde_wayland_simple_format(self, mock_subprocess, mock_which, mock_system):
+        """Test simpler output format for qdbus."""
+        mock_system.return_value = 'Linux'
 
-        # Enable xprop
-        self.sensor.xprop_available = True
+        def which_side_effect(cmd):
+            if cmd == 'qdbus': return '/usr/bin/qdbus'
+            return None
+        mock_which.side_effect = which_side_effect
 
-        # Mock xprop responses
-        # 1. -root -> id
-        # 2. -id -> title
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="_NET_ACTIVE_WINDOW(WINDOW): window id # 0x12345"),
-            MagicMock(returncode=0, stdout='_NET_WM_NAME(UTF8_STRING) = "X11 Window"')
-        ]
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        # Simpler format
+        mock_res.stdout = '"caption": "Simple Title"'
+        mock_subprocess.return_value = mock_res
 
-        title = self.sensor._get_active_window_linux()
-        self.assertEqual(title, "X11 Window")
-        mock_get_gnome.assert_called_once()
+        sensor = WindowSensor(self.mock_logger)
+        title = sensor.get_active_window(sanitize=False)
+
+        self.assertEqual(title, "Simple Title")
+
+    @patch('platform.system')
+    @patch('shutil.which')
+    @patch.dict(os.environ, {"XDG_SESSION_TYPE": "wayland", "XDG_CURRENT_DESKTOP": "KDE"}, clear=True)
+    @patch('subprocess.run')
+    def test_kde_wayland_escaped_quotes(self, mock_subprocess, mock_which, mock_system):
+        """Test parsing of titles with escaped quotes."""
+        mock_system.return_value = 'Linux'
+
+        def which_side_effect(cmd):
+            if cmd == 'qdbus': return '/usr/bin/qdbus'
+            return None
+        mock_which.side_effect = which_side_effect
+
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        # Output with escapes: "My \"Cool\" App"
+        mock_res.stdout = '"caption": [Variant(QString): "My \\"Cool\\" App"]'
+        mock_subprocess.return_value = mock_res
+
+        sensor = WindowSensor(self.mock_logger)
+        title = sensor.get_active_window(sanitize=False)
+
+        self.assertEqual(title, 'My "Cool" App')
 
 if __name__ == '__main__':
     unittest.main()
