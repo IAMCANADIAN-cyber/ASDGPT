@@ -243,6 +243,16 @@ class Application:
                         self.data_logger.log_warning(f"Video sensor error in worker: {error}")
                         # We might still put an error marker or None frame in queue if needed
                         # For now, only put valid frames or rely on _check_sensors
+                    # Determine dynamic poll delay
+                    # Use locally calculated activity for instant response (no lag from main loop)
+                    # We use update_history=False so we don't mess up the LogicEngine's state tracking
+                    # Calculate BEFORE queueing to avoid race condition with LogicEngine updating last_frame
+                    instant_activity = 0.0
+                    if frame is not None:
+                         instant_activity = self.video_sensor.calculate_activity(frame, update_history=False)
+
+                    next_sleep_time = self._get_video_poll_delay(instant_activity)
+
                     if frame is not None:
                         try:
                             self.video_queue.put((frame, error), timeout=0.1) # Short timeout
@@ -253,11 +263,6 @@ class Application:
                          # Potentially put an error marker in the queue if main loop needs to react instantly
                          # For now, _check_sensors will handle persistent errors.
                          pass
-
-                    # Determine dynamic poll delay
-                    # Use the latest activity from logic engine (which reflects the most recent PROCESSED frame)
-                    frame_activity = self.logic_engine.video_activity
-                    next_sleep_time = self._get_video_poll_delay(frame_activity)
 
                     time.sleep(next_sleep_time)
 
