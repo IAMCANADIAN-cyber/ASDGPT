@@ -1,16 +1,17 @@
 # ASDGPT Architecture & Data Flow
 
-This document details the internal architecture of ASDGPT, explaining how sensor data flows through the system to generate state estimations and interventions.
+This document details the internal architecture of ASDGPT (v2), explaining how sensor data flows through the system to generate state estimations, interventions, and interactive features.
 
 ## High-Level Overview
 
 ASDGPT operates on a continuous feedback loop:
 1.  **Sensors** capture raw audio, video, and active window data.
-2.  **Logic Engine** processes this data into features, checks for triggers (including Meeting Mode), and coordinates logic.
-3.  **LMM (Large Multi-modal Model)** analyzes the context to estimate user state and suggest interventions.
-4.  **State Engine** smooths and tracks the 5-dimensional user state.
-5.  **Intervention Engine** executes actions (TTS, sounds) if needed, including offline fallbacks.
-6.  **User Feedback** (via hotkeys) reinforces or suppresses specific interventions.
+2.  **Logic Engine** processes this data into features, checks for triggers (including Meeting Mode and Sexual Arousal Mode), and coordinates logic.
+3.  **Interaction Layer** handles voice commands (STT) and provides verbal feedback (TTS) or music control.
+4.  **LMM (Large Multi-modal Model)** analyzes the context to estimate user state and suggest interventions.
+5.  **State Engine** smooths and tracks the 6-dimensional user state.
+6.  **Intervention Engine** executes actions (TTS, sounds, visual alerts).
+7.  **User Feedback** (via hotkeys) reinforces or suppresses specific interventions.
 
 ---
 
@@ -20,15 +21,14 @@ ASDGPT operates on a continuous feedback loop:
 The system uses modular sensors to extract features before any AI processing occurs.
 
 *   **AudioSensor** (`sensors/audio_sensor.py`):
-    *   **Features**: `rms` (loudness), `zcr` (noisiness), `pitch_estimation`, `speech_rate` (syllables/sec).
-    *   **VAD (Voice Activity Detection)**: Uses heuristics (pitch + ZCR + variance) to determine `is_speech` and `speech_confidence`.
+    *   **Features**: `rms` (loudness), `zcr` (noisiness), `pitch_estimation`.
+    *   **VAD (Voice Activity Detection)**: Determines `is_speech` to trigger STT or LMM analysis.
 *   **VideoSensor** (`sensors/video_sensor.py`):
     *   **Features**: `video_activity` (motion intensity), `face_detected`, `face_count`.
-    *   **Metrics**: `face_roll_angle` (head tilt), `posture_state` (e.g., "slouching", "leaning_forward").
+    *   **Metrics**: `face_roll_angle` (head tilt), `posture_state`.
 *   **WindowSensor** (`sensors/window_sensor.py`):
     *   **Function**: Detects the currently active application window title.
-    *   **Privacy**: Automatically redacts sensitive information (e.g., email addresses, file paths, and configured sensitive app names like "Password Manager").
-    *   **Context**: Provides critical context (e.g., "Visual Studio Code" vs. "YouTube") to the Logic Engine.
+    *   **Privacy**: Automatically redacts sensitive information (e.g., "Password Manager" -> `[REDACTED]`).
 
 ### 2. Logic Engine (`core/logic_engine.py`)
 The central coordinator ("The Brain"). It runs the main event loop.
@@ -36,47 +36,64 @@ The central coordinator ("The Brain"). It runs the main event loop.
 *   **Triggers**: It decides *when* to call the expensive LMM.
     *   **High Audio Event**: Loudness > threshold AND identified as speech.
     *   **High Video Activity**: Motion > threshold AND face detected.
-    *   **Periodic Check**: Every ~5 seconds (configurable) if no event occurs.
-*   **Meeting Mode (Auto-DND)**:
-    *   **Heuristic**: Automatically switches to "Do Not Disturb" if it detects continuous speech + face presence + no keyboard/mouse input for a set duration (default 10s).
-    *   **Exit**: Automatically returns to "Active" mode when user input is detected.
+    *   **Periodic Check**: Heartbeat (default 5s) if no event occurs.
+*   **Modes**:
+    *   **Meeting Mode (Auto-DND)**: Automatically switches to "Do Not Disturb" if continuous speech + face + no input is detected.
+    *   **Sexual Arousal Mode**: When `sexual_arousal` state exceeds `SEXUAL_AROUSAL_THRESHOLD`, the Logic Engine increases LMM sampling frequency (2x) to capture relevant context and potential content creation moments.
 *   **Offline Fallback**:
-    *   If the LMM circuit breaker is open (due to repeated failures), the Logic Engine triggers simple, heuristic-based interventions (e.g., "It's getting loud") directly via the Intervention Engine.
-*   **Payload Construction**: Bundles sensor metrics, the latest video frame (Base64), raw audio snippet, active window title, and current state context into a JSON payload for the LMM.
+    *   If the LMM circuit breaker is open (due to failures), triggers heuristic interventions directly.
 
-### 3. LMM Integration (`core/lmm_interface.py`)
+### 3. Interaction Layer (`core/`)
+New in v2, these components handle direct user interaction.
+
+*   **STT Interface** (`core/stt_interface.py`):
+    *   **Input**: Raw audio buffer from `LogicEngine`.
+    *   **Engines**: `whisper` (Local, default) or `google` (Web API fallback).
+    *   **Function**: Transcribes speech for Voice Commands (e.g., "Take a picture") and LMM context.
+*   **Voice Interface** (`core/voice_interface.py`):
+    *   **Output**: Text-to-Speech (TTS).
+    *   **Engines**: `system` (pyttsx3/espeak) or `coqui` (Voice Cloning, optional).
+    *   **Function**: Delivers verbal interventions or responses.
+*   **Music Interface** (`core/music_interface.py`):
+    *   **Function**: Controls background music based on `mood`, `arousal`, and `sexual_arousal` state.
+    *   **Integration**: Uses system media keys or direct URI calls (e.g., `spotify:`).
+
+### 4. LMM Integration (`core/lmm_interface.py`)
 Interfaces with the local Large Language Model (e.g., deepseek via Oobabooga/LM Studio).
 
-*   **Analysis**: Sends the payload to the LMM.
-*   **Output**: Expects a JSON response containing:
-    *   `state_estimation`: Updates for the 5D state.
-    *   `visual_context`: Tags like "phone_usage", "messy_room".
-    *   `intervention_suggestion`: A recommended intervention ID (or null).
-*   **Reflexive Triggers**: The Logic Engine monitors `visual_context` tags for persistence (e.g., "phone_usage" > threshold) to trigger immediate interventions like `doom_scroll_breaker`, overriding standard suggestions.
+*   **Payload**: Bundles sensor metrics, the latest video frame (Base64), raw audio, active window, and recent speech context.
+*   **Analysis**: Returns `state_estimation`, `visual_context` (tags), and `intervention_suggestion`.
+*   **Reflexive Triggers**: Monitors `visual_context` tags for persistence (e.g., "phone_usage" > threshold) to trigger immediate interventions like `doom_scroll_breaker`.
 
-### 4. State Engine (`core/state_engine.py`)
+### 5. Features & Integrations
+Specialized modules for specific tasks.
+
+*   **Social Media Manager** (`core/social_media_manager.py`):
+    *   **Function**: Drafts local posts (image + JSON metadata) to `drafts/` folder.
+    *   **AI Captioning**: Uses LMM to generate captions based on image context (e.g., "Late night vibes").
+    *   **Note**: Does not post to external platforms automatically.
+*   **Image Processing** (`core/image_processing.py`):
+    *   **Digital PTZ**: "Pan-Tilt-Zoom" simulation. Crops high-resolution frames to center on the subject/face, creating a cinematic look for captures.
+
+### 6. State Engine (`core/state_engine.py`)
 Maintains the "Mental Model" of the user.
 
-*   **5 Dimensions**: `Arousal`, `Overload`, `Focus`, `Energy`, `Mood` (0-100 scale).
+*   **6 Dimensions**: `Arousal`, `Overload`, `Focus`, `Energy`, `Mood`, `Sexual Arousal` (0-100 scale).
 *   **Smoothing**: Applies a moving average to LMM outputs to prevent jitter.
-*   **Baseline**: Initialized with user-specific baselines (defined in `config.py`).
+*   **Note**: `Sexual Arousal` is distinct from physiological `Arousal` (alertness) and tracks erotic context.
 
-### 5. Intervention Engine (`core/intervention_engine.py`)
+### 7. Intervention Engine (`core/intervention_engine.py`)
 Executes the actual "co-regulation" actions.
 
-*   **Library**: Loads standardized interventions from `core/intervention_library.py` (e.g., "box_breathing", "posture_reset").
-*   **Actions**: Supports `speak` (TTS), `play_sound` (WAV/MP3), `show_visual`, `wait`.
-*   **Prioritization**:
-    *   **System Triggers**: Specific logic (e.g., "Doom Scroll" detection) takes precedence.
-    *   **Suppression**: Interventions marked "unhelpful" are blocked for a cooldown period.
+*   **Actions**: `speak` (via VoiceInterface), `play_sound`, `show_visual`.
+*   **Prioritization**: System Triggers > LMM Suggestions.
+*   **Suppression**: Interventions marked "unhelpful" are blocked for a cooldown period.
 
-### 6. Feedback Loop
+### 8. Feedback Loop
 User feedback determines future system behavior.
 
 *   **Inputs**: Hotkeys for "Helpful" (`Ctrl+Alt+Up`) and "Unhelpful" (`Ctrl+Alt+Down`).
-*   **Logic**:
-    *   **Unhelpful**: Suppresses that intervention type for `FEEDBACK_SUPPRESSION_MINUTES` (default 4 hours).
-    *   **Helpful**: Increments a preference counter, making that intervention more likely to be selected in tie-breakers (future).
+*   **Logic**: Updates preference weights and suppresses unhelpful intervention types.
 
 ---
 
@@ -84,25 +101,37 @@ User feedback determines future system behavior.
 
 ```mermaid
 graph TD
-    A[Camera/Mic] -->|Raw Data| B(Sensors)
-    W[Window System] -->|Active Window| B
-    B -->|Features & Metrics| C{Logic Engine}
-    C -->|Trigger Condition Met?| D[LMM Interface]
-    C -->|Circuit Breaker Open?| O[Offline Fallback]
-    D -->|Context + Frame + Audio| E[Local LLM]
-    E -->|JSON Analysis| D
-    D -->|State Update| F(State Engine)
-    D -->|Suggestion| G{Intervention Engine}
-    O -->|Heuristic Intervention| G
-    G -->|Check Suppression| H[Execute Action]
-    I[User Hotkey] -->|Feedback| G
-    G -->|Update Preferences| G
+    User((User))
+    Mic[Microphone] -->|Audio Chunk| LE{Logic Engine}
+    Cam[Camera] -->|Video Frame| LE
+    Win[Window System] -->|Active Window| LE
+
+    LE -->|Audio Buffer| STT[STT Interface]
+    STT -->|Transcribed Text| LE
+
+    LE -->|Check Triggers| LE
+    LE -->|Payload (Video+Audio+Text)| LMM[LMM Interface]
+
+    LMM -->|State & Suggestion| LE
+    LE -->|Update State| SE(State Engine)
+
+    LE -->|Music Control| MI[Music Interface]
+    MI -->|Playlist URI| Spotify
+
+    LE -->|Action Request| IE{Intervention Engine}
+    IE -->|Speak| VI[Voice Interface]
+    VI -->|TTS Audio| User
+
+    IE -->|Visual/Sound| User
+
+    User -->|Feedback Hotkey| LE
 ```
 
 ## Configuration & Tuning
 
-The system behavior is highly tunable via `config.py` or `user_data/config.json`:
+The system behavior is highly tunable via `config.py` or `user_data/config.json`. See `docs/CONFIGURATION.md` for a full reference.
 
-*   **Sensitivity**: Adjust `AUDIO_THRESHOLD_HIGH` or `VIDEO_ACTIVITY_THRESHOLD_HIGH`.
-*   **VAD**: Tune `VAD_SILENCE_THRESHOLD` if background noise is triggering checks.
-*   **Baselines**: Set your "normal" state in `BASELINE_STATE` so the system knows what deviation looks like.
+Key v2 Configurations:
+*   **Voice**: `TTS_ENGINE` ("system" vs "coqui"), `TTS_VOICE_CLONE_SOURCE`.
+*   **Music**: `ENABLE_MUSIC_CONTROL`, `mood_playlists` (in code currently).
+*   **Privacy**: `SENSITIVE_APP_KEYWORDS` for window title redaction.
