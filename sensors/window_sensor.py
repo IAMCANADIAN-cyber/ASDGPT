@@ -51,6 +51,16 @@ class WindowSensor:
              else:
                  self.gdbus_available = False
 
+             # Check for qdbus (KDE Wayland)
+             if shutil.which("qdbus"):
+                 self.qdbus_available = True
+                 self.qdbus_executable = "qdbus"
+             elif shutil.which("qdbus-qt5"):
+                 self.qdbus_available = True
+                 self.qdbus_executable = "qdbus-qt5"
+             else:
+                 self.qdbus_available = False
+
              # Check for Wayland
              session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
              if "wayland" in session_type:
@@ -119,6 +129,35 @@ class WindowSensor:
 
         return "Unknown"
 
+    def _get_active_window_kwin_wayland(self) -> str:
+        """
+        Attempts to get the active window title using qdbus on KDE (KWin).
+        Uses 'supportInformation' to extract the active window title reliably.
+        """
+        if not getattr(self, 'qdbus_available', False):
+            return "Unknown"
+
+        executable = getattr(self, 'qdbus_executable', 'qdbus')
+
+        try:
+            # Command: qdbus org.kde.KWin /KWin supportInformation
+            cmd = [executable, 'org.kde.KWin', '/KWin', 'supportInformation']
+
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=1)
+            if res.returncode == 0:
+                output = res.stdout
+                # Look for "Active Window:"
+                # Format is typically: Active Window: Window(0x... caption="Title")
+                # Regex to find 'Active Window: ... caption="Title"' or 'Active Window: Title'
+                # We use a robust multiline search
+                match = re.search(r'Active Window:.*?caption="((?:[^"\\]|\\.)*)"', output)
+                if match:
+                    return match.group(1)
+        except Exception as e:
+            self._log_debug(f"KDE Wayland detection failed: {e}")
+
+        return "Unknown"
+
     def _get_active_window_windows(self) -> str:
         if not self.user32:
             return "Unknown"
@@ -140,6 +179,17 @@ class WindowSensor:
         # Check priority based on session type
         session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
         if "wayland" in session_type:
+            # Dispatch based on Desktop Environment
+            desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
+
+            # KDE Plasma
+            if "KDE" in desktop:
+                title = self._get_active_window_kwin_wayland()
+                if title and title != "Unknown":
+                    return title
+
+            # GNOME (Default fallback for Wayland if not KDE, as it's common)
+            # or if explicit GNOME
             title = self._get_active_window_gnome_wayland()
             if title and title != "Unknown":
                 return title
