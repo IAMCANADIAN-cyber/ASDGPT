@@ -51,6 +51,17 @@ class WindowSensor:
              else:
                  self.gdbus_available = False
 
+             # Check for qdbus (KDE/Qt Wayland)
+             if shutil.which("qdbus"):
+                 self.qdbus_available = True
+                 self.qdbus_bin = "qdbus"
+             elif shutil.which("qdbus-qt5"):
+                 self.qdbus_available = True
+                 self.qdbus_bin = "qdbus-qt5"
+             else:
+                 self.qdbus_available = False
+                 self.qdbus_bin = None
+
              # Check for Wayland
              session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
              if "wayland" in session_type:
@@ -119,6 +130,63 @@ class WindowSensor:
 
         return "Unknown"
 
+    def _get_active_window_kwin_wayland(self) -> str:
+        """
+        Attempts to get the active window title using qdbus on KDE Plasma (Wayland).
+        Uses: qdbus org.kde.KWin /KWin supportInformation
+        """
+        if not self.qdbus_available or not self.qdbus_bin:
+            return "Unknown"
+
+        try:
+            cmd = [self.qdbus_bin, 'org.kde.KWin', '/KWin', 'supportInformation']
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=1)
+
+            if res.returncode == 0:
+                output = res.stdout
+                # Parse the extensive debug output to find the active window
+                # We look for "active: true" inside the Windows list, then look up for "caption: "
+                # However, the output format is unstructured text.
+                # Common pattern for active window in KWin debug info:
+                # It lists windows. One of them has "active: true" (or similar indicator).
+                # Simpler regex approach based on community snippets:
+                # Look for the line starting with "caption: " inside the block that likely represents the active window.
+                # But KWin supportInformation dumps EVERYTHING.
+
+                # Alternate approach: specialized script method if KWin scripting is enabled, but that's complex.
+                # Let's try parsing the structure roughly.
+                # Structure is typically:
+                # Windows:
+                #   Window: ...
+                #     caption: "My Title"
+                #     ...
+                #     active: true
+
+                # We can split by "Window:" and find the block containing "active: true" (or "active: yes"?)
+                # Actually, in KWin 5+, it's often just looking for "active: true".
+
+                # Let's try to find the block.
+                # Note: This is heuristic and might break on KWin updates.
+
+                lines = output.splitlines()
+                current_caption = "Unknown"
+
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith("caption:"):
+                        # Capture potential caption
+                        # Format: caption: Window Title
+                        current_caption = line[8:].strip()
+                    elif line == "active: true":
+                        # Found the active window block, return the last seen caption
+                        if current_caption != "Unknown":
+                            return current_caption
+
+        except Exception as e:
+            self._log_debug(f"KDE Wayland detection failed: {e}")
+
+        return "Unknown"
+
     def _get_active_window_windows(self) -> str:
         if not self.user32:
             return "Unknown"
@@ -139,10 +207,32 @@ class WindowSensor:
     def _get_active_window_linux(self) -> str:
         # Check priority based on session type
         session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
+        xdg_current_desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
+
         if "wayland" in session_type:
-            title = self._get_active_window_gnome_wayland()
-            if title and title != "Unknown":
-                return title
+            # 1. KDE Plasma
+            if "KDE" in xdg_current_desktop:
+                title = self._get_active_window_kwin_wayland()
+                if title and title != "Unknown":
+                    return title
+
+            # 2. GNOME
+            # (Also try GNOME if desktop is GNOME or if ambiguous/not KDE)
+            if "GNOME" in xdg_current_desktop or "UBUNTU" in xdg_current_desktop:
+                title = self._get_active_window_gnome_wayland()
+                if title and title != "Unknown":
+                    return title
+
+            # 3. Fallback (Try both if desktop detection failed)
+            if "KDE" not in xdg_current_desktop and "GNOME" not in xdg_current_desktop:
+                # Try KDE first
+                title = self._get_active_window_kwin_wayland()
+                if title and title != "Unknown":
+                    return title
+                # Try GNOME
+                title = self._get_active_window_gnome_wayland()
+                if title and title != "Unknown":
+                    return title
 
         if not self.xprop_available:
             return "Unknown"
