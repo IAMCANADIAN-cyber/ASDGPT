@@ -14,6 +14,7 @@ sys.modules['keyboard'] = MagicMock()
 sys.modules['PIL'] = MagicMock()
 sys.modules['PIL.Image'] = MagicMock()
 sys.modules['scipy'] = MagicMock()
+sys.modules['scipy'].__version__ = '1.10.0'
 sys.modules['scipy.io'] = MagicMock()
 sys.modules['scipy.io.wavfile'] = MagicMock()
 sys.modules['pyautogui'] = MagicMock()
@@ -115,15 +116,13 @@ class TestStressShutdown(unittest.TestCase):
 
         app = Application()
 
-        # Mock subprocess.Popen
-        # We simulate a process that waits a long time unless terminated
-
+        # Mock VoiceInterface to simulate blocking speech
         blocking_event = threading.Event()
         terminate_event = threading.Event()
 
-        mock_process = MagicMock()
+        mock_voice = MagicMock()
 
-        def fake_wait(timeout=None):
+        def fake_speak(text, blocking=True):
             blocking_event.set()
             # Simulate blocking process
             count = 0
@@ -133,42 +132,44 @@ class TestStressShutdown(unittest.TestCase):
                     return
                 time.sleep(0.1)
                 count += 1
-            # Finished naturally (should not happen if terminated)
+            # Finished naturally
 
-        def fake_terminate():
-            print("MOCK PROCESS TERMINATED")
+        def fake_stop():
+            print("MOCK VOICE STOPPED")
             terminate_event.set()
 
-        mock_process.wait.side_effect = fake_wait
-        mock_process.terminate.side_effect = fake_terminate
+        mock_voice.speak.side_effect = fake_speak
+        mock_voice.stop.side_effect = fake_stop
 
-        with patch('subprocess.Popen', return_value=mock_process):
-            # Start an intervention
-            intervention = {"type": "test_speech", "message": "This is a long speech."}
-            app.intervention_engine.start_intervention(intervention)
+        # Inject the mock
+        app.intervention_engine.voice_interface = mock_voice
 
-            # Wait for it to start blocking
-            if not blocking_event.wait(timeout=2):
-                self.fail("Intervention did not start speaking (Popen not called).")
+        # Start an intervention
+        intervention = {"type": "test_speech", "message": "This is a long speech."}
+        app.intervention_engine.start_intervention(intervention)
 
-            print("Intervention is speaking (blocked). Initiating shutdown...")
+        # Wait for it to start blocking
+        if not blocking_event.wait(timeout=2):
+            self.fail("Intervention did not start speaking.")
 
-            start_time = time.time()
-            # Start shutdown in a thread so we can time it
-            t = threading.Thread(target=app._shutdown)
-            t.start()
+        print("Intervention is speaking (blocked). Initiating shutdown...")
 
-            t.join(timeout=6)
-            duration = time.time() - start_time
+        start_time = time.time()
+        # Start shutdown in a thread so we can time it
+        t = threading.Thread(target=app._shutdown)
+        t.start()
 
-            if t.is_alive():
-                print("FAILURE: Shutdown hung waiting for intervention.")
-                self.fail("Shutdown hung.")
-            else:
-                print(f"Shutdown completed in {duration:.2f}s")
+        t.join(timeout=6)
+        duration = time.time() - start_time
 
-            # Verify terminate was called
-            mock_process.terminate.assert_called()
+        if t.is_alive():
+            print("FAILURE: Shutdown hung waiting for intervention.")
+            self.fail("Shutdown hung.")
+        else:
+            print(f"Shutdown completed in {duration:.2f}s")
+
+        # Verify stop was called
+        mock_voice.stop.assert_called()
 
 if __name__ == '__main__':
     unittest.main()
