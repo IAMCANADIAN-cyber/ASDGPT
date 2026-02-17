@@ -72,6 +72,15 @@ class InterventionEngine:
         self.preferred_interventions: Dict[str, Dict[str, Any]] = {}
         self._load_preferences()
 
+        # Cooldown Management
+        self.category_cooldowns: Dict[str, float] = {}
+        self.category_configs: Dict[str, int] = {
+            "voice_command": 5,
+            "reflexive_window": getattr(config, 'REFLEXIVE_WINDOW_COOLDOWN', 300),
+            "offline_fallback": 30,
+            "system": 0  # Always allow system messages immediately
+        }
+
         log_message = "InterventionEngine initialized."
         if self.app and hasattr(self.app, 'data_logger'):
             self.app.data_logger.log_info(log_message)
@@ -634,19 +643,47 @@ class InterventionEngine:
             return False
 
         current_time = time.time()
-        # Rate limiting (skip for mode changes or errors)
+
+        # Cooldown Logic
+        category = intervention_details.get("category")
+        is_allowed = False
+        cooldown_duration = 0
+
         is_system_msg = execution_details["type"] in ["mode_change_notification", "error_notification", "error_notification_spoken"]
-        if not is_system_msg and \
-           (current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS):
-            if logger:
-                logger.log_info(f"Intervention '{execution_details['type']}' suppressed: Too soon since last intervention.")
+
+        if is_system_msg:
+             is_allowed = True
+        elif category and category in self.category_configs:
+            # Category-specific cooldown
+            last_run = self.category_cooldowns.get(category, 0)
+            cooldown_duration = self.category_configs[category]
+            if current_time - last_run >= cooldown_duration:
+                is_allowed = True
             else:
-                print(f"Intervention '{execution_details['type']}' suppressed: Too soon since last intervention.")
+                if logger:
+                     logger.log_info(f"Intervention '{execution_details['type']}' suppressed: {category} cooldown active ({int(cooldown_duration - (current_time - last_run))}s left).")
+                else:
+                     print(f"Intervention suppressed: {category} cooldown.")
+        else:
+            # Fallback to Global Rate Limit
+            if current_time - self.last_intervention_time >= config.MIN_TIME_BETWEEN_INTERVENTIONS:
+                is_allowed = True
+            else:
+                if logger:
+                    logger.log_info(f"Intervention '{execution_details['type']}' suppressed: Global rate limit ({config.MIN_TIME_BETWEEN_INTERVENTIONS}s).")
+                else:
+                    print(f"Intervention suppressed: Global rate limit.")
+
+        if not is_allowed:
             return False
 
         self._intervention_active.set()
         self._current_intervention_details = execution_details
+
+        # Update timestamps
         self.last_intervention_time = current_time
+        if category:
+            self.category_cooldowns[category] = current_time
 
         self.intervention_thread = threading.Thread(target=self._run_intervention_thread)
         self.intervention_thread.daemon = True
