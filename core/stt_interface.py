@@ -4,10 +4,14 @@ import io
 import wave
 from typing import Optional
 import os
+import warnings
 
 # Imports for speech engines
 try:
-    import speech_recognition as sr
+    with warnings.catch_warnings():
+        # Suppress DeprecationWarning from speech_recognition (aifc, audioop) for Python 3.13 compatibility
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        import speech_recognition as sr
 except ImportError:
     sr = None
 
