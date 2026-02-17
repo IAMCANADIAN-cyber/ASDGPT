@@ -8,6 +8,8 @@ class TestWindowSensorWayland(unittest.TestCase):
 
     def setUp(self):
         self.mock_logger = MagicMock()
+        # Ensure we start with a clean state for platform checks if needed
+        # But most tests mock everything.
 
     @patch('platform.system')
     @patch('shutil.which')
@@ -169,6 +171,35 @@ class TestWindowSensorWayland(unittest.TestCase):
         title = sensor.get_active_window(sanitize=False)
 
         self.assertEqual(title, 'My "Cool" App')
+
+    # Dispatch logic tests adapted from upstream
+    @patch('sensors.window_sensor.WindowSensor._get_active_window_kwin_wayland')
+    @patch('sensors.window_sensor.WindowSensor._get_active_window_gnome_wayland')
+    @patch('os.environ.get')
+    @patch('platform.system')
+    @patch('shutil.which')
+    def test_dispatch_gnome_priority(self, mock_which, mock_system, mock_env, mock_gnome, mock_kwin):
+        mock_system.return_value = 'Linux'
+
+        def get_env(key, default=None):
+            if key == "XDG_SESSION_TYPE": return "wayland"
+            if key == "XDG_CURRENT_DESKTOP": return "ubuntu:GNOME"
+            return default
+        mock_env.side_effect = get_env
+
+        mock_gnome.return_value = "Gnome Window"
+        mock_kwin.return_value = "Unknown"
+
+        sensor = WindowSensor(self.mock_logger)
+        # Force these available to test dispatch priority
+        sensor.gdbus_available = True
+        sensor.qdbus_available = True
+
+        title = sensor.get_active_window(sanitize=False)
+        self.assertEqual(title, "Gnome Window")
+
+        mock_gnome.assert_called_once()
+        mock_kwin.assert_not_called()
 
 if __name__ == '__main__':
     unittest.main()

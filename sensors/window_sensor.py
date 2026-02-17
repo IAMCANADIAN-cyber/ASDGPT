@@ -51,15 +51,16 @@ class WindowSensor:
              else:
                  self.gdbus_available = False
 
-             # Check for qdbus (KDE Plasma Wayland)
+             # Check for qdbus (KDE/Qt Wayland)
              if shutil.which("qdbus"):
                  self.qdbus_available = True
-             elif shutil.which("qdbus-qt5"): # Fallback for some distros
-                 self.qdbus_command = "qdbus-qt5"
+                 self.qdbus_bin = "qdbus"
+             elif shutil.which("qdbus-qt5"):
                  self.qdbus_available = True
+                 self.qdbus_bin = "qdbus-qt5"
              else:
                  self.qdbus_available = False
-                 self.qdbus_command = "qdbus" # Default
+                 self.qdbus_bin = None
 
              # Check for Wayland
              session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
@@ -135,12 +136,11 @@ class WindowSensor:
         """
         Attempts to get the active window title using qdbus on KDE Plasma (Wayland).
         """
-        if not self.qdbus_available:
+        if not self.qdbus_available or not self.qdbus_bin:
             return "Unknown"
 
         try:
-            cmd_name = getattr(self, 'qdbus_command', 'qdbus')
-            cmd = [cmd_name, 'org.kde.KWin', '/KWin', 'org.kde.KWin.activeWindow']
+            cmd = [self.qdbus_bin, 'org.kde.KWin', '/KWin', 'org.kde.KWin.activeWindow']
 
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=1)
             if res.returncode == 0:
@@ -189,30 +189,29 @@ class WindowSensor:
     def _get_active_window_linux(self) -> str:
         # Check priority based on session type
         session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
-        if "wayland" in session_type:
-            # Check Desktop Environment priority
-            desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
+        xdg_current_desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
 
-            # KDE Plasma Wayland
-            if "KDE" in desktop:
+        if "wayland" in session_type:
+            # 1. KDE Plasma
+            if "KDE" in xdg_current_desktop:
                 title = self._get_active_window_kwin_wayland()
                 if title and title != "Unknown":
                     return title
 
-            # GNOME Wayland
-            elif "GNOME" in desktop:
+            # 2. GNOME
+            # (Also try GNOME if desktop is GNOME/UBUNTU or if ambiguous/not KDE)
+            if "GNOME" in xdg_current_desktop or "UBUNTU" in xdg_current_desktop:
                 title = self._get_active_window_gnome_wayland()
                 if title and title != "Unknown":
                     return title
 
-            # Generic/Fallback: Try available methods if DE is ambiguous
-            else:
-                # Try KDE first (cleaner interface if present)
+            # 3. Fallback (Try both if desktop detection failed)
+            if "KDE" not in xdg_current_desktop and "GNOME" not in xdg_current_desktop:
+                # Try KDE first
                 if self.qdbus_available:
                     title = self._get_active_window_kwin_wayland()
                     if title and title != "Unknown":
                         return title
-
                 # Try GNOME
                 if self.gdbus_available:
                     title = self._get_active_window_gnome_wayland()
