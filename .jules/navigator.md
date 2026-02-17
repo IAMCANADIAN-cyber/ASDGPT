@@ -49,3 +49,8 @@
 **Learning:** `config.SENSITIVE_APP_KEYWORDS` contained missing commas, causing implicit string concatenation (e.g., "Credit CardPassword") and silently failing to redact intended keywords like "Credit Card" and "System Settings".
 **Action:** Fixed `config.py` syntax and created `tests/test_privacy_scrubber_fixes.py` to catch this regression.
 **Pitfall:** Python list definitions without commas between string literals are valid syntax but create concatenated strings, which is dangerous for configuration lists.
+
+## 2026-02-19 - [Intervention Logic Centralization]
+**Learning:** Decoupling decision logic (in `InterventionEngine`) from trigger logic (in `LogicEngine`) can lead to severe log spam if the trigger logic blindly logs "Triggering..." before checking the decision result.
+**Action:** Refactored `LogicEngine` to check the return value of `intervention_engine.start_intervention()` before logging. Implemented category-based cooldowns in `InterventionEngine` to replace scattered logic.
+**Pitfall:** High-frequency loops (like `update()`) must be extremely careful about logging actions that might be suppressed downstream.
