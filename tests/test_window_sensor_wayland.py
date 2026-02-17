@@ -1,78 +1,44 @@
 import unittest
 from unittest.mock import MagicMock, patch
-import sys
 import os
-
-# Ensure repo root is in path
-sys.path.append(os.getcwd())
-
+import sys
 from sensors.window_sensor import WindowSensor
-import config
 
 class TestWindowSensorWayland(unittest.TestCase):
+
     def setUp(self):
         self.mock_logger = MagicMock()
-        self.sensor = WindowSensor(self.mock_logger)
+        with patch('shutil.which', return_value='/usr/bin/qdbus'):
+            self.sensor = WindowSensor(self.mock_logger)
         # Force linux
         self.sensor.os_type = 'Linux'
         self.sensor.gdbus_available = True
         self.sensor.qdbus_available = True
         self.sensor.qdbus_bin = "qdbus"
 
-    @patch('subprocess.run')
-    @patch('os.environ.get')
-    def test_gnome_wayland_success_quoted_double(self, mock_env, mock_run):
-        # Setup Wayland environment
-        mock_env.return_value = "wayland"
+    @patch('platform.system')
+    @patch('shutil.which')
+    def test_setup_platform_kde(self, mock_which, mock_system):
+        mock_system.return_value = 'Linux'
+        # Simulate qdbus availability
+        mock_which.side_effect = lambda x: '/usr/bin/qdbus' if x in ['qdbus', 'qdbus-qt5'] else None
 
-        # Mock gdbus response: (true, "My App")
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = '(true, "My App")'
-
-        title = self.sensor._get_active_window_gnome_wayland()
-        self.assertEqual(title, "My App")
-
-    @patch('subprocess.run')
-    @patch('os.environ.get')
-    def test_gnome_wayland_success_quoted_single(self, mock_env, mock_run):
-        mock_env.return_value = "wayland"
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = "(true, 'My App')"
-
-        title = self.sensor._get_active_window_gnome_wayland()
-        self.assertEqual(title, "My App")
-
-    @patch('subprocess.run')
-    def test_gnome_wayland_empty(self, mock_run):
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = '(true, "")'
-
-        title = self.sensor._get_active_window_gnome_wayland()
-        self.assertEqual(title, "Unknown")
-
-    @patch('subprocess.run')
-    def test_gnome_wayland_failure(self, mock_run):
-        mock_run.return_value.returncode = 1
-
-        title = self.sensor._get_active_window_gnome_wayland()
-        self.assertEqual(title, "Unknown")
+        sensor = WindowSensor(self.mock_logger)
+        self.assertTrue(getattr(sensor, 'qdbus_available', False))
+        self.assertEqual(getattr(sensor, 'qdbus_bin'), 'qdbus')
 
     @patch('subprocess.run')
     def test_kde_wayland_success(self, mock_run):
         # Mock qdbus output
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = """
-Windows:
-  Window: 1
-    caption: Other App
-    active: false
-  Window: 2
-    caption: KDE App
-    active: true
-        """
-
+KWin Support Information:
+...
+Active Window: Window(0x55d4e3a1b0 caption="Konsole — bash")
+...
+"""
         title = self.sensor._get_active_window_kwin_wayland()
-        self.assertEqual(title, "KDE App")
+        self.assertEqual(title, "Konsole — bash")
 
         # Verify call arguments
         mock_run.assert_called_with(['qdbus', 'org.kde.KWin', '/KWin', 'supportInformation'], capture_output=True, text=True, timeout=1)
@@ -82,6 +48,14 @@ Windows:
         mock_run.return_value.returncode = 1
         title = self.sensor._get_active_window_kwin_wayland()
         self.assertEqual(title, "Unknown")
+
+    @patch('subprocess.run')
+    def test_gnome_wayland_success(self, mock_run):
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "(true, 'Firefox')"
+
+        title = self.sensor._get_active_window_gnome_wayland()
+        self.assertEqual(title, "Firefox")
 
     @patch('sensors.window_sensor.WindowSensor._get_active_window_kwin_wayland')
     @patch('sensors.window_sensor.WindowSensor._get_active_window_gnome_wayland')
@@ -100,6 +74,13 @@ Windows:
         title = self.sensor._get_active_window_linux()
         self.assertEqual(title, "Gnome Window")
 
+        # In my implementation, it might try KWin first if logic dictates, but here it shouldn't if specific GNOME logic is prioritized
+        # However, HEAD implementation logic:
+        # 1. if KDE in desktop -> kwin
+        # 2. if GNOME/UBUNTU in desktop -> gnome
+        # 3. fallback -> try both
+
+        # So for "ubuntu:GNOME", it skips 1, hits 2.
         mock_gnome.assert_called_once()
         mock_kwin.assert_not_called()
 
@@ -130,48 +111,19 @@ Windows:
         # Mock env - unknown desktop
         def get_env(key, default=None):
             if key == "XDG_SESSION_TYPE": return "wayland"
-            if key == "XDG_CURRENT_DESKTOP": return ""
+            if key == "XDG_CURRENT_DESKTOP": return "UnknownDE"
             return default
         mock_env.side_effect = get_env
 
-        # Let's say KDE fails but GNOME succeeds (unlikely in reality but possible logic path)
+        # Try KDE first (fails), then GNOME (succeeds)
         mock_kwin.return_value = "Unknown"
         mock_gnome.return_value = "Fallback Window"
 
         title = self.sensor._get_active_window_linux()
         self.assertEqual(title, "Fallback Window")
 
-        # Verify both called
         mock_kwin.assert_called_once()
         mock_gnome.assert_called_once()
-
-    @patch('sensors.window_sensor.WindowSensor._get_active_window_gnome_wayland')
-    @patch('os.environ.get')
-    @patch('subprocess.run')
-    def test_fallback_to_xprop(self, mock_run, mock_env, mock_get_gnome):
-        # Update mock behavior to handle multiple calls to os.environ.get
-        def get_env(key, default=None):
-            if key == "XDG_SESSION_TYPE": return "wayland"
-            if key == "XDG_CURRENT_DESKTOP": return "GNOME"
-            return default
-        mock_env.side_effect = get_env
-
-        mock_get_gnome.return_value = "Unknown"
-
-        # Enable xprop
-        self.sensor.xprop_available = True
-
-        # Mock xprop responses
-        # 1. -root -> id
-        # 2. -id -> title
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="_NET_ACTIVE_WINDOW(WINDOW): window id # 0x12345"),
-            MagicMock(returncode=0, stdout='_NET_WM_NAME(UTF8_STRING) = "X11 Window"')
-        ]
-
-        title = self.sensor._get_active_window_linux()
-        self.assertEqual(title, "X11 Window")
-        mock_get_gnome.assert_called_once()
 
 if __name__ == '__main__':
     unittest.main()

@@ -144,44 +144,13 @@ class WindowSensor:
 
             if res.returncode == 0:
                 output = res.stdout
-                # Parse the extensive debug output to find the active window
-                # We look for "active: true" inside the Windows list, then look up for "caption: "
-                # However, the output format is unstructured text.
-                # Common pattern for active window in KWin debug info:
-                # It lists windows. One of them has "active: true" (or similar indicator).
-                # Simpler regex approach based on community snippets:
-                # Look for the line starting with "caption: " inside the block that likely represents the active window.
-                # But KWin supportInformation dumps EVERYTHING.
-
-                # Alternate approach: specialized script method if KWin scripting is enabled, but that's complex.
-                # Let's try parsing the structure roughly.
-                # Structure is typically:
-                # Windows:
-                #   Window: ...
-                #     caption: "My Title"
-                #     ...
-                #     active: true
-
-                # We can split by "Window:" and find the block containing "active: true" (or "active: yes"?)
-                # Actually, in KWin 5+, it's often just looking for "active: true".
-
-                # Let's try to find the block.
-                # Note: This is heuristic and might break on KWin updates.
-
-                lines = output.splitlines()
-                current_caption = "Unknown"
-
-                for line in lines:
-                    line = line.strip()
-                    if line.startswith("caption:"):
-                        # Capture potential caption
-                        # Format: caption: Window Title
-                        current_caption = line[8:].strip()
-                    elif line == "active: true":
-                        # Found the active window block, return the last seen caption
-                        if current_caption != "Unknown":
-                            return current_caption
-
+                # Look for "Active Window:"
+                # Format is typically: Active Window: Window(0x... caption="Title")
+                # Regex to find 'Active Window: ... caption="Title"' or 'Active Window: Title'
+                # We use a robust multiline search
+                match = re.search(r'Active Window:.*?caption="((?:[^"\\]|\\.)*)"', output)
+                if match:
+                    return match.group(1)
         except Exception as e:
             self._log_debug(f"KDE Wayland detection failed: {e}")
 
