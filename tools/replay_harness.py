@@ -52,11 +52,14 @@ class MockLMMInterface:
                         est[dim] = 50
 
             # Apply intervention suggestion
+            # Only if explicitly requested as an LMM suggestion (standard flow)
             if self.current_expected_outcome.get("intervention"):
                 analysis["suggestion"] = {
                     "type": self.current_expected_outcome["intervention"],
                     "message": "Simulated intervention message."
                 }
+            # If "expected_system_intervention" is present, we do NOT inject it into the LMM suggestion.
+            # This allows testing LogicEngine-derived interventions (reflexive/persistent).
 
             # Apply visual context if present
             if "visual_context" in self.current_expected_outcome:
@@ -210,32 +213,37 @@ class ReplayHarness:
                         print(f"  [SUCCESS] State {dim}: {actual_val} (Target {expected_val})")
 
             expected_intervention = event['expected_outcome'].get("intervention")
+            # Also check for system-triggered interventions (not from LMM suggestion)
+            expected_system_intervention = event['expected_outcome'].get("expected_system_intervention")
+
+            target_intervention = expected_intervention or expected_system_intervention
+
             actual_interventions = self.mock_intervention.interventions_triggered
 
             if not state_success:
                  results["false_negatives"] += 1 # Count state failure as negative result
 
-            if expected_intervention:
-                # Check if ANY of the triggered interventions match the type
-                match = next((i for i in actual_interventions if i['type'] == expected_intervention), None)
+            if target_intervention:
+                # Check if ANY of the triggered interventions match the type (or ID for system triggers)
+                match = next((i for i in actual_interventions if i.get('type') == target_intervention or i.get('id') == target_intervention), None)
                 if match:
-                    print(f"  [SUCCESS] Triggered expected intervention: {expected_intervention}")
+                    print(f"  [SUCCESS] Triggered expected intervention: {target_intervention}")
                     results["correct_triggers"] += 1
                     results["triggered_interventions"] += 1
                 else:
                     if len(actual_interventions) > 0:
-                        got_types = [i['type'] for i in actual_interventions]
-                        print(f"  [FAILURE] Expected {expected_intervention}, got {got_types}")
+                        got_types = [i.get('type') or i.get('id') for i in actual_interventions]
+                        print(f"  [FAILURE] Expected {target_intervention}, got {got_types}")
                         results["false_positives"] += 1 # Wrong one triggered
                     else:
-                        print(f"  [FAILURE] Expected {expected_intervention}, got NONE")
+                        print(f"  [FAILURE] Expected {target_intervention}, got NONE")
                         results["false_negatives"] += 1
             else:
                 if len(actual_interventions) == 0:
                      print(f"  [SUCCESS] Correctly triggered NO intervention.")
                      results["correct_triggers"] += 1
                 else:
-                    got_types = [i['type'] for i in actual_interventions]
+                    got_types = [i.get('type') or i.get('id') for i in actual_interventions]
                     print(f"  [FAILURE] Expected NONE, got {got_types}")
                     results["false_positives"] += 1
                     results["triggered_interventions"] += 1
@@ -320,21 +328,24 @@ class ReplayHarness:
                         print(f"  [SUCCESS] State {dim}: {actual_val} (Target {expected_val})")
 
             expected_intervention = step['expected_outcome'].get("intervention")
+            expected_system_intervention = step['expected_outcome'].get("expected_system_intervention")
+            target_intervention = expected_intervention or expected_system_intervention
+
             actual_interventions = self.mock_intervention.interventions_triggered
 
             # Determine intervention success
             intervention_success = False
-            if expected_intervention:
+            if target_intervention:
                  # LogicEngine might return full intervention object or just ID/Type.
                  # LogicEngine usually calls intervention_engine.start_intervention(suggestion)
                  # suggestion has 'type'.
-                 match = next((i for i in actual_interventions if i.get('type') == expected_intervention or i.get('id') == expected_intervention), None)
+                 match = next((i for i in actual_interventions if i.get('type') == target_intervention or i.get('id') == target_intervention), None)
                  if match:
-                     print(f"  [SUCCESS] Triggered expected intervention: {expected_intervention}")
+                     print(f"  [SUCCESS] Triggered expected intervention: {target_intervention}")
                      intervention_success = True
                  else:
                      got_types = [i.get('type') or i.get('id') for i in actual_interventions]
-                     print(f"  [FAILURE] Expected {expected_intervention}, got {got_types}")
+                     print(f"  [FAILURE] Expected {target_intervention}, got {got_types}")
                      intervention_success = False
             else:
                 if len(actual_interventions) == 0:
