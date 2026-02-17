@@ -1,0 +1,144 @@
+[
+  {
+    "id": "work_01",
+    "description": "Normal work session start",
+    "duration_seconds": 10,
+    "input": {
+      "audio_level": 0.05,
+      "video_activity": 5.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "visual_context": ["working"],
+      "intervention": null
+    }
+  },
+  {
+    "id": "work_02",
+    "description": "Normal work session continue",
+    "duration_seconds": 10,
+    "input": {
+      "audio_level": 0.05,
+      "video_activity": 5.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "visual_context": ["working"],
+      "intervention": null
+    }
+  },
+  {
+    "id": "work_03",
+    "description": "Normal work session continue",
+    "duration_seconds": 10,
+    "input": {
+      "audio_level": 0.05,
+      "video_activity": 5.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "visual_context": ["working"],
+      "intervention": null
+    }
+  },
+  {
+    "id": "phone_check_01",
+    "description": "Quick phone check (Count: 1)",
+    "duration_seconds": 10,
+    "input": {
+      "audio_level": 0.05,
+      "video_activity": 2.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "visual_context": ["phone_usage"],
+      "intervention": null
+    }
+  },
+  {
+    "id": "work_04",
+    "description": "Back to work (Count reset to 0)",
+    "duration_seconds": 10,
+    "input": {
+      "audio_level": 0.05,
+      "video_activity": 10.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "visual_context": ["working"],
+      "intervention": null
+    }
+  },
+  {
+    "id": "work_05",
+    "description": "Working (Count: 0)",
+    "duration_seconds": 10,
+    "input": {
+      "audio_level": 0.05,
+      "video_activity": 10.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "visual_context": ["working"],
+      "intervention": null
+    }
+  },
+  {
+    "id": "doom_start_01",
+    "description": "Doom scroll starts (Count: 1)",
+    "duration_seconds": 10,
+    "input": {
+      "audio_level": 0.05,
+      "video_activity": 1.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "visual_context": ["phone_usage"],
+      "intervention": null
+    }
+  },
+  {
+    "id": "doom_cont_02",
+    "description": "Doom scroll continues (Count: 2)",
+    "duration_seconds": 10,
+    "input": {
+      "audio_level": 0.05,
+      "video_activity": 1.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "visual_context": ["phone_usage"],
+      "intervention": null
+    }
+  },
+  {
+    "id": "doom_trigger_03",
+    "description": "Doom scroll threshold reached (Count: 3)",
+    "duration_seconds": 10,
+    "input": {
+      "audio_level": 0.05,
+      "video_activity": 1.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "visual_context": ["phone_usage"],
+      "expected_system_intervention": "doom_scroll_breaker",
+      "intervention": null
+    }
+  },
+  {
+    "id": "doom_persist_04",
+    "description": "Doom scroll persists (Count: 4)",
+    "duration_seconds": 10,
+    "input": {
+      "audio_level": 0.05,
+      "video_activity": 1.0
+    },
+    "expected_outcome": {
+      "trigger_reason": "periodic_check",
+      "visual_context": ["phone_usage"],
+      "expected_system_intervention": "doom_scroll_breaker",
+      "intervention": null
+    }
+  }
+]

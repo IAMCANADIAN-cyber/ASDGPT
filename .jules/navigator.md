@@ -49,3 +49,8 @@
 **Learning:** `config.SENSITIVE_APP_KEYWORDS` contained missing commas, causing implicit string concatenation (e.g., "Credit CardPassword") and silently failing to redact intended keywords like "Credit Card" and "System Settings".
 **Action:** Fixed `config.py` syntax and created `tests/test_privacy_scrubber_fixes.py` to catch this regression.
 **Pitfall:** Python list definitions without commas between string literals are valid syntax but create concatenated strings, which is dangerous for configuration lists.
+
+## 2026-02-19 - [Test Coupling in Replay Harness]
+**Learning:** The `ReplayHarness` was tightly coupled to LMM-suggested interventions, making it difficult to test system-driven triggers (like persistent "Doom Scrolling" detection) where the logic engine triggers an intervention based on context without an explicit LMM suggestion.
+**Action:** Decoupled expectation from injection in `tools/replay_harness.py` by adding `expected_system_intervention` support. This allows validating logic-driven interventions while ensuring the Mock LMM doesn't "cheat" by suggesting them.
+**Pitfall:** Relying on `xvfb-run` for headless testing is crucial when indirect dependencies (like `pyautogui` via `MusicInterface`) require a display server.
