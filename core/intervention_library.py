@@ -141,6 +141,15 @@ class InterventionLibrary:
             ],
             "cognitive": [
                 {
+                    "id": "distraction_alert",
+                    "tier": 1,
+                    "description": "Nudge for distraction app usage",
+                    "sequence": [
+                        {"action": "speak", "content": "I noticed you switched to a distraction. Do you need a break?"},
+                        {"action": "wait", "duration": 5}
+                    ]
+                },
+                {
                     "id": "context_switch",
                     "tier": 2,
                     "description": "Clear the mental buffer",

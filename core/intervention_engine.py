@@ -72,6 +72,11 @@ class InterventionEngine:
         self.preferred_interventions: Dict[str, Dict[str, Any]] = {}
         self._load_preferences()
 
+        # Escalation and Category Cooldowns
+        self.escalation_history: Dict[str, Dict[str, Any]] = {}
+        self.category_cooldowns: Dict[str, float] = {}
+        self.escalation_window: int = getattr(config, 'INTERVENTION_ESCALATION_WINDOW', 60)
+
         log_message = "InterventionEngine initialized."
         if self.app and hasattr(self.app, 'data_logger'):
             self.app.data_logger.log_info(log_message)
@@ -142,6 +147,42 @@ class InterventionEngine:
                     self.app.data_logger.log_error(msg)
                 else:
                     print(msg)
+
+    def _calculate_escalated_tier(self, intervention_id: str) -> int:
+        """Calculates the tier based on history without updating state."""
+        current_time = time.time()
+        if intervention_id not in self.escalation_history:
+            return 1
+
+        history = self.escalation_history[intervention_id]
+        last_time = history["last_time"]
+        current_tier = history["tier"]
+
+        if current_time - last_time < self.escalation_window:
+             return min(current_tier + 1, 3)
+        return 1
+
+    def _update_escalation_history(self, intervention_id: str, tier: int) -> None:
+        """Updates the history after a successful intervention start."""
+        self.escalation_history[intervention_id] = {
+            "last_time": time.time(),
+            "tier": tier
+        }
+
+    def _check_category_cooldown(self, category: str, duration: float) -> bool:
+        """
+        Checks if the category is in cooldown.
+        Returns True if allowed (not in cooldown), False otherwise.
+        Updates the cooldown timestamp if allowed.
+        """
+        current_time = time.time()
+        last_time = self.category_cooldowns.get(category, 0)
+
+        if current_time - last_time < duration:
+            return False
+
+        self.category_cooldowns[category] = current_time
+        return True
 
     def _store_last_intervention(self, message: str, intervention_type_for_logging: str) -> None:
         """Stores details of an intervention that qualifies for feedback."""
@@ -471,6 +512,16 @@ class InterventionEngine:
                 flash_icon_type = "error" if "error" in intervention_type else "active"
                 self.app.tray_icon.flash_icon(flash_status=flash_icon_type, original_status=current_app_mode)
 
+        # Escalation Effects: Sound
+        sound_file = None
+        if tier == 2:
+            sound_file = "assets/sounds/test_tone.wav" # Subtle alert
+        elif tier >= 3:
+            sound_file = "assets/sounds/urgent_alert_tone.wav" # Urgent alert
+
+        if sound_file and os.path.exists(sound_file):
+             log_debug(f"{log_prefix}: Playing escalation sound for Tier {tier}")
+             self._play_sound(sound_file)
 
         if sequence:
             # Execute the defined sequence from the library card
@@ -546,10 +597,28 @@ class InterventionEngine:
         intervention_details can contain:
         - 'id': ID of a card in InterventionLibrary (preferred).
         - 'type' & 'message': Fallback for ad-hoc interventions.
+        - 'category': Optional category for cooldowns.
+        - 'cooldown': Optional cooldown duration for the category.
         """
         logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
 
         intervention_id = intervention_details.get("id")
+
+        # Check Category Cooldown (consumes cooldown if allowed)
+        category = intervention_details.get("category")
+        cooldown_duration = intervention_details.get("cooldown", 0)
+
+        if category and cooldown_duration > 0:
+            if not self._check_category_cooldown(category, cooldown_duration):
+                # Suppressed by category cooldown
+                return False
+
+        # Apply Escalation if ID is present
+        escalated_tier = 1
+        if intervention_id:
+            escalated_tier = self._calculate_escalated_tier(intervention_id)
+            intervention_details["tier"] = escalated_tier
+
         card = None
 
         # 1. Try to fetch from library if ID is present
@@ -568,8 +637,8 @@ class InterventionEngine:
         if card:
             execution_details = card.copy()
             execution_details["type"] = card["id"] # Use ID as type for logging
-            # If caller provided specific message override, we *could* use it,
-            # but usually cards have their own sequences.
+            # Override with escalated tier
+            execution_details["tier"] = escalated_tier
         elif intervention_type and custom_message:
             # Ad-hoc intervention (legacy support or dynamic LMM message)
             execution_details = {
@@ -643,6 +712,10 @@ class InterventionEngine:
             else:
                 print(f"Intervention '{execution_details['type']}' suppressed: Too soon since last intervention.")
             return False
+
+        # Update Escalation History (Commit the tier change)
+        if intervention_id:
+            self._update_escalation_history(intervention_id, escalated_tier)
 
         self._intervention_active.set()
         self._current_intervention_details = execution_details

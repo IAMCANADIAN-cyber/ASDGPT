@@ -104,12 +104,10 @@ class LogicEngine:
         self.last_history_sample_time: float = 0
 
         # Reflexive Triggers (Window Rules)
-        self.last_reflexive_trigger_time: float = 0
-        self.reflexive_trigger_cooldown: int = getattr(config, 'REFLEXIVE_WINDOW_COOLDOWN', 300)
+        # Note: Cooldowns are now managed by InterventionEngine
 
         # Voice Triggers
-        self.last_voice_trigger_time: float = 0
-        self.voice_trigger_cooldown: int = 5 # seconds
+        # Note: Cooldowns are now managed by InterventionEngine
 
         # Content Creation Mode Heuristic
         self.sexual_arousal_threshold = getattr(config, 'SEXUAL_AROUSAL_THRESHOLD', 50)
@@ -322,9 +320,12 @@ class LogicEngine:
                     voice_intervention_id = self._check_voice_commands(text)
                     if voice_intervention_id:
                         self.logger.log_info(f"Triggering Voice Command Intervention: {voice_intervention_id}")
-                        self.intervention_engine.start_intervention({"id": voice_intervention_id, "tier": 2})
-                        with self._lock:
-                            self.last_voice_trigger_time = time.time()
+                        self.intervention_engine.start_intervention({
+                            "id": voice_intervention_id,
+                            "tier": 2,
+                            "category": "voice_command",
+                            "cooldown": 5
+                        })
 
         except Exception as e:
             self.logger.log_warning(f"STT Async Error: {e}")
@@ -557,12 +558,8 @@ class LogicEngine:
     def _check_window_reflexes(self, active_window: str) -> Optional[str]:
         """
         Checks if the active window matches any reflexive trigger rules.
-        Returns the intervention ID if matched and eligible (cooldown), else None.
+        Returns the intervention ID if matched, else None.
         """
-        current_time = time.time()
-        if current_time - self.last_reflexive_trigger_time < self.reflexive_trigger_cooldown:
-            return None
-
         if not active_window:
             return None
 
@@ -598,10 +595,6 @@ class LogicEngine:
         """
         Checks if transcribed text matches any voice commands.
         """
-        current_time = time.time()
-        if current_time - self.last_voice_trigger_time < self.voice_trigger_cooldown:
-            return None
-
         commands = getattr(config, 'VOICE_COMMANDS', {})
         if not commands or not text:
             return None
@@ -618,11 +611,6 @@ class LogicEngine:
         """
         Executes simple heuristic-based interventions when LMM is offline.
         """
-        current_time = time.time()
-        if current_time - self.last_offline_trigger_time < self.offline_trigger_interval:
-            self.logger.log_debug(f"Offline fallback skipped: Cooldown active ({int(self.offline_trigger_interval - (current_time - self.last_offline_trigger_time))}s left).")
-            return
-
         intervention_payload = None
 
         if reason == "high_audio_level":
@@ -640,8 +628,9 @@ class LogicEngine:
 
         if intervention_payload and self.intervention_engine:
             self.logger.log_info(f"Triggering Offline Fallback Intervention: {reason}")
+            intervention_payload["category"] = "offline_fallback"
+            intervention_payload["cooldown"] = 30
             self.intervention_engine.start_intervention(intervention_payload)
-            self.last_offline_trigger_time = current_time
 
     def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
         if not self.lmm_interface:
@@ -707,9 +696,10 @@ class LogicEngine:
                         self.logger.log_info(f"Triggering Reflexive Intervention: {reflex_id}")
                         self.intervention_engine.start_intervention({
                             "id": reflex_id,
-                            "tier": 2 # Escalated tier for distraction
+                            "tier": 2, # Escalated tier for distraction
+                            "category": "reflexive_window",
+                            "cooldown": getattr(config, 'REFLEXIVE_WINDOW_COOLDOWN', 300)
                         })
-                        self.last_reflexive_trigger_time = time.time()
                 except Exception as e:
                     # Don't let window check crash the loop
                     pass
