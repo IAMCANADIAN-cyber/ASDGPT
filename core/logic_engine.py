@@ -84,10 +84,6 @@ class LogicEngine:
         self.lmm_consecutive_failures: int = 0
         self.lmm_circuit_breaker_open_until: float = 0
 
-        # Offline Fallback
-        self.last_offline_trigger_time: float = 0
-        self.offline_trigger_interval: int = 30 # Seconds between offline interventions
-
         # Meeting Mode Heuristics
         self.last_user_input_time: float = time.time()
         self.input_tracking_enabled: bool = False
@@ -102,14 +98,6 @@ class LogicEngine:
         # Context History (for LMM narrative)
         self.context_history: deque = deque(maxlen=config.HISTORY_WINDOW_SIZE)
         self.last_history_sample_time: float = 0
-
-        # Reflexive Triggers (Window Rules)
-        self.last_reflexive_trigger_time: float = 0
-        self.reflexive_trigger_cooldown: int = getattr(config, 'REFLEXIVE_WINDOW_COOLDOWN', 300)
-
-        # Voice Triggers
-        self.last_voice_trigger_time: float = 0
-        self.voice_trigger_cooldown: int = 5 # seconds
 
         # Content Creation Mode Heuristic
         self.sexual_arousal_threshold = getattr(config, 'SEXUAL_AROUSAL_THRESHOLD', 50)
@@ -322,9 +310,10 @@ class LogicEngine:
                     voice_intervention_id = self._check_voice_commands(text)
                     if voice_intervention_id:
                         self.logger.log_info(f"Triggering Voice Command Intervention: {voice_intervention_id}")
-                        self.intervention_engine.start_intervention({"id": voice_intervention_id, "tier": 2})
-                        with self._lock:
-                            self.last_voice_trigger_time = time.time()
+                        self.intervention_engine.start_intervention(
+                            {"id": voice_intervention_id, "tier": 2},
+                            category="voice_command"
+                        )
 
         except Exception as e:
             self.logger.log_warning(f"STT Async Error: {e}")
@@ -525,7 +514,10 @@ class LogicEngine:
                     if allow_intervention:
                         self.logger.log_info(f"Starting intervention: {final_intervention}")
                         # start_intervention is generally thread-safe as it just sets an event/launches another thread
-                        self.intervention_engine.start_intervention(final_intervention)
+                        self.intervention_engine.start_intervention(
+                            final_intervention,
+                            category="lmm_suggestion"
+                        )
                     else:
                         self.logger.log_info(f"Intervention suggested but suppressed due to mode: {final_intervention}")
         except Exception as e:
@@ -557,12 +549,8 @@ class LogicEngine:
     def _check_window_reflexes(self, active_window: str) -> Optional[str]:
         """
         Checks if the active window matches any reflexive trigger rules.
-        Returns the intervention ID if matched and eligible (cooldown), else None.
+        Returns the intervention ID if matched, else None.
         """
-        current_time = time.time()
-        if current_time - self.last_reflexive_trigger_time < self.reflexive_trigger_cooldown:
-            return None
-
         if not active_window:
             return None
 
@@ -598,10 +586,6 @@ class LogicEngine:
         """
         Checks if transcribed text matches any voice commands.
         """
-        current_time = time.time()
-        if current_time - self.last_voice_trigger_time < self.voice_trigger_cooldown:
-            return None
-
         commands = getattr(config, 'VOICE_COMMANDS', {})
         if not commands or not text:
             return None
@@ -618,11 +602,6 @@ class LogicEngine:
         """
         Executes simple heuristic-based interventions when LMM is offline.
         """
-        current_time = time.time()
-        if current_time - self.last_offline_trigger_time < self.offline_trigger_interval:
-            self.logger.log_debug(f"Offline fallback skipped: Cooldown active ({int(self.offline_trigger_interval - (current_time - self.last_offline_trigger_time))}s left).")
-            return
-
         intervention_payload = None
 
         if reason == "high_audio_level":
@@ -640,8 +619,10 @@ class LogicEngine:
 
         if intervention_payload and self.intervention_engine:
             self.logger.log_info(f"Triggering Offline Fallback Intervention: {reason}")
-            self.intervention_engine.start_intervention(intervention_payload)
-            self.last_offline_trigger_time = current_time
+            self.intervention_engine.start_intervention(
+                intervention_payload,
+                category="offline_fallback"
+            )
 
     def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
         if not self.lmm_interface:
@@ -705,11 +686,10 @@ class LogicEngine:
                     reflex_id = self._check_window_reflexes(active_win)
                     if reflex_id:
                         self.logger.log_info(f"Triggering Reflexive Intervention: {reflex_id}")
-                        self.intervention_engine.start_intervention({
-                            "id": reflex_id,
-                            "tier": 2 # Escalated tier for distraction
-                        })
-                        self.last_reflexive_trigger_time = time.time()
+                        self.intervention_engine.start_intervention(
+                            {"id": reflex_id, "tier": 2},
+                            category="reflexive_window"
+                        )
                 except Exception as e:
                     # Don't let window check crash the loop
                     pass
