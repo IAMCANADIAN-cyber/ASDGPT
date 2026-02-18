@@ -80,3 +80,8 @@ Here are the reviews and recommendations for the open Pull Requests (branches) a
 *   **Status:** **Merged (Manually Applied)**
 *   **Recommendation:** **2: Accept Incoming**
 *   **Reasoning:** Implements robust KDE Wayland window title detection using regex parsing. Verified with new tests in `tests/test_window_sensor_wayland.py`. **Verified content is in HEAD and tests pass.**
+
+## 16. `origin/navigator/centralize-intervention-logic-13218578163252721189`
+*   **Status:** **Merged**
+*   **Recommendation:** **2: Accept Incoming**
+*   **Reasoning:** Centralizes intervention logic in `InterventionEngine`, introducing category-based cooldowns and cleaning up `LogicEngine`. **Verified content is in HEAD and tests pass.**

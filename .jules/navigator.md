@@ -54,3 +54,8 @@
 **Learning:** The `ReplayHarness` was tightly coupled to LMM-suggested interventions, making it difficult to test system-driven triggers (like persistent "Doom Scrolling" detection) where the logic engine triggers an intervention based on context without an explicit LMM suggestion.
 **Action:** Decoupled expectation from injection in `tools/replay_harness.py` by adding `expected_system_intervention` support. This allows validating logic-driven interventions while ensuring the Mock LMM doesn't "cheat" by suggesting them.
 **Pitfall:** Relying on `xvfb-run` for headless testing is crucial when indirect dependencies (like `pyautogui` via `MusicInterface`) require a display server.
+
+## 2026-02-19 - [Intervention Logic Centralization]
+**Learning:** Decoupling decision logic (in `InterventionEngine`) from trigger logic (in `LogicEngine`) can lead to severe log spam if the trigger logic blindly logs "Triggering..." before checking the decision result.
+**Action:** Refactored `LogicEngine` to check the return value of `intervention_engine.start_intervention()` before logging. Implemented category-based cooldowns in `InterventionEngine` to replace scattered logic.
+**Pitfall:** High-frequency loops (like `update()`) must be extremely careful about logging actions that might be suppressed downstream.
