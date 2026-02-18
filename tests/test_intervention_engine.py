@@ -115,6 +115,8 @@ class TestInterventionEngine(unittest.TestCase):
 
         # Wait (simulate time passing by manipulating last_intervention_time)
         self.engine.last_intervention_time = time.time() - 20
+        # Also simulate category cooldown expiry
+        self.engine.last_category_trigger_time["default"] = time.time() - 20
         with patch('threading.Thread'):
             result = self.engine.start_intervention({"type": "t2", "message": "m2"})
         self.assertTrue(result)

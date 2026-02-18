@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import platform
+from collections import deque
 from typing import Optional, Any, Dict, List
 from .voice_interface import VoiceInterface
 from .image_processing import ImageProcessor
@@ -71,6 +72,27 @@ class InterventionEngine:
         # Dictionary to track preferred interventions (feedback="helpful"): {intervention_type: {"count": int, "last_helpful": timestamp}}
         self.preferred_interventions: Dict[str, Dict[str, Any]] = {}
         self._load_preferences()
+
+        # --- Centralized Cooldown Management ---
+        # Default cooldowns by category (seconds)
+        self.category_cooldowns: Dict[str, int] = {
+            "voice_command": 5,      # Quick response needed
+            "reflexive_window": getattr(config, 'REFLEXIVE_WINDOW_COOLDOWN', 300),
+            "offline_fallback": 30,  # LogicEngine had this hardcoded
+            "system": 0,             # No cooldown for system messages
+            "lmm_suggestion": getattr(config, 'MIN_TIME_BETWEEN_INTERVENTIONS', 300),
+            "default": getattr(config, 'MIN_TIME_BETWEEN_INTERVENTIONS', 300)
+        }
+
+        # Track last trigger time per category
+        self.last_category_trigger_time: Dict[str, float] = {}
+
+        # --- Escalation Logic ---
+        # Track recent interventions for escalation (deque of {id, time, tier})
+        # Window for escalation check (e.g., 60s)
+        self.escalation_window: int = 60
+        self.recent_interventions: deque = deque(maxlen=20)
+        self._lock: threading.Lock = threading.Lock()
 
         log_message = "InterventionEngine initialized."
         if self.app and hasattr(self.app, 'data_logger'):
@@ -473,10 +495,41 @@ class InterventionEngine:
 
 
         if sequence:
+            # Create a local copy of sequence to allow modification without affecting the library
+            sequence = [step.copy() for step in sequence]
+
+            # --- Escalation Execution Logic ---
+            # Add sensory elements based on Tier if not present
+            has_sound = any(step.get("action") == "sound" for step in sequence)
+
+            if tier >= 2 and not has_sound:
+                 # Tier 2: Ensure auditory cue
+                 sound_file = "assets/sounds/test_tone.wav"
+                 if os.path.exists(sound_file):
+                     sequence.insert(0, {"action": "sound", "file": sound_file})
+                     log_debug(f"{log_prefix}: Added chime for Tier {tier} escalation.")
+                 else:
+                     log_debug(f"{log_prefix}: Skipping Tier {tier} chime (file not found).")
+
+            if tier >= 3:
+                 # Tier 3: Urgent auditory cue
+                 sound_file = "assets/sounds/urgent_alert_tone.wav"
+                 if os.path.exists(sound_file):
+                     sequence.insert(0, {"action": "sound", "file": sound_file})
+                     log_debug(f"{log_prefix}: Added urgent tone for Tier {tier} escalation.")
+                 else:
+                     log_debug(f"{log_prefix}: Skipping Tier {tier} urgent tone (file not found).")
+
             # Execute the defined sequence from the library card
             self._run_sequence(sequence, logger)
         else:
             # Fallback: Just speak the message (Legacy/Simple mode)
+            # Apply Tier logic to legacy mode too
+            if tier >= 2:
+                 self._play_sound("assets/sounds/test_tone.wav")
+            if tier >= 3:
+                 self._play_sound("assets/sounds/urgent_alert_tone.wav")
+
             # Default to blocking for backward compatibility in single-message mode,
             # as this thread is dedicated to the intervention anyway.
             self._speak(message, blocking=True)
@@ -540,12 +593,13 @@ class InterventionEngine:
         # Return just the keys
         return [k for k, v in sorted_prefs]
 
-    def start_intervention(self, intervention_details: Dict[str, Any]) -> bool:
+    def start_intervention(self, intervention_details: Dict[str, Any], category: str = "default") -> bool:
         """
         Starts an intervention.
         intervention_details can contain:
         - 'id': ID of a card in InterventionLibrary (preferred).
         - 'type' & 'message': Fallback for ad-hoc interventions.
+        category: "voice_command", "reflexive_window", "offline_fallback", "system", "lmm_suggestion", or "default"
         """
         logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
 
@@ -568,8 +622,9 @@ class InterventionEngine:
         if card:
             execution_details = card.copy()
             execution_details["type"] = card["id"] # Use ID as type for logging
-            # If caller provided specific message override, we *could* use it,
-            # but usually cards have their own sequences.
+            # Allow overrides from caller (e.g. tier)
+            if "tier" in intervention_details:
+                execution_details["tier"] = intervention_details["tier"]
         elif intervention_type and custom_message:
             # Ad-hoc intervention (legacy support or dynamic LMM message)
             execution_details = {
@@ -601,29 +656,61 @@ class InterventionEngine:
                 # Expired, remove from list
                 del self.suppressed_interventions[check_type]
 
-        # Critical: If called from within an existing sequence or thread, this check might fail.
-        # But generally start_intervention is called from LogicEngine main thread.
-        # If an intervention is active, we ignore new ones unless they have higher priority (Tier system).
-        if self._intervention_active.is_set():
-            # Check priority: Higher tier preempts lower tier
-            current_tier = self._current_intervention_details.get("tier", 1)
-            new_tier = execution_details.get("tier", 1)
+        # --- Centralized Cooldown & Priority Logic ---
+        current_time = time.time()
 
-            if new_tier > current_tier:
-                if logger:
-                    logger.log_info(f"Preempting active intervention (Tier {current_tier}) with higher priority intervention '{check_type}' (Tier {new_tier}).")
-                else:
-                    print(f"Preempting active intervention (Tier {current_tier}) with higher priority intervention '{check_type}' (Tier {new_tier}).")
-                self.stop_intervention()
-                # Wait briefly for thread to clear
-                if self.intervention_thread and self.intervention_thread.is_alive():
-                    self.intervention_thread.join(timeout=2.0)
-            else:
-                if logger:
-                    logger.log_info(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_tier}, New Tier: {new_tier}).")
-                else:
-                    print(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_tier}, New Tier: {new_tier}).")
+        with self._lock:
+            # 1. Check Category Cooldown
+            category_limit = self.category_cooldowns.get(category, self.category_cooldowns["default"])
+            last_cat_time = self.last_category_trigger_time.get(category, 0)
+
+            if current_time - last_cat_time < category_limit:
+                if logger: logger.log_info(f"Intervention suppressed: Category '{category}' cooldown active.")
                 return False
+
+            # 2. Check Global Cooldown (unless bypassed)
+            # Categories that bypass global "nagging" limit: voice_command, system
+            bypass_global = category in ["voice_command", "system"]
+            is_system_msg = execution_details["type"] in ["mode_change_notification", "error_notification", "error_notification_spoken"] # Legacy check
+
+            if not bypass_global and not is_system_msg:
+                 if current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS:
+                    if logger: logger.log_info(f"Intervention suppressed: Global cooldown active.")
+                    return False
+
+            # Critical: If called from within an existing sequence or thread, this check might fail.
+            # But generally start_intervention is called from LogicEngine main thread.
+            # If an intervention is active, we ignore new ones unless they have higher priority (Tier system).
+            if self._intervention_active.is_set():
+                # Check priority: Higher tier preempts lower tier
+                current_tier = self._current_intervention_details.get("tier", 1)
+                new_tier = execution_details.get("tier", 1)
+
+                if new_tier > current_tier:
+                    if logger:
+                        logger.log_info(f"Preempting active intervention (Tier {current_tier}) with higher priority intervention '{check_type}' (Tier {new_tier}).")
+                    else:
+                        print(f"Preempting active intervention (Tier {current_tier}) with higher priority intervention '{check_type}' (Tier {new_tier}).")
+                    # Release lock before stopping/waiting to avoid deadlock
+                else:
+                    if logger:
+                        logger.log_info(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_tier}, New Tier: {new_tier}).")
+                    else:
+                        print(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_tier}, New Tier: {new_tier}).")
+                    return False
+
+        # Handle Preemption outside lock (if needed)
+        # Re-check active state after potential preemption logic
+        if self._intervention_active.is_set():
+             current_tier = self._current_intervention_details.get("tier", 1)
+             new_tier = execution_details.get("tier", 1)
+             if new_tier > current_tier:
+                 self.stop_intervention()
+                 if self.intervention_thread and self.intervention_thread.is_alive():
+                        self.intervention_thread.join(timeout=2.0)
+             else:
+                 # Race condition: became active after lock release? Rare but possible.
+                 return False
 
         current_app_mode = self.logic_engine.get_mode()
         if current_app_mode != "active":
@@ -633,20 +720,41 @@ class InterventionEngine:
                 print(f"Intervention suppressed: Mode is {current_app_mode}")
             return False
 
-        current_time = time.time()
-        # Rate limiting (skip for mode changes or errors)
-        is_system_msg = execution_details["type"] in ["mode_change_notification", "error_notification", "error_notification_spoken"]
-        if not is_system_msg and \
-           (current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS):
-            if logger:
-                logger.log_info(f"Intervention '{execution_details['type']}' suppressed: Too soon since last intervention.")
-            else:
-                print(f"Intervention '{execution_details['type']}' suppressed: Too soon since last intervention.")
-            return False
+        with self._lock:
+            # --- Escalation Logic ---
+            # Check if same ID triggered recently
+            if intervention_id:
+                 # Look back in history
+                 # recent_interventions stores (timestamp, id, tier)
+                 # Find last occurrence of this ID
+                 last_occurrence = None
+                 for entry in reversed(self.recent_interventions):
+                     if entry["id"] == intervention_id:
+                         last_occurrence = entry
+                         break
 
-        self._intervention_active.set()
-        self._current_intervention_details = execution_details
-        self.last_intervention_time = current_time
+                 if last_occurrence:
+                     time_delta = current_time - last_occurrence["timestamp"]
+                     if time_delta < self.escalation_window:
+                         # Repeated trigger! Escalate.
+                         current_tier = execution_details.get("tier", 1)
+                         # Only escalate if it's the same tier (don't double escalate if we already did)
+                         if current_tier == last_occurrence["tier"]:
+                             new_tier = current_tier + 1
+                             execution_details["tier"] = new_tier
+                             if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {new_tier} due to repetition.")
+
+            self._intervention_active.set()
+            self._current_intervention_details = execution_details
+            self.last_intervention_time = current_time
+            self.last_category_trigger_time[category] = current_time
+
+            # Record history
+            self.recent_interventions.append({
+                "timestamp": current_time,
+                "id": intervention_id if intervention_id else execution_details["type"],
+                "tier": execution_details.get("tier", 1)
+            })
 
         self.intervention_thread = threading.Thread(target=self._run_intervention_thread)
         self.intervention_thread.daemon = True
