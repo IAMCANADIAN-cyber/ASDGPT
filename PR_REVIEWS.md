@@ -80,3 +80,11 @@ Here are the reviews and recommendations for the open Pull Requests (branches) a
 *   **Status:** **Merged (Manually Applied)**
 *   **Recommendation:** **2: Accept Incoming**
 *   **Reasoning:** Implements robust KDE Wayland window title detection using regex parsing. Verified with new tests in `tests/test_window_sensor_wayland.py`. **Verified content is in HEAD and tests pass.**
+
+## 16. Verification of Remaining Stale Branches (2026-02-19)
+*   **Status:** **Verified (Stale/Regressions)**
+*   **Reasoning:**
+    *   `origin/navigator/weekly-refresh-feb-19-update-1129603809349890797`: Validated as a regression compared to `HEAD` (missing deprecation warning suppressions in `core/stt_interface.py`).
+    *   `origin/navigator/fix-ux-feedback-visuals-8394465718457905689`: Validated as stale (last commit Jan 25, 2026).
+    *   KDE Wayland support and all tests pass on `HEAD`.
+*   **Action:** No further merges required.
