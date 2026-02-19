@@ -577,7 +577,7 @@ class LogicEngine:
         distraction_apps = getattr(config, 'DISTRACTION_APPS', [])
         for app in distraction_apps:
             if app.lower() in active_window_lower:
-                self.logger.log_info(f"Distraction App Detected: '{app}'")
+                self.logger.log_debug(f"Distraction App Detected: '{app}'")
                 return "distraction_alert"
 
         return None
@@ -685,11 +685,18 @@ class LogicEngine:
                     active_win = self.window_sensor.get_active_window(sanitize=False)
                     reflex_id = self._check_window_reflexes(active_win)
                     if reflex_id:
-                        self.logger.log_info(f"Triggering Reflexive Intervention: {reflex_id}")
-                        self.intervention_engine.start_intervention(
-                            {"id": reflex_id, "tier": 2},
+                        # Attempt intervention (LogicEngine provides fallback message in case ID is missing from library)
+                        started = self.intervention_engine.start_intervention(
+                            {
+                                "id": reflex_id,
+                                "tier": 2,
+                                "type": "reflexive_window",
+                                "message": "I noticed a distraction app is open. Time to focus?"
+                            },
                             category="reflexive_window"
                         )
+                        if started:
+                            self.logger.log_info(f"Triggered Reflexive Intervention: {reflex_id}")
                 except Exception as e:
                     # Don't let window check crash the loop
                     pass

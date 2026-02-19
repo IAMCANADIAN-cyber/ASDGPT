@@ -178,6 +178,16 @@ class InterventionLibrary:
                     ]
                 },
                 {
+                    "id": "distraction_alert",
+                    "tier": 2,
+                    "description": "Reflexive alert for distraction apps",
+                    "sequence": [
+                        {"action": "speak", "content": "I noticed a distraction app is open. Is this intentional?"},
+                        {"action": "wait", "duration": 5},
+                        {"action": "speak", "content": "If not, let's close it."}
+                    ]
+                },
+                {
                     "id": "bookmark_thought",
                     "tier": 1,
                     "description": "Hyperfocus exit aid",
