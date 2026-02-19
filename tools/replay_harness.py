@@ -75,8 +75,9 @@ class MockInterventionEngine:
     def __init__(self):
         self.interventions_triggered = []
 
-    def start_intervention(self, suggestion):
+    def start_intervention(self, suggestion, category="default"):
         self.interventions_triggered.append(suggestion)
+        return True
 
 class MockAudioSensor:
     def __init__(self):
