@@ -62,8 +62,8 @@ class TestOfflineFallback(unittest.TestCase):
         self.assertEqual(call_args.get("type"), "offline_noise_reduction")
         self.assertIn("offline", call_args.get("message", "").lower())
 
-    def test_offline_fallback_respects_interval(self):
-        """Test that offline fallback doesn't spam interventions."""
+    def test_offline_fallback_delegates_to_intervention_engine(self):
+        """Test that offline fallback logic delegates cooldown management to InterventionEngine."""
         self.engine.lmm_circuit_breaker_open_until = time.time() + 100
         self.engine.audio_level = 0.8
         self.engine.audio_analysis = {"is_speech": True}
@@ -75,7 +75,10 @@ class TestOfflineFallback(unittest.TestCase):
         with patch('time.time', return_value=self.engine.last_offline_trigger_time):
              self.engine.update()
 
-        self.mock_intervention.start_intervention.assert_not_called()
+        # LogicEngine delegates cooldowns to InterventionEngine, so it SHOULD call start_intervention
+        self.mock_intervention.start_intervention.assert_called()
+        args, kwargs = self.mock_intervention.start_intervention.call_args
+        self.assertEqual(kwargs.get("category"), "offline_fallback")
 
     def test_offline_fallback_video_trigger(self):
         """Test high video activity triggers fallback."""

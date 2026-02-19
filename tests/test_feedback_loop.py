@@ -120,6 +120,8 @@ def test_feedback_helpful_preference(setup_test_env):
     # Do it again
     # Reset last_intervention_time to bypass rate limit
     engine.last_intervention_time = 0
+    # Also reset category trigger time
+    engine.last_category_trigger_time = {}
     engine.start_intervention(details)
     time.sleep(0.1)
     engine.stop_intervention()
