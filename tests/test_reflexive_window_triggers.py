@@ -39,7 +39,7 @@ class TestReflexiveWindowTriggers:
         assert args[0]['id'] == "distraction_alert"
         assert args[0]['tier'] == 2
 
-    def test_reflexive_trigger_cooldown(self, logic_engine, mock_window_sensor, mock_intervention_engine):
+    def test_reflexive_trigger_delegates_cooldown(self, logic_engine, mock_window_sensor, mock_intervention_engine):
         # Setup
         mock_window_sensor.get_active_window.return_value = "Steam - Library"
 
@@ -51,15 +51,10 @@ class TestReflexiveWindowTriggers:
         # Act - Fire immediately again
         logic_engine.update()
 
-        # Assert - Should be blocked by cooldown
-        mock_intervention_engine.start_intervention.assert_not_called()
-
-        # Act - Fast forward past cooldown
-        logic_engine.last_reflexive_trigger_time = time.time() - 301
-        logic_engine.update()
-
-        # Assert - Should fire again
+        # Assert - LogicEngine should attempt to trigger again (delegating cooldown)
         mock_intervention_engine.start_intervention.assert_called_once()
+        args, kwargs = mock_intervention_engine.start_intervention.call_args
+        assert kwargs.get("category") == "reflexive_window"
 
     def test_no_trigger_on_mismatch(self, logic_engine, mock_window_sensor, mock_intervention_engine):
         # Setup
