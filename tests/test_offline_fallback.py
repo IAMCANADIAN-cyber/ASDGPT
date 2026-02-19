@@ -62,20 +62,24 @@ class TestOfflineFallback(unittest.TestCase):
         self.assertEqual(call_args.get("type"), "offline_noise_reduction")
         self.assertIn("offline", call_args.get("message", "").lower())
 
-    def test_offline_fallback_respects_interval(self):
-        """Test that offline fallback doesn't spam interventions."""
+    def test_offline_fallback_delegation(self):
+        """Test that offline fallback delegates to intervention engine (which handles cooldowns)."""
         self.engine.lmm_circuit_breaker_open_until = time.time() + 100
         self.engine.audio_level = 0.8
         self.engine.audio_analysis = {"is_speech": True}
         self.engine.last_lmm_call_time = time.time() - 10
 
-        # Set last offline intervention time to NOW
-        self.engine.last_offline_trigger_time = time.time()
+        # LogicEngine no longer checks timestamp locally, it just calls start_intervention
+        # with category='offline_fallback'.
 
-        with patch('time.time', return_value=self.engine.last_offline_trigger_time):
+        with patch('time.time', return_value=time.time()):
              self.engine.update()
 
-        self.mock_intervention.start_intervention.assert_not_called()
+        # Should call, but with correct category so IE can rate limit it
+        self.mock_intervention.start_intervention.assert_called()
+        call_args = self.mock_intervention.start_intervention.call_args
+        kwargs = call_args[1]
+        self.assertEqual(kwargs.get('category'), 'offline_fallback')
 
     def test_offline_fallback_video_trigger(self):
         """Test high video activity triggers fallback."""

@@ -4,6 +4,7 @@ import datetime
 import threading
 import json
 import os
+import sys
 import subprocess
 import platform
 from collections import deque
@@ -493,6 +494,30 @@ class InterventionEngine:
                 flash_icon_type = "error" if "error" in intervention_type else "active"
                 self.app.tray_icon.flash_icon(flash_status=flash_icon_type, original_status=current_app_mode)
 
+        # --- Tiered Visual Escalation ---
+        # Extract text for visual display
+        display_text = message
+        if (not display_text or display_text == "No message provided.") and sequence:
+             display_text = self._current_intervention_details.get("description", intervention_type)
+
+        # Tier 1 & 2: Toast Notification
+        if tier >= 1 and intervention_type not in ["mode_change_notification"]:
+             if self.app and hasattr(self.app, 'tray_icon') and self.app.tray_icon and display_text:
+                  self.app.tray_icon.notify_user(title=f"ACR: {intervention_type}", message=display_text)
+
+        # Tier 3: Disruptive Modal Alert
+        if tier >= 3 and display_text:
+             log_debug(f"{log_prefix}: Launching modal alert (Tier 3).")
+             try:
+                 # Use the current python executable to run the tool script
+                 script_path = os.path.join("tools", "show_alert.py")
+                 if os.path.exists(script_path):
+                     subprocess.Popen([sys.executable, script_path, f"ACR Alert (Tier {tier})", display_text])
+                 else:
+                     log_debug(f"Alert script not found at {script_path}")
+             except Exception as e:
+                 log_debug(f"Failed to launch modal alert: {e}")
+
 
         if sequence:
             # Create a local copy of sequence to allow modification without affecting the library
@@ -738,11 +763,11 @@ class InterventionEngine:
                      if time_delta < self.escalation_window:
                          # Repeated trigger! Escalate.
                          current_tier = execution_details.get("tier", 1)
-                         # Only escalate if it's the same tier (don't double escalate if we already did)
-                         if current_tier == last_occurrence["tier"]:
-                             new_tier = current_tier + 1
+                         # Only escalate if it's the same tier or higher (allow continuous escalation)
+                         if current_tier <= last_occurrence["tier"]:
+                             new_tier = last_occurrence["tier"] + 1
                              execution_details["tier"] = new_tier
-                             if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {new_tier} due to repetition.")
+                             if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {new_tier} due to repetition (Last: {last_occurrence['tier']}).")
 
             self._intervention_active.set()
             self._current_intervention_details = execution_details
