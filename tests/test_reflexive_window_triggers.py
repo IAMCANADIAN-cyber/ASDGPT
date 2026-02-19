@@ -51,15 +51,11 @@ class TestReflexiveWindowTriggers:
         # Act - Fire immediately again
         logic_engine.update()
 
-        # Assert - Should be blocked by cooldown
-        mock_intervention_engine.start_intervention.assert_not_called()
-
-        # Act - Fast forward past cooldown
-        logic_engine.last_reflexive_trigger_time = time.time() - 301
-        logic_engine.update()
-
-        # Assert - Should fire again
+        # Assert - LogicEngine should delegate cooldown check to InterventionEngine
+        # So it SHOULD call start_intervention, passing the category.
         mock_intervention_engine.start_intervention.assert_called_once()
+        args, kwargs = mock_intervention_engine.start_intervention.call_args
+        assert kwargs.get('category') == 'reflexive_window'
 
     def test_no_trigger_on_mismatch(self, logic_engine, mock_window_sensor, mock_intervention_engine):
         # Setup
