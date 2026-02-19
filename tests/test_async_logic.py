@@ -27,7 +27,7 @@ class MockInterventionEngine:
     def __init__(self):
         self.started_interventions = []
 
-    def start_intervention(self, suggestion):
+    def start_intervention(self, suggestion, category="default"):
         print(f"MockInterventionEngine: Starting {suggestion}")
         self.started_interventions.append(suggestion)
 
