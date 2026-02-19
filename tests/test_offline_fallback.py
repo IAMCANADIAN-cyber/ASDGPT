@@ -63,19 +63,29 @@ class TestOfflineFallback(unittest.TestCase):
         self.assertIn("offline", call_args.get("message", "").lower())
 
     def test_offline_fallback_respects_interval(self):
-        """Test that offline fallback doesn't spam interventions."""
+        """
+        Test that offline fallback logic delegates cooldown check to InterventionEngine.
+        LogicEngine should call start_intervention with category='offline_fallback'.
+        """
         self.engine.lmm_circuit_breaker_open_until = time.time() + 100
         self.engine.audio_level = 0.8
         self.engine.audio_analysis = {"is_speech": True}
         self.engine.last_lmm_call_time = time.time() - 10
 
-        # Set last offline intervention time to NOW
-        self.engine.last_offline_trigger_time = time.time()
+        # We assume previous trigger happened, but LogicEngine doesn't track it locally anymore.
 
-        with patch('time.time', return_value=self.engine.last_offline_trigger_time):
+        self.mock_intervention.start_intervention = MagicMock()
+
+        with patch('time.time', return_value=time.time()):
              self.engine.update()
 
-        self.mock_intervention.start_intervention.assert_not_called()
+        # Should attempt to trigger, relying on IE to suppress if needed
+        self.mock_intervention.start_intervention.assert_called()
+        call_args = self.mock_intervention.start_intervention.call_args
+        # call_args is (args, kwargs) or just args depending on python version mock access
+        # But we can use kwargs directly if we access it right
+        _, kwargs = call_args
+        self.assertEqual(kwargs.get("category"), "offline_fallback")
 
     def test_offline_fallback_video_trigger(self):
         """Test high video activity triggers fallback."""
