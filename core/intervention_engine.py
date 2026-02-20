@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import platform
+import base64
 from collections import deque
 from typing import Optional, Any, Dict, List
 from .voice_interface import VoiceInterface
@@ -413,6 +414,50 @@ class InterventionEngine:
             else:
                 print(msg)
 
+    def _suggest_pose(self, content: str) -> None:
+        """
+        Generates and speaks a pose suggestion using the LMM.
+        """
+        log_message = f"SUGGESTING_POSE: '{content}'"
+        if self.app and self.app.data_logger:
+            self.app.data_logger.log_info(log_message)
+        else:
+            print(log_message)
+
+        if not self.logic_engine or not hasattr(self.logic_engine, 'last_video_frame') or self.logic_engine.last_video_frame is None:
+            msg = "Cannot suggest pose: No video frame available."
+            if self.app and self.app.data_logger: self.app.data_logger.log_warning(msg)
+            return
+
+        if not hasattr(self.logic_engine, 'lmm_interface') or not self.logic_engine.lmm_interface:
+             msg = "Cannot suggest pose: LMM interface unavailable."
+             if self.app and self.app.data_logger: self.app.data_logger.log_warning(msg)
+             return
+
+        if cv2 is None:
+             msg = "Cannot suggest pose: OpenCV (cv2) not available for encoding."
+             if self.app and self.app.data_logger: self.app.data_logger.log_warning(msg)
+             return
+
+        try:
+            # Encode frame
+            _, buffer = cv2.imencode('.jpg', self.logic_engine.last_video_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+            video_data_b64 = base64.b64encode(buffer).decode('utf-8')
+
+            # Call LMM
+            suggestion = self.logic_engine.lmm_interface.generate_pose_suggestion(video_data_b64, context_text=content)
+
+            # Speak suggestion
+            if suggestion:
+                self._speak(suggestion, blocking=True)
+
+        except Exception as e:
+            msg = f"Error generating pose suggestion: {e}"
+            if self.app and self.app.data_logger:
+                self.app.data_logger.log_error(msg)
+            else:
+                print(msg)
+
     def _wait(self, duration: float) -> None:
         """Waits for a specified duration, respecting the stop signal."""
         start = time.time()
@@ -449,6 +494,10 @@ class InterventionEngine:
             elif action == "record_video":
                 content = step.get("content", "")
                 self._record_video(content)
+
+            elif action == "suggest_pose":
+                content = step.get("content", "")
+                self._suggest_pose(content)
 
             elif action == "wait":
                 duration = step.get("duration", 0)

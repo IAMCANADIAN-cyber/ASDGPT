@@ -8,7 +8,7 @@ class ImageProcessor:
     """
 
     @staticmethod
-    def crop_to_subject(frame: np.ndarray, face_metrics: Dict[str, Any], zoom_factor: float = 1.5) -> np.ndarray:
+    def crop_to_subject(frame: np.ndarray, face_metrics: Dict[str, Any], zoom_factor: float = 4.0) -> np.ndarray:
         """
         Crops the image to center on the detected face (or body approximation).
         Simulates PTZ camera behavior.
@@ -16,12 +16,9 @@ class ImageProcessor:
         Args:
             frame: The source video frame.
             face_metrics: Dictionary containing 'face_locations' or similar from VideoSensor.
-            zoom_factor: How tight to crop relative to face size.
-                         Higher = wider view (zoom out), Lower = tighter (zoom in).
-                         Wait, zoom_factor usually means magnification.
-                         Let's define 'margin_factor':
-                         1.0 = tight bounding box.
-                         3.0 = rule of thirds / portrait.
+            zoom_factor: Multiplier for face height to determine crop height.
+                         Default 4.0 (Body/Bust shot).
+                         2.0 would be a tight Headshot.
 
         Returns:
             Cropped (and potentially resized) image.
@@ -38,11 +35,6 @@ class ImageProcessor:
         face_locations = face_metrics.get("face_locations", [])
         if face_locations:
             # Assume first face or largest face
-            # Format usually (x, y, w, h) from OpenCV Haarcascade
-            # But let's verify VideoSensor format. It is indeed (x, y, w, h).
-            # VideoSensor uses: metrics["face_locations"] = [list(f) for f in faces]
-
-            # Find largest face
             largest_face = max(face_locations, key=lambda f: f[2] * f[3])
             x, y, w, h = largest_face
 
@@ -50,15 +42,7 @@ class ImageProcessor:
             center_y = y + h // 2
 
             # Determine crop size based on face size + margin
-            # We want a portrait-like crop if possible, or just centered.
-            # Let's say we want the face to occupy ~1/3 of the frame height?
-            # crop_h = h * 3
-            # But we must respect aspect ratio if we want to save standard video?
-            # Or just dynamic crop.
-
-            # Let's aim for a crop that includes body (chest up)
-            # Typically h * 4 for height
-            target_h = int(h * 4.0)
+            target_h = int(h * zoom_factor)
             target_w = int(target_h * (width / height)) # Keep aspect ratio
 
             # Ensure we don't zoom IN more than resolution allows (digital zoom degrades)

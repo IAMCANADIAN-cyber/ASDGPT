@@ -6,6 +6,7 @@ from typing import Optional, Dict, Any, List, TypedDict, Union
 import config
 from .intervention_library import InterventionLibrary
 from .prompts.v1 import SYSTEM_INSTRUCTION_V1
+from .prompts.pose_prompts import POSE_SUGGESTION_PROMPT
 
 # Define response structures for type hinting
 class StateEstimation(TypedDict):
@@ -528,3 +529,30 @@ class LMMInterface:
         except Exception as e:
             self._log_warning(f"Caption generation failed: {e}")
             return "Captured moment."
+
+    def generate_pose_suggestion(self, video_data_b64: str, context_text: str) -> str:
+        """
+        Generates a pose suggestion based on the image and context.
+        """
+        # Format the system prompt with context
+        system_instruction = POSE_SUGGESTION_PROMPT.replace("{context_tag}", context_text)
+
+        payload = {
+            "model": config.LOCAL_LLM_MODEL_ID,
+            "messages": [
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{video_data_b64}"}}
+                ]}
+            ],
+            "max_tokens": 100
+        }
+
+        try:
+            payload["response_format"] = {"type": "json_object"}
+            result = self._send_request_with_retry(payload)
+            return result.get("suggestion", "The lighting is great. Just hold that pose.")
+
+        except Exception as e:
+            self._log_warning(f"Pose suggestion generation failed: {e}")
+            return "The lighting is great. Just hold that pose."
