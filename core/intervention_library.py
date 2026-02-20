@@ -266,10 +266,10 @@ class InterventionLibrary:
                     "tier": 1,
                     "description": "Suggests a pose for content.",
                     "sequence": [
-                         {"action": "speak", "content": "The lighting is great. Try arching your back slightly and look over your shoulder at the camera."},
+                         {"action": "suggest_pose", "content": "erotic"},
                          {"action": "wait", "duration": 3},
                          {"action": "speak", "content": "Perfect. Hold that."},
-                         {"action": "capture_image", "content": "pose_suggestion"}
+                         {"action": "capture_image", "content": "erotic_pose_capture"}
                     ]
                 },
                 {
