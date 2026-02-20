@@ -87,8 +87,11 @@ class TestInterventionEngineLogic(unittest.TestCase):
         self.intervention_engine._intervention_active.set()
         self.intervention_engine._current_intervention_details = {"type": "low", "tier": 1}
 
-        # Mock stop_intervention to verify it's called
-        with patch.object(self.intervention_engine, 'stop_intervention') as mock_stop:
+        # Mock stop_intervention to verify it's called AND clear the flag (side_effect)
+        def side_effect_stop():
+            self.intervention_engine._intervention_active.clear()
+
+        with patch.object(self.intervention_engine, 'stop_intervention', side_effect=side_effect_stop) as mock_stop:
             new_details = {"type": "high", "message": "Urgent", "tier": 2}
             # Ensure cooldown doesn't block
             self.intervention_engine.last_intervention_time = 0
