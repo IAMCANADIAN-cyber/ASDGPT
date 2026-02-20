@@ -33,3 +33,6 @@ replay_log.txt*
 .coverage
 htmlcov/
 acr_app.log
+
+# Drafts
+drafts/
