@@ -705,62 +705,6 @@ class InterventionEngine:
                 # Expired, remove from list
                 del self.suppressed_interventions[check_type]
 
-        # --- Centralized Cooldown & Priority Logic ---
-        current_time = time.time()
-
-        with self._lock:
-            # 1. Check Category Cooldown
-            category_limit = self.category_cooldowns.get(category, self.category_cooldowns["default"])
-            last_cat_time = self.last_category_trigger_time.get(category, 0)
-
-            if current_time - last_cat_time < category_limit:
-                if logger: logger.log_info(f"Intervention suppressed: Category '{category}' cooldown active.")
-                return False
-
-            # 2. Check Global Cooldown (unless bypassed)
-            # Categories that bypass global "nagging" limit: voice_command, system
-            bypass_global = category in ["voice_command", "system"]
-            is_system_msg = execution_details["type"] in ["mode_change_notification", "error_notification", "error_notification_spoken"] # Legacy check
-
-            if not bypass_global and not is_system_msg:
-                 if current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS:
-                    if logger: logger.log_info(f"Intervention suppressed: Global cooldown active.")
-                    return False
-
-            # Critical: If called from within an existing sequence or thread, this check might fail.
-            # But generally start_intervention is called from LogicEngine main thread.
-            # If an intervention is active, we ignore new ones unless they have higher priority (Tier system).
-            if self._intervention_active.is_set():
-                # Check priority: Higher tier preempts lower tier
-                current_tier = self._current_intervention_details.get("tier", 1)
-                new_tier = execution_details.get("tier", 1)
-
-                if new_tier > current_tier:
-                    if logger:
-                        logger.log_info(f"Preempting active intervention (Tier {current_tier}) with higher priority intervention '{check_type}' (Tier {new_tier}).")
-                    else:
-                        print(f"Preempting active intervention (Tier {current_tier}) with higher priority intervention '{check_type}' (Tier {new_tier}).")
-                    # Release lock before stopping/waiting to avoid deadlock
-                else:
-                    if logger:
-                        logger.log_info(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_tier}, New Tier: {new_tier}).")
-                    else:
-                        print(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_tier}, New Tier: {new_tier}).")
-                    return False
-
-        # Handle Preemption outside lock (if needed)
-        # Re-check active state after potential preemption logic
-        if self._intervention_active.is_set():
-             current_tier = self._current_intervention_details.get("tier", 1)
-             new_tier = execution_details.get("tier", 1)
-             if new_tier > current_tier:
-                 self.stop_intervention()
-                 if self.intervention_thread and self.intervention_thread.is_alive():
-                        self.intervention_thread.join(timeout=2.0)
-             else:
-                 # Race condition: became active after lock release? Rare but possible.
-                 return False
-
         current_app_mode = self.logic_engine.get_mode()
         if current_app_mode != "active":
             if logger:
@@ -769,13 +713,15 @@ class InterventionEngine:
                 print(f"Intervention suppressed: Mode is {current_app_mode}")
             return False
 
+        current_time = time.time()
+        nag_interval = getattr(config, 'ESCALATION_NAG_INTERVAL', 15)
+
         with self._lock:
-            # --- Escalation Logic ---
-            # Check if same ID triggered recently
+            # --- 1. Calculate Escalation Status ---
+            is_escalation = False
+            escalated_tier = execution_details.get("tier", 1)
+
             if intervention_id:
-                 # Look back in history
-                 # recent_interventions stores (timestamp, id, tier)
-                 # Find last occurrence of this ID
                  last_occurrence = None
                  for entry in reversed(self.recent_interventions):
                      if entry["id"] == intervention_id:
@@ -785,13 +731,85 @@ class InterventionEngine:
                  if last_occurrence:
                      time_delta = current_time - last_occurrence["timestamp"]
                      if time_delta < self.escalation_window:
-                         # Repeated trigger! Escalate.
-                         current_tier = execution_details.get("tier", 1)
-                         # Only escalate if it's the same tier (don't double escalate if we already did)
-                         if current_tier == last_occurrence["tier"]:
-                             new_tier = current_tier + 1
-                             execution_details["tier"] = new_tier
-                             if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {new_tier} due to repetition.")
+                         # Repeated trigger! Check if same tier (candidate for escalation)
+                         if escalated_tier == last_occurrence["tier"]:
+                             # Check Nag Interval
+                             if time_delta < nag_interval:
+                                 if logger: logger.log_debug(f"Escalation suppressed: Too soon to nag ({time_delta:.1f}s < {nag_interval}s).")
+                                 return False
+
+                             # Valid Escalation
+                             is_escalation = True
+                             escalated_tier = last_occurrence["tier"] + 1
+                             execution_details["tier"] = escalated_tier
+                             if logger: logger.log_info(f"Escalation detected: Upgrading '{intervention_id}' to Tier {escalated_tier}.")
+
+            # --- 2. Check Cooldowns ---
+            # If valid escalation, we BYPASS Category and Global cooldowns
+
+            if not is_escalation:
+                # 2a. Check Category Cooldown
+                category_limit = self.category_cooldowns.get(category, self.category_cooldowns["default"])
+                last_cat_time = self.last_category_trigger_time.get(category, 0)
+
+                if current_time - last_cat_time < category_limit:
+                    if logger: logger.log_info(f"Intervention suppressed: Category '{category}' cooldown active.")
+                    return False
+
+                # 2b. Check Global Cooldown (unless bypassed)
+                bypass_global = category in ["voice_command", "system"]
+                is_system_msg = execution_details["type"] in ["mode_change_notification", "error_notification", "error_notification_spoken"]
+
+                if not bypass_global and not is_system_msg:
+                     if current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS:
+                        if logger: logger.log_info(f"Intervention suppressed: Global cooldown active.")
+                        return False
+
+            # --- 3. Active Intervention Preemption ---
+            if self._intervention_active.is_set():
+                current_active_tier = self._current_intervention_details.get("tier", 1)
+
+                if escalated_tier > current_active_tier:
+                    if logger:
+                        logger.log_info(f"Preempting active intervention (Tier {current_active_tier}) with higher priority intervention '{check_type}' (Tier {escalated_tier}).")
+                    else:
+                        print(f"Preempting active intervention (Tier {current_active_tier}) with higher priority intervention '{check_type}' (Tier {escalated_tier}).")
+                    # We need to stop the current intervention.
+                    # Since we are holding the lock, we must be careful calling stop_intervention if it tries to acquire the lock?
+                    # stop_intervention() just clears the event and kills processes, it doesn't seem to take the lock (except logic_engine might).
+                    # But stop_intervention calls VoiceInterface.stop() which might block?
+                    # Ideally we release lock, stop, then re-acquire. But state might change.
+                    # Given stop_intervention implementation, it doesn't take self._lock.
+
+                else:
+                    if logger:
+                        logger.log_info(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_active_tier}, New Tier: {escalated_tier}).")
+                    else:
+                        print(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_active_tier}, New Tier: {escalated_tier}).")
+                    return False
+
+        # Handle Preemption outside lock (to be safe against deadlocks/delays)
+        # We re-check if we still need to preempt, in case a higher tier snuck in.
+        if self._intervention_active.is_set():
+             # Re-read active tier (it might have changed since we released the lock)
+             current_active_tier = self._current_intervention_details.get("tier", 1)
+             if escalated_tier > current_active_tier:
+                 self.stop_intervention()
+                 if self.intervention_thread and self.intervention_thread.is_alive():
+                        self.intervention_thread.join(timeout=2.0)
+             else:
+                 # Race condition: A higher tier intervention started while we were releasing the lock.
+                 # We should yield to it.
+                 if logger:
+                     logger.log_info(f"Preemption aborted: Higher tier intervention (Tier {current_active_tier}) started during lock release.")
+                 return False
+
+        # --- 4. Commit and Execute ---
+        with self._lock:
+            # Double check if something else snuck in (unlikely given single threaded LogicEngine loop, but possible with async events)
+            if self._intervention_active.is_set():
+                 # Should be cleared by now.
+                 return False
 
             self._intervention_active.set()
             self._current_intervention_details = execution_details

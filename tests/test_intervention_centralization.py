@@ -103,23 +103,27 @@ class TestInterventionCentralization(unittest.TestCase):
             "description": "Test"
         })
 
-        # 1. First trigger (Tier 1 default)
-        with patch('threading.Thread'):
-            self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
+        # Mock time.time() to control intervals
+        with patch('time.time') as mock_time:
+            start_time = 1000.0
+            mock_time.return_value = start_time
 
-        self.assertEqual(self.engine._current_intervention_details["tier"], 1)
-        self.engine._intervention_active.clear()
+            # 1. First trigger (Tier 1 default)
+            with patch('threading.Thread'):
+                self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
 
-        # Reset cooldowns to allow immediate re-trigger for testing escalation
-        self.engine.last_intervention_time = 0
-        self.engine.last_category_trigger_time["default"] = 0
+            self.assertEqual(self.engine._current_intervention_details["tier"], 1)
+            self.engine._intervention_active.clear()
 
-        # 2. Second trigger immediately (Tier 1 requested)
-        # Should execute as Tier 2
-        with patch('threading.Thread'):
-            self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
+            # Advance time by 20s (past nag interval of 15s)
+            mock_time.return_value = start_time + 20.0
 
-        self.assertEqual(self.engine._current_intervention_details["tier"], 2, "Should escalate to Tier 2")
+            # 2. Second trigger (Tier 1 requested)
+            # Should execute as Tier 2 because it's within escalation window (60s) but past nag interval (15s)
+            with patch('threading.Thread'):
+                self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
+
+            self.assertEqual(self.engine._current_intervention_details["tier"], 2, "Should escalate to Tier 2")
         self.engine._intervention_active.clear()
 
         # Reset cooldowns again for third trigger
