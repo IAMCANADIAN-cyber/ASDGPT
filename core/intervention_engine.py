@@ -709,29 +709,64 @@ class InterventionEngine:
         current_time = time.time()
 
         with self._lock:
-            # 1. Check Category Cooldown
-            category_limit = self.category_cooldowns.get(category, self.category_cooldowns["default"])
-            last_cat_time = self.last_category_trigger_time.get(category, 0)
+            # --- Escalation Detection ---
+            is_escalation = False
+            last_occurrence = None
 
-            if current_time - last_cat_time < category_limit:
-                if logger: logger.log_info(f"Intervention suppressed: Category '{category}' cooldown active.")
-                return False
+            if intervention_id:
+                 # Look back in history
+                 for entry in reversed(self.recent_interventions):
+                     if entry["id"] == intervention_id:
+                         last_occurrence = entry
+                         break
 
-            # 2. Check Global Cooldown (unless bypassed)
-            # Categories that bypass global "nagging" limit: voice_command, system
-            bypass_global = category in ["voice_command", "system"]
-            is_system_msg = execution_details["type"] in ["mode_change_notification", "error_notification", "error_notification_spoken"] # Legacy check
+                 if last_occurrence:
+                     time_delta = current_time - last_occurrence["timestamp"]
+                     if time_delta < self.escalation_window:
+                         # Repeated trigger! Check tier.
+                         current_req_tier = execution_details.get("tier", 1)
+                         if current_req_tier <= last_occurrence["tier"]:
+                             # Escalate!
+                             is_escalation = True
+                             new_tier = last_occurrence["tier"] + 1
+                             if new_tier > 3: new_tier = 3
+                             execution_details["tier"] = new_tier
+                             if logger: logger.log_info(f"Escalation detected: '{intervention_id}' -> Tier {new_tier}")
 
-            if not bypass_global and not is_system_msg:
-                 if current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS:
-                    if logger: logger.log_info(f"Intervention suppressed: Global cooldown active.")
+            # --- Cooldown Checks ---
+
+            if is_escalation:
+                # Use Escalation Nag Interval
+                nag_interval = getattr(config, 'ESCALATION_NAG_INTERVAL', 15)
+                # Check time since last occurrence
+                if current_time - last_occurrence["timestamp"] < nag_interval:
+                     if logger: logger.log_info(f"Escalation suppressed: Nag interval ({nag_interval}s) not met.")
+                     return False
+                # If met, we BYPASS standard cooldowns
+                if logger: logger.log_info("Escalation bypassing standard cooldowns.")
+
+            else:
+                # Standard Cooldown Logic
+
+                # 1. Check Category Cooldown
+                category_limit = self.category_cooldowns.get(category, self.category_cooldowns["default"])
+                last_cat_time = self.last_category_trigger_time.get(category, 0)
+
+                if current_time - last_cat_time < category_limit:
+                    if logger: logger.log_info(f"Intervention suppressed: Category '{category}' cooldown active.")
                     return False
 
-            # Critical: If called from within an existing sequence or thread, this check might fail.
-            # But generally start_intervention is called from LogicEngine main thread.
-            # If an intervention is active, we ignore new ones unless they have higher priority (Tier system).
+                # 2. Check Global Cooldown (unless bypassed)
+                bypass_global = category in ["voice_command", "system"]
+                is_system_msg = execution_details["type"] in ["mode_change_notification", "error_notification", "error_notification_spoken"]
+
+                if not bypass_global and not is_system_msg:
+                     if current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS:
+                        if logger: logger.log_info(f"Intervention suppressed: Global cooldown active.")
+                        return False
+
+            # --- Priority / Preemption Check ---
             if self._intervention_active.is_set():
-                # Check priority: Higher tier preempts lower tier
                 current_tier = self._current_intervention_details.get("tier", 1)
                 new_tier = execution_details.get("tier", 1)
 
@@ -740,7 +775,6 @@ class InterventionEngine:
                         logger.log_info(f"Preempting active intervention (Tier {current_tier}) with higher priority intervention '{check_type}' (Tier {new_tier}).")
                     else:
                         print(f"Preempting active intervention (Tier {current_tier}) with higher priority intervention '{check_type}' (Tier {new_tier}).")
-                    # Release lock before stopping/waiting to avoid deadlock
                 else:
                     if logger:
                         logger.log_info(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_tier}, New Tier: {new_tier}).")
@@ -748,8 +782,7 @@ class InterventionEngine:
                         print(f"Intervention attempt ignored: An intervention is already active (Current Tier: {current_tier}, New Tier: {new_tier}).")
                     return False
 
-        # Handle Preemption outside lock (if needed)
-        # Re-check active state after potential preemption logic
+        # Handle Preemption outside lock
         if self._intervention_active.is_set():
              current_tier = self._current_intervention_details.get("tier", 1)
              new_tier = execution_details.get("tier", 1)
@@ -758,7 +791,6 @@ class InterventionEngine:
                  if self.intervention_thread and self.intervention_thread.is_alive():
                         self.intervention_thread.join(timeout=2.0)
              else:
-                 # Race condition: became active after lock release? Rare but possible.
                  return False
 
         current_app_mode = self.logic_engine.get_mode()
@@ -770,29 +802,7 @@ class InterventionEngine:
             return False
 
         with self._lock:
-            # --- Escalation Logic ---
-            # Check if same ID triggered recently
-            if intervention_id:
-                 # Look back in history
-                 # recent_interventions stores (timestamp, id, tier)
-                 # Find last occurrence of this ID
-                 last_occurrence = None
-                 for entry in reversed(self.recent_interventions):
-                     if entry["id"] == intervention_id:
-                         last_occurrence = entry
-                         break
-
-                 if last_occurrence:
-                     time_delta = current_time - last_occurrence["timestamp"]
-                     if time_delta < self.escalation_window:
-                         # Repeated trigger! Escalate.
-                         current_tier = execution_details.get("tier", 1)
-                         # Only escalate if it's the same tier (don't double escalate if we already did)
-                         if current_tier == last_occurrence["tier"]:
-                             new_tier = current_tier + 1
-                             execution_details["tier"] = new_tier
-                             if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {new_tier} due to repetition.")
-
+            # Re-confirm state (though we are single threaded here mostly)
             self._intervention_active.set()
             self._current_intervention_details = execution_details
             self.last_intervention_time = current_time
