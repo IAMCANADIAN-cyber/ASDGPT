@@ -103,38 +103,39 @@ class TestInterventionCentralization(unittest.TestCase):
             "description": "Test"
         })
 
-        # 1. First trigger (Tier 1 default)
-        with patch('threading.Thread'):
-            self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
+        # Mock time.time() to control intervals
+        with patch('time.time') as mock_time:
+            start_time = 1000.0
+            mock_time.return_value = start_time
 
-        self.assertEqual(self.engine._current_intervention_details["tier"], 1)
-        self.engine._intervention_active.clear()
+            # 1. First trigger (Tier 1 default)
+            with patch('threading.Thread'):
+                self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
 
-        # Reset cooldowns to allow immediate re-trigger for testing escalation
-        self.engine.last_intervention_time = 0
-        self.engine.last_category_trigger_time["default"] = 0
+            self.assertEqual(self.engine._current_intervention_details["tier"], 1)
+            self.engine._intervention_active.clear()
 
-        # 2. Second trigger immediately (Tier 1 requested)
-        # Should execute as Tier 2
-        with patch('threading.Thread'):
-            self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
+            # Advance time by 20s (past nag interval of 15s)
+            mock_time.return_value = start_time + 20.0
 
-        self.assertEqual(self.engine._current_intervention_details["tier"], 2, "Should escalate to Tier 2")
-        self.engine._intervention_active.clear()
+            # 2. Second trigger (Tier 1 requested)
+            # Should execute as Tier 2 because it's within escalation window (60s) but past nag interval (15s)
+            with patch('threading.Thread'):
+                self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
 
-        # Reset cooldowns again for third trigger
-        self.engine.last_intervention_time = 0
-        self.engine.last_category_trigger_time["default"] = 0
+            self.assertEqual(self.engine._current_intervention_details["tier"], 2, "Should escalate to Tier 2")
+            self.engine._intervention_active.clear()
 
-        # 3. Third trigger immediately
-        # Current logic: If requested Tier (1) matches last Tier (2), escalate. They don't match.
-        # So it resets to Tier 1. This prevents infinite escalation loops unless LogicEngine explicitly requests higher tiers.
-        # For now, we verify that it runs as Tier 1 (resetting escalation chain).
-        with patch('threading.Thread'):
-             self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
+            # 3. Third trigger (Tier 1 requested)
+            # Advance time again
+            mock_time.return_value = start_time + 40.0
 
-        # It resets to 1 because 1 != 2.
-        self.assertEqual(self.engine._current_intervention_details["tier"], 1)
+            with patch('threading.Thread'):
+                 self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
+
+            # Should escalate to Tier 3
+            self.assertEqual(self.engine._current_intervention_details["tier"], 3, "Should escalate to Tier 3")
+
 
     @patch('threading.Thread')
     def test_escalation_execution_sound(self, mock_thread):
