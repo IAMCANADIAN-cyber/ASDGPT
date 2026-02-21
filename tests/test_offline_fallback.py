@@ -59,8 +59,8 @@ class TestOfflineFallback(unittest.TestCase):
         # 7. Verify Intervention Triggered
         self.mock_intervention.start_intervention.assert_called()
         call_args = self.mock_intervention.start_intervention.call_args[0][0]
-        self.assertEqual(call_args.get("type"), "offline_noise_reduction")
-        self.assertIn("offline", call_args.get("message", "").lower())
+        self.assertEqual(call_args.get("id"), "offline_noise_reduction")
+        # message is no longer explicitly passed; handled by InterventionEngine via library
 
     def test_offline_fallback_delegation(self):
         """Test that offline fallback delegates to InterventionEngine."""
@@ -98,7 +98,7 @@ class TestOfflineFallback(unittest.TestCase):
 
         self.mock_intervention.start_intervention.assert_called()
         call_args = self.mock_intervention.start_intervention.call_args[0][0]
-        self.assertEqual(call_args.get("type"), "offline_activity_reduction")
+        self.assertEqual(call_args.get("id"), "offline_activity_reduction")
 
 if __name__ == '__main__':
     unittest.main()
