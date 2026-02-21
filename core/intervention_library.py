@@ -141,6 +141,15 @@ class InterventionLibrary:
             ],
             "cognitive": [
                 {
+                    "id": "distraction_alert",
+                    "tier": 2,
+                    "description": "Immediate distraction alert",
+                    "sequence": [
+                        {"action": "speak", "content": "Distraction detected. Is this what you want to be doing?"},
+                        {"action": "wait", "duration": 5}
+                    ]
+                },
+                {
                     "id": "context_switch",
                     "tier": 2,
                     "description": "Clear the mental buffer",
