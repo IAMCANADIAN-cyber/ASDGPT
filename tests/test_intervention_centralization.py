@@ -127,14 +127,12 @@ class TestInterventionCentralization(unittest.TestCase):
         self.engine.last_category_trigger_time["default"] = 0
 
         # 3. Third trigger immediately
-        # Current logic: If requested Tier (1) matches last Tier (2), escalate. They don't match.
-        # So it resets to Tier 1. This prevents infinite escalation loops unless LogicEngine explicitly requests higher tiers.
-        # For now, we verify that it runs as Tier 1 (resetting escalation chain).
+        # New Logic: Continuous Escalation. If we are at or below the previous tier (2), we bump it up (to 3).
         with patch('threading.Thread'):
              self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
 
-        # It resets to 1 because 1 != 2.
-        self.assertEqual(self.engine._current_intervention_details["tier"], 1)
+        # It escalates to 3.
+        self.assertEqual(self.engine._current_intervention_details["tier"], 3)
 
     @patch('threading.Thread')
     def test_escalation_execution_sound(self, mock_thread):

@@ -606,14 +606,12 @@ class LogicEngine:
 
         if reason == "high_audio_level":
             intervention_payload = {
-                "type": "offline_noise_reduction",
-                "message": "It's getting a bit loud, and I'm currently offline. You might want to lower the volume or take a break.",
+                "id": "offline_noise_reduction",
                 "tier": 1
             }
         elif reason == "high_video_activity":
             intervention_payload = {
-                "type": "offline_activity_reduction",
-                "message": "I'm detecting a lot of movement, but I can't reach the cloud. Maybe take a moment to settle?",
+                "id": "offline_activity_reduction",
                 "tier": 1
             }
 

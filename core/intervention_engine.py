@@ -787,9 +787,10 @@ class InterventionEngine:
                      if time_delta < self.escalation_window:
                          # Repeated trigger! Escalate.
                          current_tier = execution_details.get("tier", 1)
-                         # Only escalate if it's the same tier (don't double escalate if we already did)
-                         if current_tier == last_occurrence["tier"]:
-                             new_tier = current_tier + 1
+                         # Continuous Escalation: If we are at or below the previous tier, bump it up.
+                         # This allows 1 -> 2 -> 3 progression even if LogicEngine requests Tier 1 each time.
+                         if current_tier <= last_occurrence["tier"]:
+                             new_tier = last_occurrence["tier"] + 1
                              execution_details["tier"] = new_tier
                              if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {new_tier} due to repetition.")
 

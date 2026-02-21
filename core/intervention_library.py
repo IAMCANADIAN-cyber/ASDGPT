@@ -226,6 +226,24 @@ class InterventionLibrary:
                     ]
                 }
             ],
+            "system": [
+                {
+                    "id": "offline_noise_reduction",
+                    "tier": 1,
+                    "description": "Offline heuristic intervention for high noise.",
+                    "sequence": [
+                         {"action": "speak", "content": "It's getting a bit loud, and I'm currently offline. You might want to lower the volume or take a break."}
+                    ]
+                },
+                {
+                    "id": "offline_activity_reduction",
+                    "tier": 1,
+                    "description": "Offline heuristic intervention for high movement.",
+                    "sequence": [
+                        {"action": "speak", "content": "I'm detecting a lot of movement, but I can't reach the cloud. Maybe take a moment to settle?"}
+                    ]
+                }
+            ],
             "recovery": [
                 {
                     "id": "shutdown_reset",
