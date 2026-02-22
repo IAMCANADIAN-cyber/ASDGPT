@@ -17,13 +17,13 @@ class TestInterventionCentralization(unittest.TestCase):
         self.suppressions_file = os.path.join(self.test_dir, "suppressions.json")
 
         # Patch config values
-        # Global cooldown: 10s
-        # Reflexive cooldown: 5s
         self.config_patcher = patch.multiple(config,
             PREFERENCES_FILE=self.prefs_file,
             SUPPRESSIONS_FILE=self.suppressions_file,
             MIN_TIME_BETWEEN_INTERVENTIONS=10,
-            REFLEXIVE_WINDOW_COOLDOWN=5
+            REFLEXIVE_WINDOW_COOLDOWN=5,
+            ESCALATION_NAG_INTERVAL=0.1,  # Fast for testing
+            create=True
         )
         self.config_patcher.start()
 
@@ -41,10 +41,6 @@ class TestInterventionCentralization(unittest.TestCase):
         self.pil_patcher.start()
 
         self.engine = InterventionEngine(self.mock_logic, self.mock_app)
-        # Ensure cooldowns are using patched config (init happened after patch)
-        # But wait, config values are read at init. `getattr(config, ...)` works if config is patched.
-        # However, `InterventionEngine` reads `getattr` in `__init__`.
-        # So we must ensure patch is active before init. Yes, it is.
 
     def tearDown(self):
         self.config_patcher.stop()
@@ -56,36 +52,32 @@ class TestInterventionCentralization(unittest.TestCase):
     @patch('threading.Thread')
     def test_voice_command_bypasses_global_cooldown(self, mock_thread):
         """Verify that voice commands trigger even if global cooldown is active."""
-        # 1. Trigger a normal intervention to set global cooldown
         with patch('threading.Thread'):
             success = self.engine.start_intervention({"type": "normal", "message": "msg"}, category="default")
         self.assertTrue(success)
         self.engine._intervention_active.clear()
 
-        # 2. Immediately trigger a voice command
-        # Should succeed despite global cooldown
         with patch('threading.Thread'):
             success = self.engine.start_intervention({"type": "voice", "message": "cmd"}, category="voice_command")
-
         self.assertTrue(success, "Voice command should bypass global cooldown")
 
     @patch('threading.Thread')
     def test_reflexive_trigger_respects_cooldown(self, mock_thread):
         """Verify that reflexive triggers obey their specific cooldown."""
-        # 1. Trigger reflexive
         with patch('threading.Thread'):
             success = self.engine.start_intervention({"type": "reflex", "message": "msg"}, category="reflexive_window")
         self.assertTrue(success)
         self.engine._intervention_active.clear()
 
-        # 2. Trigger again immediately
         with patch('threading.Thread'):
             success = self.engine.start_intervention({"type": "reflex", "message": "msg"}, category="reflexive_window")
         self.assertFalse(success, "Reflexive trigger should be blocked by its cooldown")
 
-        # 3. Trigger after cooldown (5s patched)
+        # Advance time beyond cooldown (5s)
+        # We manually adjust the stored timestamps to simulate time passing
         self.engine.last_category_trigger_time["reflexive_window"] -= 6
-        self.engine.last_intervention_time -= 11 # Also clear global cooldown just in case (though it shouldn't matter if logic is right)
+        # Also adjust global intervention time to ensure it doesn't block (though category logic applies first)
+        self.engine.last_intervention_time -= 11
 
         with patch('threading.Thread'):
             success = self.engine.start_intervention({"type": "reflex", "message": "msg"}, category="reflexive_window")
@@ -93,10 +85,9 @@ class TestInterventionCentralization(unittest.TestCase):
 
     @patch('threading.Thread')
     def test_escalation_logic(self, mock_thread):
-        """Verify that repeated interventions escalate tier."""
+        """Verify that repeated interventions escalate tier monotonically."""
         intervention_id = "test_escalation"
 
-        # Mock library to return a card
         self.engine.library.get_intervention_by_id = MagicMock(return_value={
             "id": intervention_id,
             "tier": 1,
@@ -106,35 +97,30 @@ class TestInterventionCentralization(unittest.TestCase):
         # 1. First trigger (Tier 1 default)
         with patch('threading.Thread'):
             self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
-
         self.assertEqual(self.engine._current_intervention_details["tier"], 1)
         self.engine._intervention_active.clear()
 
-        # Reset cooldowns to allow immediate re-trigger for testing escalation
+        # Simulate time passing > Nag Interval but < Cooldown (if we were testing bypass)
+        # But here we just reset cooldowns to verify tier logic purely
+        time.sleep(0.15)
         self.engine.last_intervention_time = 0
         self.engine.last_category_trigger_time["default"] = 0
 
-        # 2. Second trigger immediately (Tier 1 requested)
-        # Should execute as Tier 2
+        # 2. Second trigger immediately (Tier 1 requested) -> Should execute as Tier 2
         with patch('threading.Thread'):
             self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
-
         self.assertEqual(self.engine._current_intervention_details["tier"], 2, "Should escalate to Tier 2")
         self.engine._intervention_active.clear()
 
-        # Reset cooldowns again for third trigger
+        # Reset cooldowns again
+        time.sleep(0.15)
         self.engine.last_intervention_time = 0
         self.engine.last_category_trigger_time["default"] = 0
 
-        # 3. Third trigger immediately
-        # Current logic: If requested Tier (1) matches last Tier (2), escalate. They don't match.
-        # So it resets to Tier 1. This prevents infinite escalation loops unless LogicEngine explicitly requests higher tiers.
-        # For now, we verify that it runs as Tier 1 (resetting escalation chain).
+        # 3. Third trigger immediately -> Should execute as Tier 3
         with patch('threading.Thread'):
              self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
-
-        # It resets to 1 because 1 != 2.
-        self.assertEqual(self.engine._current_intervention_details["tier"], 1)
+        self.assertEqual(self.engine._current_intervention_details["tier"], 3, "Should escalate to Tier 3")
 
     @patch('threading.Thread')
     def test_escalation_execution_sound(self, mock_thread):
@@ -142,7 +128,6 @@ class TestInterventionCentralization(unittest.TestCase):
         intervention_id = "test_sound_escalation"
         seq = [{"action": "speak", "content": "foo"}]
 
-        # Mock library
         self.engine.library.get_intervention_by_id = MagicMock(return_value={
             "id": intervention_id,
             "tier": 1,
@@ -150,30 +135,53 @@ class TestInterventionCentralization(unittest.TestCase):
             "description": "Test"
         })
 
-        # Mock _run_sequence to capture what is passed
         self.engine._run_sequence = MagicMock()
         self.engine._speak = MagicMock()
         self.engine._play_sound = MagicMock()
 
-        # 1. Trigger Tier 2 directly (simulating escalation or direct call)
-        # Note: We pass "tier": 2 in details, which overrides library tier 1
+        # Trigger Tier 2 directly
         details = {"id": intervention_id, "tier": 2}
-
-        with patch('threading.Thread') as mock_t:
-             # We need to run the target function of the thread to test _run_intervention_thread logic
+        with patch('threading.Thread'):
              self.engine.start_intervention(details, category="default")
-             # Manually invoke the target
              self.engine._run_intervention_thread()
 
-        # Check if sound was added
-        # _run_sequence called with modified sequence
         args, _ = self.engine._run_sequence.call_args
         executed_seq = args[0]
-
-        # Expect: Sound (chime/test_tone) + Speak
         self.assertEqual(executed_seq[0]["action"], "sound")
         self.assertIn("test_tone.wav", executed_seq[0]["file"])
         self.assertEqual(executed_seq[1]["action"], "speak")
+
+    @patch('threading.Thread')
+    def test_escalation_bypass_cooldown(self, mock_thread):
+        """Verify that escalation bypasses category cooldown but respects nag interval."""
+        intervention_id = "test_bypass"
+
+        # Nag interval is 0.1s via setUp config
+        # Reflexive cooldown is 5s
+
+        self.engine.library.get_intervention_by_id = MagicMock(return_value={
+            "id": intervention_id, "tier": 1, "description": "Test"
+        })
+
+        # 1. Trigger
+        with patch('threading.Thread'):
+            self.engine.start_intervention({"id": intervention_id}, category="reflexive_window")
+        self.engine._intervention_active.clear()
+
+        # 2. Trigger immediately (delta < nag) -> Should fail
+        # No time sleep, so delta is ~0
+        with patch('threading.Thread'):
+            success = self.engine.start_intervention({"id": intervention_id}, category="reflexive_window")
+        self.assertFalse(success, "Should be blocked by nag interval")
+
+        # 3. Trigger after nag (0.2s) but before category cooldown (5s) -> Should succeed & Escalate
+        time.sleep(0.2)
+
+        with patch('threading.Thread'):
+             success = self.engine.start_intervention({"id": intervention_id}, category="reflexive_window")
+
+        self.assertTrue(success, "Should bypass category cooldown due to escalation")
+        self.assertEqual(self.engine._current_intervention_details["tier"], 2)
 
 if __name__ == '__main__':
     unittest.main()
