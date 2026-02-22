@@ -2,9 +2,14 @@ import unittest
 import sys
 import os
 import json
+from unittest.mock import MagicMock
 
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+
+# Mock pyautogui before importing tools.replay_harness which imports logic_engine which imports music_interface
+sys.modules['pyautogui'] = MagicMock()
+sys.modules['mouseinfo'] = MagicMock()
 
 from tools.replay_harness import ReplayHarness
 import config
