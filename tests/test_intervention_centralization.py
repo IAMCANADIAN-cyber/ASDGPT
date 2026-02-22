@@ -19,11 +19,13 @@ class TestInterventionCentralization(unittest.TestCase):
         # Patch config values
         # Global cooldown: 10s
         # Reflexive cooldown: 5s
+        # Escalation Nag Interval: 0s (to allow testing immediate escalation)
         self.config_patcher = patch.multiple(config,
             PREFERENCES_FILE=self.prefs_file,
             SUPPRESSIONS_FILE=self.suppressions_file,
             MIN_TIME_BETWEEN_INTERVENTIONS=10,
-            REFLEXIVE_WINDOW_COOLDOWN=5
+            REFLEXIVE_WINDOW_COOLDOWN=5,
+            ESCALATION_NAG_INTERVAL=0
         )
         self.config_patcher.start()
 
@@ -127,14 +129,13 @@ class TestInterventionCentralization(unittest.TestCase):
         self.engine.last_category_trigger_time["default"] = 0
 
         # 3. Third trigger immediately
-        # Current logic: If requested Tier (1) matches last Tier (2), escalate. They don't match.
-        # So it resets to Tier 1. This prevents infinite escalation loops unless LogicEngine explicitly requests higher tiers.
-        # For now, we verify that it runs as Tier 1 (resetting escalation chain).
+        # Updated Logic: If requested Tier (1) <= last Tier (2), continue escalating.
+        # This ensures that persistent behavior escalates even if the trigger source is unaware of the current tier.
         with patch('threading.Thread'):
              self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
 
-        # It resets to 1 because 1 != 2.
-        self.assertEqual(self.engine._current_intervention_details["tier"], 1)
+        # It escalates to 3 because 1 <= 2.
+        self.assertEqual(self.engine._current_intervention_details["tier"], 3)
 
     @patch('threading.Thread')
     def test_escalation_execution_sound(self, mock_thread):
