@@ -47,16 +47,34 @@ The system loads configuration in the following priority order (highest to lowes
 | `VAD_WEAK_THRESHOLD` | 0.4 | Confidence threshold for weak speech detection. |
 | `VAD_STRONG_THRESHOLD` | 0.7 | Confidence threshold for strong speech detection. |
 
+### Video Polling & Eco Mode
+
+These settings control the trade-off between responsiveness and CPU usage (Deep Eco Mode).
+
+| Key | Default | Description |
+| :--- | :--- | :--- |
+| `VIDEO_ACTIVE_DELAY` | 0.05 | Seconds between frames when active (approx 20 FPS). |
+| `VIDEO_ECO_MODE_DELAY` | 0.2 | Seconds between frames in Eco Mode (approx 5 FPS). |
+| `VIDEO_ECO_HEARTBEAT_INTERVAL` | 1.0 | Max seconds between face checks in deep sleep. |
+
 ## Logic & Behavior
 
 | Key | Default | Description |
 | :--- | :--- | :--- |
 | `MEETING_MODE_SPEECH_DURATION_THRESHOLD` | 3.0 | Seconds of continuous speech to trigger Meeting Mode. |
 | `MEETING_MODE_IDLE_KEYBOARD_THRESHOLD` | 10.0 | Seconds of no keyboard input required for Meeting Mode. |
+| `MEETING_MODE_SPEECH_GRACE_PERIOD` | 2.0 | Seconds of silence allowed before ending a speech segment. |
 | `DOOM_SCROLL_THRESHOLD` | 3 | Number of "phone_usage" context tags to trigger intervention. |
 | `REFLEXIVE_WINDOW_TRIGGERS` | (See config.py) | Map of window titles (e.g., "Steam") to intervention IDs. |
 | `REFLEXIVE_WINDOW_COOLDOWN` | 300 | Seconds before a reflexive trigger can fire again. |
-| `HISTORY_WINDOW_SIZE` | 5 | Number of context snapshots (approx 50s) sent to LMM. |
+
+### Context History
+
+| Key | Default | Description |
+| :--- | :--- | :--- |
+| `HISTORY_SAMPLE_INTERVAL` | 10 | Seconds between history snapshots. |
+| `HISTORY_WINDOW_SIZE` | 5 | Number of snapshots to keep for LMM context. |
+| `RAPID_SWITCHING_THRESHOLD` | 4 | Number of unique windows in history to trigger alert. |
 
 ## Focus & Distraction
 
@@ -110,7 +128,13 @@ Configure lists of applications to automatically classify activities.
 | :--- | :--- | :--- |
 | `TTS_ENGINE` | "system" | "system" (pyttsx3) or "coqui" (XTTS). |
 | `TTS_VOICE_ID` | None | Specific voice ID for system TTS. |
+| `TTS_MODEL_NAME` | "tts_models..." | Model name for Coqui TTS (XTTS v2 default). |
 | `TTS_VOICE_CLONE_SOURCE` | None | Path to WAV file for voice cloning (Coqui only). |
+
+### Music Control
+| Key | Default | Description |
+| :--- | :--- | :--- |
+| `ENABLE_MUSIC_CONTROL` | False | Enable Spotify/Music integration based on mood. |
 
 ### Erotic Content & Privacy
 | Key | Default | Description |
