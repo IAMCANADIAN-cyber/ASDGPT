@@ -85,3 +85,8 @@ Here are the reviews and recommendations for the open Pull Requests (branches) a
 *   **Status:** **Verified (All Tests Pass)**
 *   **Reasoning:** Executed full test suite (`python -m pytest`) including new Wayland support and Feb 19 updates. All 395 tests passed.
 *   **Action:** No outstanding code issues found. Codebase is stable.
+
+## 17. `origin/roadmapper/weekly-refresh-feb-26-integration-13522582000585637782`
+*   **Status:** **Merged (Manually Applied)**
+*   **Recommendation:** **2: Accept Incoming**
+*   **Reasoning:** Updates `ROADMAP.md` to the 2026-02-26 version. Manually applied changes including the addition of `tests/scenarios/test_doom_scroll_dataset.py` (renamed from `tests/test_scenario_json.py`) which verifies `datasets/doom_scroll.json` with 100% accuracy. **Verified content is in HEAD and all 404 tests pass.**
