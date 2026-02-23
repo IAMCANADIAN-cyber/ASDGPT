@@ -87,7 +87,8 @@ Executes the actual "co-regulation" actions.
 
 *   **Actions**: `speak` (via VoiceInterface), `play_sound`, `show_visual`.
 *   **Prioritization**: System Triggers > LMM Suggestions.
-*   **Suppression**: Interventions marked "unhelpful" are blocked for a cooldown period.
+*   **Escalation Policy**: Repeated triggers (within 60s) escalate the Intervention Tier (e.g., Tier 1 Message -> Tier 2 Chime + Message -> Tier 3 Urgent Tone). Escalation is monotonic (urgency only increases).
+*   **Suppression**: Interventions marked "unhelpful" are blocked for a cooldown period. Centralized category cooldowns prevent log spam.
 
 ### 8. Feedback Loop
 User feedback determines future system behavior.
