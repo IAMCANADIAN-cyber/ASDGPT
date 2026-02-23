@@ -81,7 +81,12 @@ Here are the reviews and recommendations for the open Pull Requests (branches) a
 *   **Recommendation:** **2: Accept Incoming**
 *   **Reasoning:** Implements robust KDE Wayland window title detection using regex parsing. Verified with new tests in `tests/test_window_sensor_wayland.py`. **Verified content is in HEAD and tests pass.**
 
-## 16. Final Verification (2026-02-19)
+## 16. `origin/roadmapper/weekly-refresh-feb-26-14550974276103232712`
+*   **Status:** **Merged (Manually Applied)**
+*   **Recommendation:** **2: Accept Incoming**
+*   **Reasoning:** Updates `ROADMAP.md` to the 2026-02-26 version and adds `tests/test_scenario_json.py` to verify the "Doom Scroll" dataset. Content verified and manually applied to HEAD.
+
+## 17. Final Verification (2026-02-26)
 *   **Status:** **Verified (All Tests Pass)**
-*   **Reasoning:** Executed full test suite (`python -m pytest`) including new Wayland support and Feb 19 updates. All 395 tests passed.
+*   **Reasoning:** Executed full test suite (`python -m pytest`) including new Doom Scroll scenario test and Feb 26 updates. All tests passed.
 *   **Action:** No outstanding code issues found. Codebase is stable.
