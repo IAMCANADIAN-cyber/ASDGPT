@@ -692,6 +692,28 @@ class InterventionEngine:
         # We need to check both the ID (if present and used as type) and the generic 'type'
         check_type = execution_details.get("type", intervention_type)
 
+        # --- Escalation Logic Pre-Check for Cooldown Bypass ---
+        # If this is a repeated trigger within the escalation window, we might bypass cooldowns
+        # provided we respect the minimum "nag" interval.
+        bypass_cooldowns_for_escalation = False
+        nag_interval = getattr(config, 'ESCALATION_NAG_INTERVAL', 15)
+
+        if intervention_id:
+             # Look back in history for recent occurrence of same ID
+             last_occurrence = None
+             for entry in reversed(self.recent_interventions):
+                 if entry["id"] == intervention_id:
+                     last_occurrence = entry
+                     break
+
+             if last_occurrence:
+                 time_delta = time.time() - last_occurrence["timestamp"]
+                 # Check if within escalation window AND waited long enough (nag interval)
+                 if time_delta < self.escalation_window:
+                     if time_delta >= nag_interval:
+                         bypass_cooldowns_for_escalation = True
+                         if logger: logger.log_debug(f"Bypassing cooldowns for escalation of '{intervention_id}' (Time Delta: {time_delta:.1f}s).")
+
         if check_type in self.suppressed_interventions:
             expiry = self.suppressed_interventions[check_type]
             if time.time() < expiry:
@@ -713,16 +735,17 @@ class InterventionEngine:
             category_limit = self.category_cooldowns.get(category, self.category_cooldowns["default"])
             last_cat_time = self.last_category_trigger_time.get(category, 0)
 
-            if current_time - last_cat_time < category_limit:
-                if logger: logger.log_info(f"Intervention suppressed: Category '{category}' cooldown active.")
-                return False
+            if not bypass_cooldowns_for_escalation:
+                if current_time - last_cat_time < category_limit:
+                    if logger: logger.log_info(f"Intervention suppressed: Category '{category}' cooldown active.")
+                    return False
 
             # 2. Check Global Cooldown (unless bypassed)
             # Categories that bypass global "nagging" limit: voice_command, system
             bypass_global = category in ["voice_command", "system"]
             is_system_msg = execution_details["type"] in ["mode_change_notification", "error_notification", "error_notification_spoken"] # Legacy check
 
-            if not bypass_global and not is_system_msg:
+            if not bypass_global and not is_system_msg and not bypass_cooldowns_for_escalation:
                  if current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS:
                     if logger: logger.log_info(f"Intervention suppressed: Global cooldown active.")
                     return False
@@ -787,11 +810,16 @@ class InterventionEngine:
                      if time_delta < self.escalation_window:
                          # Repeated trigger! Escalate.
                          current_tier = execution_details.get("tier", 1)
-                         # Only escalate if it's the same tier (don't double escalate if we already did)
-                         if current_tier == last_occurrence["tier"]:
-                             new_tier = current_tier + 1
+                         last_tier = last_occurrence.get("tier", 1)
+
+                         # Monotonic escalation: always escalate if persistent
+                         new_tier = max(current_tier, last_tier + 1)
+                         if new_tier > 3:
+                             new_tier = 3
+
+                         if new_tier != current_tier:
                              execution_details["tier"] = new_tier
-                             if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {new_tier} due to repetition.")
+                             if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {new_tier} due to repetition (Last: {last_tier}).")
 
             self._intervention_active.set()
             self._current_intervention_details = execution_details

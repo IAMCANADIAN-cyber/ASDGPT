@@ -196,6 +196,15 @@ class InterventionLibrary:
                         {"action": "speak", "content": "Maybe just a sip of water, or standing up."},
                         {"action": "visual_prompt", "content": "Minimum Viable Action"}
                     ]
+                },
+                {
+                    "id": "distraction_alert",
+                    "tier": 2,
+                    "description": "Alert for persistent distraction app usage.",
+                    "sequence": [
+                        {"action": "speak", "content": "Distraction detected."},
+                        {"action": "visual_prompt", "content": "Focus on your goal."}
+                    ]
                 }
             ],
             "creative": [
