@@ -136,6 +136,7 @@ BASELINE_POSTURE = _get_conf("BASELINE_POSTURE", {}, dict)
 
 # --- Intervention Engine ---
 MIN_TIME_BETWEEN_INTERVENTIONS = _get_conf("MIN_TIME_BETWEEN_INTERVENTIONS", 300, int)
+ESCALATION_NAG_INTERVAL = _get_conf("ESCALATION_NAG_INTERVAL", 15, int) # Minimum time before re-triggering for escalation
 DEFAULT_INTERVENTION_DURATION = _get_conf("DEFAULT_INTERVENTION_DURATION", 30, int)
 
 # --- Erotic Content Creation ---
