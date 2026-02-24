@@ -94,6 +94,11 @@ class TestInterventionCentralization(unittest.TestCase):
     @patch('threading.Thread')
     def test_escalation_logic(self, mock_thread):
         """Verify that repeated interventions escalate tier."""
+        # Allow immediate escalation for this test
+        with patch.object(config, 'ESCALATION_NAG_INTERVAL', 0):
+            self._run_escalation_logic_test()
+
+    def _run_escalation_logic_test(self):
         intervention_id = "test_escalation"
 
         # Mock library to return a card
@@ -133,8 +138,9 @@ class TestInterventionCentralization(unittest.TestCase):
         with patch('threading.Thread'):
              self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
 
-        # It resets to 1 because 1 != 2.
-        self.assertEqual(self.engine._current_intervention_details["tier"], 1)
+        # New Logic: Monotonic escalation ensures we don't reset to 1 if user persists.
+        # Since 1 <= 2, we escalate to 3.
+        self.assertEqual(self.engine._current_intervention_details["tier"], 3)
 
     @patch('threading.Thread')
     def test_escalation_execution_sound(self, mock_thread):
@@ -174,6 +180,38 @@ class TestInterventionCentralization(unittest.TestCase):
         self.assertEqual(executed_seq[0]["action"], "sound")
         self.assertIn("test_tone.wav", executed_seq[0]["file"])
         self.assertEqual(executed_seq[1]["action"], "speak")
+
+    @patch('time.time')
+    @patch('threading.Thread')
+    def test_escalation_bypasses_cooldown(self, mock_thread, mock_time):
+        """Verify that escalation bypasses category cooldown."""
+        start_time = 1000.0
+        intervention_id = "test_escalation_bypass"
+
+        mock_time.return_value = start_time
+
+        # 1. First trigger (Tier 1)
+        details = {"id": intervention_id, "tier": 1, "type": "test", "message": "msg"}
+        success = self.engine.start_intervention(details, category="reflexive_window")
+        self.assertTrue(success)
+        self.assertEqual(self.engine._current_intervention_details["tier"], 1)
+        self.engine._intervention_active.clear()
+
+        # 2. Trigger immediately (T+2s).
+        # Should be suppressed (Too soon for escalation, too soon for cooldown)
+        mock_time.return_value = start_time + 2.0
+        success_immediate = self.engine.start_intervention(details, category="reflexive_window")
+        self.assertFalse(success_immediate, "Immediate re-trigger should be suppressed")
+
+        # 3. Trigger after Nag Interval (T+16s). Nag=15s (default in config, but we patched config? No, explicit patch in test setup?)
+        # In setUp, we patched config.MIN_TIME_BETWEEN_INTERVENTIONS=10.
+        # But we didn't patch ESCALATION_NAG_INTERVAL. It will read from config.py (15).
+        # So 16s > 15s.
+
+        mock_time.return_value = start_time + 16.0
+        success_escalated = self.engine.start_intervention(details, category="reflexive_window")
+        self.assertTrue(success_escalated, "Should bypass cooldown due to escalation")
+        self.assertEqual(self.engine._current_intervention_details["tier"], 2, "Should escalate to Tier 2")
 
 if __name__ == '__main__':
     unittest.main()
