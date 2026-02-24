@@ -309,7 +309,6 @@ class LogicEngine:
                 if self.intervention_engine:
                     voice_intervention_id = self._check_voice_commands(text)
                     if voice_intervention_id:
-                        self.logger.log_info(f"Triggering Voice Command Intervention: {voice_intervention_id}")
                         self.intervention_engine.start_intervention(
                             {"id": voice_intervention_id, "tier": 2},
                             category="voice_command"
@@ -618,7 +617,6 @@ class LogicEngine:
             }
 
         if intervention_payload and self.intervention_engine:
-            self.logger.log_info(f"Triggering Offline Fallback Intervention: {reason}")
             self.intervention_engine.start_intervention(
                 intervention_payload,
                 category="offline_fallback"
@@ -685,7 +683,6 @@ class LogicEngine:
                     active_win = self.window_sensor.get_active_window(sanitize=False)
                     reflex_id = self._check_window_reflexes(active_win)
                     if reflex_id:
-                        self.logger.log_info(f"Triggering Reflexive Intervention: {reflex_id}")
                         self.intervention_engine.start_intervention(
                             {"id": reflex_id, "tier": 2},
                             category="reflexive_window"

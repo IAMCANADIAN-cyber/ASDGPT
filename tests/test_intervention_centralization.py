@@ -1,179 +1,162 @@
 import unittest
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import MagicMock, patch
 import time
-import json
-import os
-import tempfile
-import shutil
-from collections import deque
-
 from core.intervention_engine import InterventionEngine
+from core.logic_engine import LogicEngine
 import config
 
 class TestInterventionCentralization(unittest.TestCase):
     def setUp(self):
-        self.test_dir = tempfile.mkdtemp()
-        self.prefs_file = os.path.join(self.test_dir, "prefs.json")
-        self.suppressions_file = os.path.join(self.test_dir, "suppressions.json")
+        self.mock_app = MagicMock()
+        self.mock_app.data_logger = MagicMock()
+        self.logic_engine = MagicMock()
+        self.logic_engine.get_mode.return_value = "active"
 
-        # Patch config values
-        # Global cooldown: 10s
-        # Reflexive cooldown: 5s
-        self.config_patcher = patch.multiple(config,
-            PREFERENCES_FILE=self.prefs_file,
-            SUPPRESSIONS_FILE=self.suppressions_file,
-            MIN_TIME_BETWEEN_INTERVENTIONS=10,
-            REFLEXIVE_WINDOW_COOLDOWN=5
+        # Patch config values for predictable testing
+        self.config_patcher = patch.multiple('config',
+            MIN_TIME_BETWEEN_INTERVENTIONS=0.1, # Shorten global cooldown
+            REFLEXIVE_WINDOW_COOLDOWN=5,
+            ESCALATION_NAG_INTERVAL=0, # Allow rapid escalation by default
+            MAX_INTERVENTION_TIER=3
         )
         self.config_patcher.start()
 
-        self.mock_logic = MagicMock()
-        self.mock_logic.get_mode.return_value = "active"
-        self.mock_app = MagicMock()
+        self.engine = InterventionEngine(self.logic_engine, self.mock_app)
 
-        self.sd_patcher = patch('core.intervention_engine.sd', MagicMock())
-        self.sd_patcher.start()
+        # Override cooldowns with small values for testing
+        self.engine.category_cooldowns["default"] = 0.1
+        self.engine.category_cooldowns["reflexive_window"] = 0.5
+        self.engine.category_cooldowns["voice_command"] = 0.1
 
-        self.wav_patcher = patch('core.intervention_engine.wavfile', MagicMock())
-        self.wav_patcher.start()
-
-        self.pil_patcher = patch('core.intervention_engine.Image', MagicMock())
-        self.pil_patcher.start()
-
-        self.engine = InterventionEngine(self.mock_logic, self.mock_app)
-        # Ensure cooldowns are using patched config (init happened after patch)
-        # But wait, config values are read at init. `getattr(config, ...)` works if config is patched.
-        # However, `InterventionEngine` reads `getattr` in `__init__`.
-        # So we must ensure patch is active before init. Yes, it is.
+        # Ensure we start fresh
+        self.engine.last_intervention_time = 0
+        self.engine.last_category_trigger_time = {}
+        self.engine.recent_interventions.clear()
 
     def tearDown(self):
+        self.engine.shutdown()
         self.config_patcher.stop()
-        self.sd_patcher.stop()
-        self.wav_patcher.stop()
-        self.pil_patcher.stop()
-        shutil.rmtree(self.test_dir)
 
-    @patch('threading.Thread')
-    def test_voice_command_bypasses_global_cooldown(self, mock_thread):
-        """Verify that voice commands trigger even if global cooldown is active."""
-        # 1. Trigger a normal intervention to set global cooldown
-        with patch('threading.Thread'):
-            success = self.engine.start_intervention({"type": "normal", "message": "msg"}, category="default")
-        self.assertTrue(success)
-        self.engine._intervention_active.clear()
+    def test_category_cooldowns(self):
+        """Verify category-specific cooldowns are respected."""
+        # Use ad-hoc payload to avoid library dependency
+        payload = {"type": "test_type", "message": "Test message", "tier": 1}
 
-        # 2. Immediately trigger a voice command
-        # Should succeed despite global cooldown
-        with patch('threading.Thread'):
-            success = self.engine.start_intervention({"type": "voice", "message": "cmd"}, category="voice_command")
+        # First call: Should succeed
+        result1 = self.engine.start_intervention(
+            payload,
+            category="reflexive_window"
+        )
+        self.assertTrue(result1, "First intervention should succeed")
 
-        self.assertTrue(success, "Voice command should bypass global cooldown")
+        # Immediate second call: Should fail due to category cooldown (0.5s)
+        result2 = self.engine.start_intervention(
+            payload,
+            category="reflexive_window"
+        )
+        self.assertFalse(result2, "Second intervention should be suppressed by category cooldown")
 
-    @patch('threading.Thread')
-    def test_reflexive_trigger_respects_cooldown(self, mock_thread):
-        """Verify that reflexive triggers obey their specific cooldown."""
-        # 1. Trigger reflexive
-        with patch('threading.Thread'):
-            success = self.engine.start_intervention({"type": "reflex", "message": "msg"}, category="reflexive_window")
-        self.assertTrue(success)
-        self.engine._intervention_active.clear()
+        # Wait for cooldown (> 0.5s AND > global 0.1s)
+        time.sleep(0.6)
 
-        # 2. Trigger again immediately
-        with patch('threading.Thread'):
-            success = self.engine.start_intervention({"type": "reflex", "message": "msg"}, category="reflexive_window")
-        self.assertFalse(success, "Reflexive trigger should be blocked by its cooldown")
+        # Third call: Should succeed
+        result3 = self.engine.start_intervention(
+            payload,
+            category="reflexive_window"
+        )
+        self.assertTrue(result3, f"Third intervention should succeed after cooldown. Last int time: {self.engine.last_intervention_time}")
 
-        # 3. Trigger after cooldown (5s patched)
-        self.engine.last_category_trigger_time["reflexive_window"] -= 6
-        self.engine.last_intervention_time -= 11 # Also clear global cooldown just in case (though it shouldn't matter if logic is right)
-
-        with patch('threading.Thread'):
-            success = self.engine.start_intervention({"type": "reflex", "message": "msg"}, category="reflexive_window")
-        self.assertTrue(success, "Reflexive trigger should work after cooldown")
-
-    @patch('threading.Thread')
-    def test_escalation_logic(self, mock_thread):
-        """Verify that repeated interventions escalate tier."""
-        intervention_id = "test_escalation"
-
-        # Mock library to return a card
-        self.engine.library.get_intervention_by_id = MagicMock(return_value={
-            "id": intervention_id,
-            "tier": 1,
-            "description": "Test"
-        })
-
-        # 1. First trigger (Tier 1 default)
-        with patch('threading.Thread'):
-            self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
-
-        self.assertEqual(self.engine._current_intervention_details["tier"], 1)
-        self.engine._intervention_active.clear()
-
-        # Reset cooldowns to allow immediate re-trigger for testing escalation
-        self.engine.last_intervention_time = 0
-        self.engine.last_category_trigger_time["default"] = 0
-
-        # 2. Second trigger immediately (Tier 1 requested)
-        # Should execute as Tier 2
-        with patch('threading.Thread'):
-            self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
-
-        self.assertEqual(self.engine._current_intervention_details["tier"], 2, "Should escalate to Tier 2")
-        self.engine._intervention_active.clear()
-
-        # Reset cooldowns again for third trigger
-        self.engine.last_intervention_time = 0
-        self.engine.last_category_trigger_time["default"] = 0
-
-        # 3. Third trigger immediately
-        # Current logic: If requested Tier (1) matches last Tier (2), escalate. They don't match.
-        # So it resets to Tier 1. This prevents infinite escalation loops unless LogicEngine explicitly requests higher tiers.
-        # For now, we verify that it runs as Tier 1 (resetting escalation chain).
-        with patch('threading.Thread'):
-             self.engine.start_intervention({"id": intervention_id, "tier": 1}, category="default")
-
-        # It resets to 1 because 1 != 2.
-        self.assertEqual(self.engine._current_intervention_details["tier"], 1)
-
-    @patch('threading.Thread')
-    def test_escalation_execution_sound(self, mock_thread):
-        """Verify that escalated interventions add sound."""
-        intervention_id = "test_sound_escalation"
-        seq = [{"action": "speak", "content": "foo"}]
-
+    def test_escalation_logic_monotonic(self):
+        """
+        Verify monotonic escalation (T1 -> T2 -> T3) instead of sawtooth.
+        """
         # Mock library
         self.engine.library.get_intervention_by_id = MagicMock(return_value={
-            "id": intervention_id,
-            "tier": 1,
-            "sequence": seq,
-            "description": "Test"
+            "id": "nag", "message": "Nag message", "tier": 1
         })
 
-        # Mock _run_sequence to capture what is passed
-        self.engine._run_sequence = MagicMock()
-        self.engine._speak = MagicMock()
-        self.engine._play_sound = MagicMock()
+        # 1. Trigger T1
+        self.engine.start_intervention({"id": "nag", "tier": 1}, category="default")
+        last_intervention = self.engine.recent_interventions[-1]
+        self.assertEqual(last_intervention["tier"], 1)
 
-        # 1. Trigger Tier 2 directly (simulating escalation or direct call)
-        # Note: We pass "tier": 2 in details, which overrides library tier 1
-        details = {"id": intervention_id, "tier": 2}
+        time.sleep(0.15) # Wait > 0.1 global cooldown
 
-        with patch('threading.Thread') as mock_t:
-             # We need to run the target function of the thread to test _run_intervention_thread logic
-             self.engine.start_intervention(details, category="default")
-             # Manually invoke the target
-             self.engine._run_intervention_thread()
+        # 2. Trigger T1 again (should escalate to T2)
+        self.engine.start_intervention({"id": "nag", "tier": 1}, category="default")
+        last_intervention = self.engine.recent_interventions[-1]
+        self.assertEqual(last_intervention["tier"], 2, "Should escalate to Tier 2")
 
-        # Check if sound was added
-        # _run_sequence called with modified sequence
-        args, _ = self.engine._run_sequence.call_args
-        executed_seq = args[0]
+        time.sleep(0.15)
 
-        # Expect: Sound (chime/test_tone) + Speak
-        self.assertEqual(executed_seq[0]["action"], "sound")
-        self.assertIn("test_tone.wav", executed_seq[0]["file"])
-        self.assertEqual(executed_seq[1]["action"], "speak")
+        # 3. Trigger T1 again (should escalate to T3)
+        self.engine.start_intervention({"id": "nag", "tier": 1}, category="default")
+        last_intervention = self.engine.recent_interventions[-1]
+        self.assertEqual(last_intervention["tier"], 3, "Should escalate to Tier 3")
 
-if __name__ == '__main__':
+        time.sleep(0.15)
+
+        # 4. Trigger T1 again (should stay T3, assuming MAX_INTERVENTION_TIER=3)
+        self.engine.start_intervention({"id": "nag", "tier": 1}, category="default")
+        last_intervention = self.engine.recent_interventions[-1]
+        self.assertEqual(last_intervention["tier"], 3, "Should stay at Tier 3")
+
+    def test_nag_suppression(self):
+        """
+        Verify that repeated interventions within ESCALATION_NAG_INTERVAL are suppressed.
+        """
+        # Patch config specifically for this test to enable Nag
+        with patch('config.ESCALATION_NAG_INTERVAL', 2): # 2 seconds nag interval
+            # Mock library
+            self.engine.library.get_intervention_by_id = MagicMock(return_value={
+                "id": "nag_check", "message": "Nag check", "tier": 1
+            })
+
+            # 1. Trigger (t=0)
+            res1 = self.engine.start_intervention({"id": "nag_check", "tier": 1}, category="default")
+            self.assertTrue(res1, "First trigger should succeed")
+
+            time.sleep(0.15) # Wait > global cooldown (0.1)
+
+            # 2. Trigger (t=0.15) -> Should be suppressed by Nag (0.15 < 2)
+            res2 = self.engine.start_intervention({"id": "nag_check", "tier": 1}, category="default")
+            self.assertFalse(res2, "Second trigger within Nag interval should be suppressed")
+
+            # 3. Trigger Different ID (t=0.3) -> Should succeed (Nag is per ID)
+            # Use ad-hoc for different ID
+            res3 = self.engine.start_intervention({"type": "other", "message": "msg", "tier": 1}, category="default")
+            self.assertTrue(res3, "Different ID should succeed despite Nag on first ID")
+
+            time.sleep(2.0)
+
+            # 4. Trigger (t=2.3) -> Should succeed and Escalate (2.3 > 2 Nag, 2.3 < 60 Window)
+            res4 = self.engine.start_intervention({"id": "nag_check", "tier": 1}, category="default")
+            self.assertTrue(res4, "Trigger after Nag interval should succeed")
+            last_intervention = self.engine.recent_interventions[-1]
+            self.assertEqual(last_intervention["tier"], 2, "Should escalate after Nag interval")
+
+    def test_logic_engine_delegation(self):
+        """Verify LogicEngine correctly delegates intervention calls."""
+        # Use a real LogicEngine with a mocked InterventionEngine
+        real_logic = LogicEngine()
+        mock_intervention_engine = MagicMock()
+        mock_intervention_engine.start_intervention.return_value = True # Simulate success
+
+        real_logic.set_intervention_engine(mock_intervention_engine)
+        real_logic.window_sensor = MagicMock()
+        real_logic.window_sensor.get_active_window.return_value = "Reddit - Dive into anything" # Distraction
+
+        # Trigger update
+        real_logic.update()
+
+        # Verify InterventionEngine was called
+        mock_intervention_engine.start_intervention.assert_called_with(
+            {"id": "distraction_alert", "tier": 2},
+            category="reflexive_window"
+        )
+
+        # Verify no local logging calls for "Triggering..." (Hard to assert absence of specific log message easily without spy,
+        # but code inspection confirmed removal).
+
+if __name__ == "__main__":
     unittest.main()

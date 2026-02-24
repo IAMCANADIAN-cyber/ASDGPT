@@ -770,12 +770,9 @@ class InterventionEngine:
             return False
 
         with self._lock:
-            # --- Escalation Logic ---
-            # Check if same ID triggered recently
+            # --- Escalation & Nag Logic ---
             if intervention_id:
-                 # Look back in history
-                 # recent_interventions stores (timestamp, id, tier)
-                 # Find last occurrence of this ID
+                 # Look back in history for the last occurrence of this ID
                  last_occurrence = None
                  for entry in reversed(self.recent_interventions):
                      if entry["id"] == intervention_id:
@@ -784,14 +781,26 @@ class InterventionEngine:
 
                  if last_occurrence:
                      time_delta = current_time - last_occurrence["timestamp"]
+
+                     # 1. Nag Protection (Prevent rapid spam of same intervention)
+                     nag_interval = getattr(config, 'ESCALATION_NAG_INTERVAL', 15)
+                     if time_delta < nag_interval:
+                         if logger:
+                             logger.log_info(f"Intervention '{intervention_id}' suppressed: Nag protection active ({time_delta:.1f}s < {nag_interval}s).")
+                         return False
+
+                     # 2. Escalation Logic
                      if time_delta < self.escalation_window:
-                         # Repeated trigger! Escalate.
                          current_tier = execution_details.get("tier", 1)
-                         # Only escalate if it's the same tier (don't double escalate if we already did)
-                         if current_tier == last_occurrence["tier"]:
-                             new_tier = current_tier + 1
+                         last_tier = last_occurrence["tier"]
+                         max_tier = getattr(config, 'MAX_INTERVENTION_TIER', 3)
+
+                         # Monotonic Escalation: Ensure we don't drop tier if re-triggered within window
+                         new_tier = min(max_tier, max(current_tier, last_tier + 1))
+
+                         if new_tier != current_tier:
                              execution_details["tier"] = new_tier
-                             if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {new_tier} due to repetition.")
+                             if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {new_tier} (Last: T{last_tier}, Delta: {time_delta:.1f}s).")
 
             self._intervention_active.set()
             self._current_intervention_details = execution_details
