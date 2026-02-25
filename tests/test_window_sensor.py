@@ -2,7 +2,13 @@ import unittest
 from unittest.mock import MagicMock, patch
 import sys
 import platform
-from sensors.window_sensor import WindowSensor
+# Ensure sensors.window_sensor is imported correctly (assuming it's in python path)
+try:
+    from sensors.window_sensor import WindowSensor
+except ImportError:
+    sys.path.append('.')
+    from sensors.window_sensor import WindowSensor
+import config
 
 class TestWindowSensor(unittest.TestCase):
 
@@ -107,10 +113,6 @@ class TestWindowSensor(unittest.TestCase):
         self.assertEqual(title, "Safari")
 
     def test_sanitization(self):
-        # We don't need to patch OS for this if we test the private method or ensure it passes through
-        # But let's test via public API by forcing the internal method return via mock?
-        # Easier to just test the private method or patch the internal fetcher.
-
         sensor = WindowSensor(self.mock_logger)
 
         # Direct test of sanitizer
@@ -149,6 +151,21 @@ class TestWindowSensor(unittest.TestCase):
 
             # Test no match
             self.assertEqual(sensor._sanitize_title("Normal App"), "Normal App")
+
+    def test_sanitize_title_fuzzy(self):
+        """Test fuzzy matching for sensitive app keywords."""
+        sensor = WindowSensor(self.mock_logger)
+
+        # Test fuzzy matching
+        with patch('sensors.window_sensor.config.SENSITIVE_APP_KEYWORDS', ["KeePass", "Signal"]):
+            # Typo: KeyPass vs KeePass
+            self.assertEqual(sensor._sanitize_title("KeyPass - Login"), "[REDACTED]")
+
+            # Typo: Signl vs Signal
+            self.assertEqual(sensor._sanitize_title("Signl Messenger"), "[REDACTED]")
+
+            # Too different: Sign vs Signal (should not match if cutoff is high enough)
+            self.assertNotEqual(sensor._sanitize_title("Sign Document"), "[REDACTED]")
 
     def test_default_config_keywords(self):
         """Verify that the default configuration correctly redacts standard sensitive apps."""
@@ -195,6 +212,27 @@ class TestWindowSensor(unittest.TestCase):
 
         # Within text
         self.assertEqual(sensor._sanitize_title("Compose to alice@example.com - Mail"), "Compose to [EMAIL_REDACTED] - Mail")
+
+    @patch('platform.system')
+    @patch('ctypes.windll', create=True)
+    def test_get_active_window_sanitization(self, mock_windll, mock_system):
+        """Test that get_active_window correctly delegates to _sanitize_title when sanitize=True."""
+        mock_system.return_value = 'Windows'
+
+        sensor = WindowSensor(self.mock_logger)
+
+        # Manually mock the internal OS method
+        sensor._get_active_window_windows = MagicMock(return_value="SecretApp - Confidential")
+
+        # Test with sanitize=True (Default)
+        with patch('sensors.window_sensor.config.SENSITIVE_APP_KEYWORDS', ["SecretApp"]):
+            title = sensor.get_active_window(sanitize=True)
+            self.assertEqual(title, "[REDACTED]")
+
+        # Test with sanitize=False
+        with patch('sensors.window_sensor.config.SENSITIVE_APP_KEYWORDS', ["SecretApp"]):
+            title = sensor.get_active_window(sanitize=False)
+            self.assertEqual(title, "SecretApp - Confidential")
 
 if __name__ == '__main__':
     unittest.main()

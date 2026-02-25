@@ -318,23 +318,6 @@ class LogicEngine:
         except Exception as e:
             self.logger.log_warning(f"STT Async Error: {e}")
 
-    def _scrub_window_title(self, title: str) -> str:
-        """
-        Scrubs sensitive information from window titles based on configured keywords.
-        Returns "[REDACTED]" if any sensitive keyword is found.
-        """
-        if not title:
-            return title
-
-        # Check against SENSITIVE_APP_KEYWORDS
-        title_lower = title.lower()
-        # Ensure we have a list to iterate over
-        keywords = getattr(config, 'SENSITIVE_APP_KEYWORDS', [])
-        for keyword in keywords:
-            if keyword.lower() in title_lower:
-                return "[REDACTED]"
-        return title
-
     def _prepare_lmm_data(self, trigger_reason: str = "periodic") -> Optional[dict]:
         with self._lock:
             if self.last_video_frame is None and self.last_audio_chunk is None:
@@ -386,8 +369,8 @@ class LogicEngine:
             active_window = "Unknown"
             if self.window_sensor:
                 try:
-                    raw_window = self.window_sensor.get_active_window()
-                    active_window = self._scrub_window_title(raw_window)
+                    # WindowSensor handles sanitization (including fuzzy matching and regex)
+                    active_window = self.window_sensor.get_active_window(sanitize=True)
                 except Exception as e:
                     self.logger.log_debug(f"Error fetching active window: {e}")
 
@@ -723,8 +706,7 @@ class LogicEngine:
                     hist_active_window = "Unknown"
                     if self.window_sensor:
                         try:
-                            raw_hist_window = self.window_sensor.get_active_window()
-                            hist_active_window = self._scrub_window_title(raw_hist_window)
+                            hist_active_window = self.window_sensor.get_active_window(sanitize=True)
                         except: pass
 
                     snapshot = {
