@@ -92,6 +92,8 @@ class InterventionEngine:
         # Track recent interventions for escalation (deque of {id, time, tier})
         # Window for escalation check (e.g., 60s)
         self.escalation_window: int = 60
+        self.escalation_nag_interval: int = getattr(config, 'ESCALATION_NAG_INTERVAL', 15)
+        self.max_tier: int = getattr(config, 'MAX_INTERVENTION_TIER', 3)
         self.recent_interventions: deque = deque(maxlen=20)
         self._lock: threading.Lock = threading.Lock()
 
@@ -707,25 +709,48 @@ class InterventionEngine:
 
         # --- Centralized Cooldown & Priority Logic ---
         current_time = time.time()
+        should_bypass_cooldown = False
 
         with self._lock:
-            # 1. Check Category Cooldown
-            category_limit = self.category_cooldowns.get(category, self.category_cooldowns["default"])
-            last_cat_time = self.last_category_trigger_time.get(category, 0)
+            # 0. Check for Escalation / Nag Interval Bypass
+            # We do this BEFORE category cooldowns to allow escalation to break through
+            if intervention_id:
+                last_occurrence = None
+                for entry in reversed(self.recent_interventions):
+                     if entry["id"] == intervention_id:
+                         last_occurrence = entry
+                         break
 
-            if current_time - last_cat_time < category_limit:
-                if logger: logger.log_info(f"Intervention suppressed: Category '{category}' cooldown active.")
-                return False
+                if last_occurrence:
+                    time_delta = current_time - last_occurrence["timestamp"]
+                    if time_delta < self.escalation_window:
+                        # It's a recent repeat. Check nag interval.
+                        if time_delta < self.escalation_nag_interval:
+                             # Too soon! Suppress to prevent spam.
+                             if logger: logger.log_debug(f"Intervention '{intervention_id}' suppressed (Nag Interval: {time_delta:.1f}s < {self.escalation_nag_interval}s)")
+                             return False
+                        else:
+                             # Allowed! Bypass standard cooldowns for escalation.
+                             should_bypass_cooldown = True
 
-            # 2. Check Global Cooldown (unless bypassed)
-            # Categories that bypass global "nagging" limit: voice_command, system
-            bypass_global = category in ["voice_command", "system"]
-            is_system_msg = execution_details["type"] in ["mode_change_notification", "error_notification", "error_notification_spoken"] # Legacy check
+            # 1. Check Category Cooldown (if not bypassing)
+            if not should_bypass_cooldown:
+                category_limit = self.category_cooldowns.get(category, self.category_cooldowns["default"])
+                last_cat_time = self.last_category_trigger_time.get(category, 0)
 
-            if not bypass_global and not is_system_msg:
-                 if current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS:
-                    if logger: logger.log_info(f"Intervention suppressed: Global cooldown active.")
+                if current_time - last_cat_time < category_limit:
+                    if logger: logger.log_info(f"Intervention suppressed: Category '{category}' cooldown active.")
                     return False
+
+                # 2. Check Global Cooldown (unless bypassed)
+                # Categories that bypass global "nagging" limit: voice_command, system
+                bypass_global = category in ["voice_command", "system"]
+                is_system_msg = execution_details["type"] in ["mode_change_notification", "error_notification", "error_notification_spoken"] # Legacy check
+
+                if not bypass_global and not is_system_msg:
+                     if current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS:
+                        if logger: logger.log_info(f"Intervention suppressed: Global cooldown active.")
+                        return False
 
             # Critical: If called from within an existing sequence or thread, this check might fail.
             # But generally start_intervention is called from LogicEngine main thread.
@@ -787,11 +812,23 @@ class InterventionEngine:
                      if time_delta < self.escalation_window:
                          # Repeated trigger! Escalate.
                          current_tier = execution_details.get("tier", 1)
-                         # Only escalate if it's the same tier (don't double escalate if we already did)
-                         if current_tier == last_occurrence["tier"]:
-                             new_tier = current_tier + 1
+                         previous_tier = last_occurrence["tier"]
+
+                         # Monotonic Escalation: new = max(requested, previous + 1)
+                         # Ensures we don't drop back down if sensor sends low tier
+                         potential_tier = max(current_tier, previous_tier + 1)
+                         new_tier = min(self.max_tier, potential_tier)
+
+                         if new_tier > current_tier:
                              execution_details["tier"] = new_tier
                              if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {new_tier} due to repetition.")
+
+                         # Else: If max tier reached, we stay at max (or whatever input was if higher)
+                         elif new_tier > previous_tier:
+                              # This case handles if we were at 1, input is 1 -> 2.
+                              # But also ensures if input is 3, we use 3.
+                              execution_details["tier"] = new_tier
+
 
             self._intervention_active.set()
             self._current_intervention_details = execution_details

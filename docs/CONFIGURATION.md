@@ -56,6 +56,8 @@ The system loads configuration in the following priority order (highest to lowes
 | `DOOM_SCROLL_THRESHOLD` | 3 | Number of "phone_usage" context tags to trigger intervention. |
 | `REFLEXIVE_WINDOW_TRIGGERS` | (See config.py) | Map of window titles (e.g., "Steam") to intervention IDs. |
 | `REFLEXIVE_WINDOW_COOLDOWN` | 300 | Seconds before a reflexive trigger can fire again. |
+| `ESCALATION_NAG_INTERVAL` | 15 | Seconds before a repeated trigger causes Tier escalation. |
+| `MAX_INTERVENTION_TIER` | 3 | Maximum intervention intensity level (1-3). |
 | `HISTORY_WINDOW_SIZE` | 5 | Number of context snapshots (approx 50s) sent to LMM. |
 
 ## Focus & Distraction
