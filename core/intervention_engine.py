@@ -5,6 +5,7 @@ import threading
 import json
 import os
 import subprocess
+import sys
 import platform
 import base64
 from collections import deque
@@ -261,6 +262,20 @@ class InterventionEngine:
              # Just text? For now, we only log text prompts as we don't have a GUI window manager here.
              pass
 
+    def _show_system_alert(self, title: str, message: str) -> None:
+        """Launches the visual alert tool."""
+        try:
+             # Launch in separate process, non-blocking
+             subprocess.Popen([sys.executable, "tools/show_alert.py", title, message])
+             if self.app and self.app.data_logger:
+                 self.app.data_logger.log_info(f"Launched system alert: {title}")
+        except Exception as e:
+             msg = f"Error showing alert: {e}"
+             if self.app and self.app.data_logger:
+                 self.app.data_logger.log_error(msg)
+             else:
+                 print(msg)
+
     def _capture_image(self, details: str) -> None:
         log_message = f"CAPTURING_IMAGE: '{details}'"
         if self.app and self.app.data_logger:
@@ -487,6 +502,11 @@ class InterventionEngine:
                 content = step.get("content", "")
                 self._show_visual_prompt(content)
 
+            elif action == "show_alert":
+                title = step.get("title", "Alert")
+                msg = step.get("message", "")
+                self._show_system_alert(title, msg)
+
             elif action == "capture_image":
                 content = step.get("content", "")
                 self._capture_image(content)
@@ -550,6 +570,7 @@ class InterventionEngine:
             # --- Escalation Execution Logic ---
             # Add sensory elements based on Tier if not present
             has_sound = any(step.get("action") == "sound" for step in sequence)
+            has_alert = any(step.get("action") == "show_alert" for step in sequence)
 
             if tier >= 2 and not has_sound:
                  # Tier 2: Ensure auditory cue
@@ -561,13 +582,19 @@ class InterventionEngine:
                      log_debug(f"{log_prefix}: Skipping Tier {tier} chime (file not found).")
 
             if tier >= 3:
-                 # Tier 3: Urgent auditory cue
+                 # Tier 3: Urgent auditory cue & Visual
                  sound_file = "assets/sounds/urgent_alert_tone.wav"
                  if os.path.exists(sound_file):
                      sequence.insert(0, {"action": "sound", "file": sound_file})
                      log_debug(f"{log_prefix}: Added urgent tone for Tier {tier} escalation.")
                  else:
                      log_debug(f"{log_prefix}: Skipping Tier {tier} urgent tone (file not found).")
+
+                 if not has_alert:
+                     # Add Alert
+                     sequence.insert(0, {"action": "show_alert", "title": "Urgent Alert", "message": message or intervention_type})
+                     log_debug(f"{log_prefix}: Added Visual Alert for Tier {tier} escalation.")
+
 
             # Execute the defined sequence from the library card
             self._run_sequence(sequence, logger)
@@ -578,6 +605,7 @@ class InterventionEngine:
                  self._play_sound("assets/sounds/test_tone.wav")
             if tier >= 3:
                  self._play_sound("assets/sounds/urgent_alert_tone.wav")
+                 self._show_system_alert("Urgent Alert", message)
 
             # Default to blocking for backward compatibility in single-message mode,
             # as this thread is dedicated to the intervention anyway.
@@ -708,21 +736,52 @@ class InterventionEngine:
         # --- Centralized Cooldown & Priority Logic ---
         current_time = time.time()
 
+        # New Escalation Variables
+        is_escalation = False
+
         with self._lock:
-            # 1. Check Category Cooldown
-            category_limit = self.category_cooldowns.get(category, self.category_cooldowns["default"])
-            last_cat_time = self.last_category_trigger_time.get(category, 0)
+            # 0. Check for Escalation (Before Cooldowns)
+            if intervention_id:
+                 # Look back in history for the last occurrence of THIS intervention ID
+                 last_occurrence = None
+                 for entry in reversed(self.recent_interventions):
+                     if entry["id"] == intervention_id:
+                         last_occurrence = entry
+                         break
 
-            if current_time - last_cat_time < category_limit:
-                if logger: logger.log_info(f"Intervention suppressed: Category '{category}' cooldown active.")
-                return False
+                 if last_occurrence:
+                     time_delta = current_time - last_occurrence["timestamp"]
+                     if time_delta < self.escalation_window:
+                         # It is a repeated trigger!
+                         # Check "Nag Interval" to prevent spamming (e.g. < 15s)
+                         nag_interval = getattr(config, 'ESCALATION_NAG_INTERVAL', 15)
+                         if time_delta < nag_interval:
+                              if logger: logger.log_debug(f"Intervention suppressed: Spam protection (Escalation Nag Interval {nag_interval}s).")
+                              return False
 
-            # 2. Check Global Cooldown (unless bypassed)
+                         is_escalation = True
+                         # Calculate new tier: Increment last tier, capped at MAX
+                         max_tier = getattr(config, 'MAX_INTERVENTION_TIER', 3)
+                         # We generally escalate from the *last* known tier for this ID
+                         potential_new_tier = min(max_tier, last_occurrence["tier"] + 1)
+                         execution_details["tier"] = potential_new_tier
+                         if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {potential_new_tier} due to persistence.")
+
+            # 1. Check Category Cooldown (Skip if Escalation)
+            if not is_escalation:
+                category_limit = self.category_cooldowns.get(category, self.category_cooldowns["default"])
+                last_cat_time = self.last_category_trigger_time.get(category, 0)
+
+                if current_time - last_cat_time < category_limit:
+                    if logger: logger.log_info(f"Intervention suppressed: Category '{category}' cooldown active.")
+                    return False
+
+            # 2. Check Global Cooldown (unless bypassed or Escalation)
             # Categories that bypass global "nagging" limit: voice_command, system
             bypass_global = category in ["voice_command", "system"]
-            is_system_msg = execution_details["type"] in ["mode_change_notification", "error_notification", "error_notification_spoken"] # Legacy check
+            is_system_msg = execution_details.get("type") in ["mode_change_notification", "error_notification", "error_notification_spoken"]
 
-            if not bypass_global and not is_system_msg:
+            if not bypass_global and not is_system_msg and not is_escalation:
                  if current_time - self.last_intervention_time < config.MIN_TIME_BETWEEN_INTERVENTIONS:
                     if logger: logger.log_info(f"Intervention suppressed: Global cooldown active.")
                     return False
@@ -770,29 +829,6 @@ class InterventionEngine:
             return False
 
         with self._lock:
-            # --- Escalation Logic ---
-            # Check if same ID triggered recently
-            if intervention_id:
-                 # Look back in history
-                 # recent_interventions stores (timestamp, id, tier)
-                 # Find last occurrence of this ID
-                 last_occurrence = None
-                 for entry in reversed(self.recent_interventions):
-                     if entry["id"] == intervention_id:
-                         last_occurrence = entry
-                         break
-
-                 if last_occurrence:
-                     time_delta = current_time - last_occurrence["timestamp"]
-                     if time_delta < self.escalation_window:
-                         # Repeated trigger! Escalate.
-                         current_tier = execution_details.get("tier", 1)
-                         # Only escalate if it's the same tier (don't double escalate if we already did)
-                         if current_tier == last_occurrence["tier"]:
-                             new_tier = current_tier + 1
-                             execution_details["tier"] = new_tier
-                             if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {new_tier} due to repetition.")
-
             self._intervention_active.set()
             self._current_intervention_details = execution_details
             self.last_intervention_time = current_time
