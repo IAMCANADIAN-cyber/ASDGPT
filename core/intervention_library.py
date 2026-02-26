@@ -178,6 +178,16 @@ class InterventionLibrary:
                     ]
                 },
                 {
+                    "id": "distraction_alert",
+                    "tier": 2,
+                    "description": "Triggered when a distraction app is opened",
+                    "sequence": [
+                        {"action": "speak", "content": "I noticed you switched to a distraction. Do you need a break?"},
+                        {"action": "wait", "duration": 5},
+                        {"action": "speak", "content": "If not, let's get back to it."}
+                    ]
+                },
+                {
                     "id": "bookmark_thought",
                     "tier": 1,
                     "description": "Hyperfocus exit aid",
