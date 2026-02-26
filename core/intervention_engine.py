@@ -4,6 +4,7 @@ import datetime
 import threading
 import json
 import os
+import sys
 import subprocess
 import platform
 import base64
@@ -569,6 +570,26 @@ class InterventionEngine:
                  else:
                      log_debug(f"{log_prefix}: Skipping Tier {tier} urgent tone (file not found).")
 
+                 # Tier 3: Visual Blocking Alert
+                 # Always launch the blocking alert window for Tier 3+
+                 # (This runs in parallel via subprocess, not blocking the audio sequence)
+                 try:
+                      log_debug(f"{log_prefix}: Launching Visual Alert (Tier {tier}).")
+                      # Use the description or first speak content as the message if 'message' is generic
+                      alert_msg = message
+                      if sequence and (not alert_msg or alert_msg == "No message provided."):
+                           # Try to find a good message from the sequence
+                           for step in sequence:
+                               if step.get("action") == "speak":
+                                   alert_msg = step.get("content")
+                                   break
+                           if not alert_msg:
+                               alert_msg = self._current_intervention_details.get("description", "Urgent Alert")
+
+                      subprocess.Popen([sys.executable, "tools/show_alert.py", str(alert_msg)])
+                 except Exception as e:
+                      log_debug(f"{log_prefix}: Failed to launch visual alert: {e}")
+
             # Execute the defined sequence from the library card
             self._run_sequence(sequence, logger)
         else:
@@ -709,17 +730,45 @@ class InterventionEngine:
         current_time = time.time()
 
         with self._lock:
-            # 1. Check Category Cooldown
-            category_limit = self.category_cooldowns.get(category, self.category_cooldowns["default"])
-            last_cat_time = self.last_category_trigger_time.get(category, 0)
+            # 0. Check Escalation Status (Bypass Logic)
+            # If this is an escalation of a recent intervention, we might bypass standard cooldowns.
+            is_escalation = False
+            bypass_global_for_escalation = False
 
-            if current_time - last_cat_time < category_limit:
-                if logger: logger.log_info(f"Intervention suppressed: Category '{category}' cooldown active.")
-                return False
+            if intervention_id:
+                 # Look back in history to find last occurrence
+                 last_occurrence = None
+                 for entry in reversed(self.recent_interventions):
+                     if entry["id"] == intervention_id:
+                         last_occurrence = entry
+                         break
+
+                 if last_occurrence:
+                     time_delta = current_time - last_occurrence["timestamp"]
+                     if time_delta < self.escalation_window:
+                         # It is a recent repeat. Check if it's "spam" or "escalation".
+                         nag_interval = getattr(config, 'ESCALATION_NAG_INTERVAL', 15)
+                         if time_delta < nag_interval:
+                             if logger: logger.log_debug(f"Intervention '{intervention_id}' suppressed (Spam Protection: < {nag_interval}s).")
+                             return False # Suppress spam
+                         else:
+                             # It's been long enough to be an escalation/nag
+                             is_escalation = True
+                             bypass_global_for_escalation = True
+
+            # 1. Check Category Cooldown
+            # If escalation, we skip category cooldown too? Usually yes, urgency overrides category limits.
+            if not bypass_global_for_escalation:
+                category_limit = self.category_cooldowns.get(category, self.category_cooldowns["default"])
+                last_cat_time = self.last_category_trigger_time.get(category, 0)
+
+                if current_time - last_cat_time < category_limit:
+                    if logger: logger.log_info(f"Intervention suppressed: Category '{category}' cooldown active.")
+                    return False
 
             # 2. Check Global Cooldown (unless bypassed)
             # Categories that bypass global "nagging" limit: voice_command, system
-            bypass_global = category in ["voice_command", "system"]
+            bypass_global = category in ["voice_command", "system"] or bypass_global_for_escalation
             is_system_msg = execution_details["type"] in ["mode_change_notification", "error_notification", "error_notification_spoken"] # Legacy check
 
             if not bypass_global and not is_system_msg:
@@ -771,11 +820,8 @@ class InterventionEngine:
 
         with self._lock:
             # --- Escalation Logic ---
-            # Check if same ID triggered recently
+            # If we determined earlier this is an escalation, apply the tier increase now.
             if intervention_id:
-                 # Look back in history
-                 # recent_interventions stores (timestamp, id, tier)
-                 # Find last occurrence of this ID
                  last_occurrence = None
                  for entry in reversed(self.recent_interventions):
                      if entry["id"] == intervention_id:
@@ -789,7 +835,8 @@ class InterventionEngine:
                          current_tier = execution_details.get("tier", 1)
                          # Only escalate if it's the same tier (don't double escalate if we already did)
                          if current_tier == last_occurrence["tier"]:
-                             new_tier = current_tier + 1
+                             max_tier = getattr(config, 'MAX_INTERVENTION_TIER', 3)
+                             new_tier = min(current_tier + 1, max_tier)
                              execution_details["tier"] = new_tier
                              if logger: logger.log_info(f"Escalating intervention '{intervention_id}' to Tier {new_tier} due to repetition.")
 
