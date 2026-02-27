@@ -726,8 +726,25 @@ class LogicEngine:
                 speech_duration_threshold = getattr(config, 'MEETING_MODE_SPEECH_DURATION_THRESHOLD', 3.0)
                 idle_threshold = getattr(config, 'MEETING_MODE_IDLE_KEYBOARD_THRESHOLD', 10.0)
 
-                # Track speech duration
-                if is_speech and face_detected:
+                # Check blacklist for Meeting Mode
+                is_blacklisted_window = False
+                if self.window_sensor:
+                    try:
+                        # Use False to get raw title for matching app names
+                        active_window = self.window_sensor.get_active_window(sanitize=False)
+                        blacklist = getattr(config, 'MEETING_MODE_BLACKLIST', [])
+                        if active_window != "Unknown":
+                            for blocked_app in blacklist:
+                                if blocked_app.lower() in active_window.lower():
+                                    is_blacklisted_window = True
+                                    # Log only once per session or use debug to avoid spam
+                                    self.logger.log_debug(f"Meeting Mode logic suppressed by blacklist: {blocked_app}")
+                                    break
+                    except Exception as e:
+                        self.logger.log_debug(f"Error checking meeting mode blacklist: {e}")
+
+                # Track speech duration (skip if blacklisted app is active)
+                if is_speech and face_detected and not is_blacklisted_window:
                     self.last_speech_time = current_time
                     if self.continuous_speech_start_time == 0:
                         self.continuous_speech_start_time = current_time
