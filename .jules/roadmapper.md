@@ -44,3 +44,8 @@
 *   **Intervention Decentralization**: Currently, `LogicEngine` manages some cooldowns (`reflexive_trigger_cooldown`) while `InterventionEngine` manages others (`suppressed_interventions`). This split responsibility makes "Escalation Policies" (e.g., ignoring a Tier 1 alert escalates to Tier 2) difficult. We must centralize this logic in `InterventionEngine`.
 *   **Tuning Blindspot**: We are shipping features (like "Doom Scroll Detection") without a ground-truth dataset. Creating `datasets/doom_scroll.json` is now the highest leverage activity to prevent user annoyance.
 *   **Meeting Mode False Positives**: The current heuristic (Face + Audio) triggers during video playback (e.g., YouTube). We need to tighten this, possibly by requiring "User Input" (keyboard/mouse) or more advanced VAD that filters system audio.
+
+## Weekly Refresh (2026-02-26)
+*   **Scenario Verification**: The synthetic dataset approach (`datasets/doom_scroll.json`) was validated with 100% accuracy using the new `test_scenario_json.py`. This confirms we can perform "Test-Driven Tuning".
+*   **Meeting Mode Flaw confirmed**: The "User Input" check (idle keyboard/mouse) is insufficient because users are also idle when watching Netflix/YouTube, leading to false "Meeting Mode" triggers. We must implement a **Window Title Blacklist** to differentiate "Productive Meeting" from "Passive Entertainment".
+*   **Privacy Hardening**: Exact string matching for privacy redaction is brittle. We will move to **Fuzzy Matching** (e.g., Levenshtein distance) to catch typos (e.g., "KePass" vs "KeePass").
