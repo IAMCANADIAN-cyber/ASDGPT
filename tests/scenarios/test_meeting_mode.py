@@ -10,11 +10,13 @@ class TestMeetingMode(unittest.TestCase):
         self.mock_audio = MagicMock()
         self.mock_video = MagicMock()
         self.mock_lmm = MagicMock()
+        self.mock_window = MagicMock()
 
         # Instantiate LogicEngine with mocks
         self.engine = LogicEngine(
             audio_sensor=self.mock_audio,
             video_sensor=self.mock_video,
+            window_sensor=self.mock_window,
             logger=self.mock_logger,
             lmm_interface=self.mock_lmm
         )
@@ -194,6 +196,56 @@ class TestMeetingMode(unittest.TestCase):
 
         self.assertEqual(self.engine.get_mode(), "active")
         self.assertFalse(self.engine.auto_dnd_active)
+
+    def test_meeting_mode_suppressed_by_blacklist(self):
+        """Test that meeting mode is suppressed if active window is in blacklist (e.g., YouTube)."""
+        self.engine.current_mode = "active"
+        self.engine.input_tracking_enabled = True
+        self.engine.last_user_input_time = time.time() - 2.0
+
+        # Configure Blacklist in Config (Mock or Override)
+        # Note: We rely on the config.py modification having added MEETING_MODE_BLACKLIST
+
+        # Simulate Window Sensor returning a blacklisted title
+        self.mock_window.get_active_window.return_value = "YouTube - Google Chrome"
+
+        # Simulate Meeting Conditions
+        self.engine.audio_analysis = {"is_speech": True}
+        self.engine.face_metrics = {"face_detected": True}
+
+        # Start Speech Timer
+        self.engine.update()
+        time.sleep(0.6) # Wait for threshold
+
+        # Trigger Check
+        self.engine.update()
+
+        # Should remain ACTIVE because of YouTube
+        self.assertEqual(self.engine.get_mode(), "active")
+        self.assertFalse(self.engine.auto_dnd_active)
+
+        # Verify call to window sensor
+        self.mock_window.get_active_window.assert_called_with(sanitize=False)
+
+    def test_meeting_mode_triggers_non_blacklisted(self):
+        """Verify meeting mode still works for non-blacklisted windows."""
+        self.engine.current_mode = "active"
+        self.engine.input_tracking_enabled = True
+        self.engine.last_user_input_time = time.time() - 2.0
+
+        # Non-blacklisted window
+        self.mock_window.get_active_window.return_value = "Zoom Meeting"
+
+        # Simulate Meeting Conditions
+        self.engine.audio_analysis = {"is_speech": True}
+        self.engine.face_metrics = {"face_detected": True}
+
+        self.engine.update()
+        time.sleep(0.6)
+        self.engine.update()
+
+        # Should Switch to DND
+        self.assertEqual(self.engine.get_mode(), "dnd")
 
 if __name__ == '__main__':
     unittest.main()
