@@ -11,94 +11,103 @@ import config
 class TestPanicAttackScenario(unittest.TestCase):
     def test_panic_attack_trajectory(self):
         """
-        Tests that the system correctly handles a panic attack trajectory:
-        Normal -> Escalating (High Speech Rate) -> Critical (Panic).
-        Verifies that high speech rate/pitch variance inputs (via VAD)
-        are processed and result in the correct LMM-suggested interventions.
+        Tests that the system correctly identifies a 'panic attack' trajectory
+        (Escalating -> Critical) and triggers the appropriate intervention ('meltdown_prevention').
         """
 
+        # Define the scenario
         scenario = [
-            # Step 1: Baseline (Calm)
-            # Low signals, no intervention expected.
+            # Phase 1: Normal State
+            # Baseline: Low arousal, neutral mood.
             {
-                "description": "Step 1: Baseline - Calm state",
+                "description": "Phase 1: Normal State",
                 "input": {
                     "audio_level": 0.05,
-                    "video_activity": 0.0
-                },
-                "input_analysis": {
-                    "audio": {
-                        "rms": 0.05,
-                        "speech_rate": 1.5,
-                        "pitch_variance": 5.0,
-                        "is_speech": False
-                    },
-                    "video": {"video_activity": 0.0, "face_detected": True, "face_count": 1}
+                    "video_activity": 5.0
                 },
                 "expected_outcome": {
+                    "state_estimation": {
+                        "arousal": 50, "overload": 10, "focus": 50, "energy": 50, "mood": 50
+                    },
+                    "visual_context": ["sitting_quietly"],
                     "intervention": None
                 }
             },
-            # Step 2: Escalation (High Speech Rate)
-            # Signs of anxiety.
+            # Phase 2: Escalating
+            # Increasing arousal, signs of distress.
+            # LMM might note "shallow breathing" or "fidgeting".
             {
-                "description": "Step 2: Escalation - Rapid Speech (Anxiety)",
+                "description": "Phase 2: Escalating (Arousal 70)",
                 "input": {
-                    "audio_level": 0.4,
-                    "video_activity": 10.0
-                },
-                "input_analysis": {
-                    "audio": {
-                        "rms": 0.4,
-                        "speech_rate": 4.5, # > 4.0 = Anxiety
-                        "pitch_variance": 40.0,
-                        "is_speech": True
-                    },
-                    "video": {"video_activity": 10.0, "face_detected": True, "face_count": 1}
+                    "audio_level": 0.2, # Slightly higher audio (breathing/movement)
+                    "video_activity": 20.0 # More movement
                 },
                 "expected_outcome": {
-                    # Allow None or specific lower tier.
-                    # For this test, we accept whatever happens as long as it doesn't crash,
-                    # but typically we might expect "breathing_exercise" or None.
-                    # We'll set expected to None for now to ensure we don't fail on "no intervention".
-                    # If we want to strictly test intervention, we'd need to know the LMM logic exactly.
+                    "state_estimation": {
+                        "arousal": 70, "overload": 40, "focus": 30, "energy": 60, "mood": 40
+                    },
+                    "visual_context": ["fidgeting", "pacing"],
+                    # Maybe a gentle nudge, or nothing yet if threshold not met.
+                    # Let's assume no intervention for this intermediate step to test escalation.
                     "intervention": None
                 }
             },
-            # Step 3: Critical (Panic)
-            # High distress. LMM should suggest meltdown_prevention.
+            # Phase 3: Critical
+            # High arousal, overload. Panic indicators.
+            # Expect 'meltdown_prevention' or 'box_breathing'.
             {
-                "description": "Step 3: Critical - Panic Attack",
+                "description": "Phase 3: Critical (Arousal 90)",
                 "input": {
-                    "audio_level": 0.8,
-                    "video_activity": 30.0
-                },
-                "input_analysis": {
-                    "audio": {
-                        "rms": 0.8,
-                        "speech_rate": 6.0, # Very High
-                        "pitch_variance": 80.0,
-                        "is_speech": True
-                    },
-                    "video": {"video_activity": 30.0, "face_detected": True, "face_count": 1}
+                    "audio_level": 0.6, # High audio (gasping/rapid breathing)
+                    "video_activity": 50.0 # High movement (rocking/hands on head)
                 },
                 "expected_outcome": {
+                    "state_estimation": {
+                        "arousal": 90, "overload": 90, "focus": 10, "energy": 80, "mood": 20
+                    },
+                    "visual_context": ["hands_on_head", "hyperventilating", "rocking"],
                     "intervention": "meltdown_prevention"
+                }
+            },
+            # Phase 4: Recovery (Post-Intervention)
+            # Arousal dropping.
+            {
+                "description": "Phase 4: Recovery (Arousal 60)",
+                "input": {
+                    "audio_level": 0.1,
+                    "video_activity": 5.0
+                },
+                "expected_outcome": {
+                    "state_estimation": {
+                        "arousal": 60, "overload": 30, "focus": 40, "energy": 40, "mood": 40
+                    },
+                    "visual_context": ["sitting_still", "breathing_deeply"],
+                    "intervention": None
                 }
             }
         ]
 
+        # Initialize Harness
         harness = ReplayHarness()
+
+        # Run Scenario
         results = harness.run_scenario(scenario)
         harness.print_report(results)
 
-        self.assertEqual(results['total_steps'], 3)
+        # Assertions
+        self.assertEqual(results['total_steps'], 4)
 
-        # Check Step 3 for intervention
-        step3 = results['step_results'][2]
-        # ReplayHarness success check compares expected intervention.
-        # If actual intervention matches expected, success is True.
-        self.assertTrue(step3['success'], f"Step 3 failed. Expected intervention meltdown_prevention. Result: {step3}")
+        # Check Phase 3 (Index 2) - Critical
+        critical_step = results['step_results'][2]
+        self.assertTrue(critical_step['success'], f"Critical step failed. Expected: {critical_step['expected']}, Actual: {critical_step['actual']}")
+        # Verify the actual intervention matches
+        actual_interventions = critical_step['actual']
+        self.assertTrue(any(i['type'] == 'meltdown_prevention' for i in actual_interventions),
+                        f"Expected meltdown_prevention, got {actual_interventions}")
+
+        # Check Phase 4 (Index 3) - Recovery
+        recovery_step = results['step_results'][3]
+        self.assertTrue(recovery_step['success'], "Recovery step failed. Should have no intervention.")
 
 if __name__ == '__main__':
     unittest.main()
