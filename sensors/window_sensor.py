@@ -5,6 +5,7 @@ import sys
 import os
 import shutil
 import logging
+import difflib
 from typing import Optional, Any, List
 import config
 
@@ -305,8 +306,22 @@ class WindowSensor:
             sensitive_keywords = config.SENSITIVE_APP_KEYWORDS
             if isinstance(sensitive_keywords, list):
                 title_lower = title.lower()
+
+                # Direct substring match
                 for keyword in sensitive_keywords:
                     if keyword.lower() in title_lower:
+                        return "[REDACTED]"
+
+                # Fuzzy match (check words against keywords)
+                words = re.findall(r'\w+', title_lower)
+                keyword_list_lower = [k.lower() for k in sensitive_keywords]
+
+                for word in words:
+                    # Check if any keyword is close to this word
+                    # cutoff=0.85 allows for small typos (e.g. 1 char diff in 6-7 char word)
+                    matches = difflib.get_close_matches(word, keyword_list_lower, n=1, cutoff=0.85)
+                    if matches:
+                        self._log_debug(f"Fuzzy match found: '{word}' ~ '{matches[0]}'")
                         return "[REDACTED]"
 
         # 2. Redact Email Addresses
