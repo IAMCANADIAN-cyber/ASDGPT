@@ -114,6 +114,13 @@ MEETING_MODE_SPEECH_DURATION_THRESHOLD = _get_conf("MEETING_MODE_SPEECH_DURATION
 MEETING_MODE_IDLE_KEYBOARD_THRESHOLD = _get_conf("MEETING_MODE_IDLE_KEYBOARD_THRESHOLD", 10.0, float)
 MEETING_MODE_SPEECH_GRACE_PERIOD = _get_conf("MEETING_MODE_SPEECH_GRACE_PERIOD", 2.0, float)
 
+# Blacklist: Apps that should NEVER trigger Meeting Mode (DND) even if speech/face is detected.
+# Typically media players where the user is passively watching/listening.
+MEETING_MODE_BLACKLIST = _get_conf("MEETING_MODE_BLACKLIST", [
+    "YouTube", "Netflix", "Twitch", "VLC", "Player", "Hulu", "Prime Video", "Zoom", "Teams", "Meet"
+], list)
+
+
 # --- VAD (Voice Activity Detection) ---
 # RMS Threshold to consider "not silence"
 VAD_SILENCE_THRESHOLD = _get_conf("VAD_SILENCE_THRESHOLD", 0.01, float)

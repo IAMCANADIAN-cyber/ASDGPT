@@ -9,12 +9,14 @@ class TestMeetingMode(unittest.TestCase):
         self.mock_logger = MagicMock()
         self.mock_audio = MagicMock()
         self.mock_video = MagicMock()
+        self.mock_window = MagicMock()
         self.mock_lmm = MagicMock()
 
         # Instantiate LogicEngine with mocks
         self.engine = LogicEngine(
             audio_sensor=self.mock_audio,
             video_sensor=self.mock_video,
+            window_sensor=self.mock_window,
             logger=self.mock_logger,
             lmm_interface=self.mock_lmm
         )
@@ -194,6 +196,29 @@ class TestMeetingMode(unittest.TestCase):
 
         self.assertEqual(self.engine.get_mode(), "active")
         self.assertFalse(self.engine.auto_dnd_active)
+
+    def test_meeting_mode_blacklisted_app(self):
+        """Test that meeting mode is suppressed if active window is in blacklist."""
+        self.engine.current_mode = "active"
+        self.engine.input_tracking_enabled = True
+        self.engine.last_user_input_time = time.time() - 2.0
+
+        # Simulate Blacklisted App
+        self.engine.window_sensor.get_active_window.return_value = "Netflix - Brave"
+        config.MEETING_MODE_BLACKLIST = ["Netflix", "YouTube"]
+
+        # Triggers met
+        self.engine.audio_analysis = {"is_speech": True}
+        self.engine.face_metrics = {"face_detected": True}
+        self.engine.update() # Start timer
+        time.sleep(0.6)
+        self.engine.update() # Attempt Trigger
+
+        # Should remain active due to blacklist
+        self.assertEqual(self.engine.get_mode(), "active")
+        self.mock_logger.log_debug.assert_any_call(
+            unittest.mock.ANY # "Meeting Mode Suppressed..."
+        )
 
 if __name__ == '__main__':
     unittest.main()

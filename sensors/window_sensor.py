@@ -313,13 +313,29 @@ class WindowSensor:
                         return "[REDACTED]"
 
                 # Fuzzy match (check words against keywords)
+                # Expand multi-word keywords into individual tokens for better matching
+                # e.g., "Tor Browser" -> ["Tor", "Browser"]
+                expanded_keywords = set()
+                for k in sensitive_keywords:
+                    parts = k.split()
+                    for p in parts:
+                        if len(p) > 3: # Only add significant parts
+                            expanded_keywords.add(p.lower())
+                    expanded_keywords.add(k.lower()) # Keep original too
+
+                keyword_list_lower = list(expanded_keywords)
                 words = re.findall(r'\w+', title_lower)
-                keyword_list_lower = [k.lower() for k in sensitive_keywords]
 
                 for word in words:
-                    # Check if any keyword is close to this word
-                    # cutoff=0.85 allows for small typos (e.g. 1 char diff in 6-7 char word)
-                    matches = difflib.get_close_matches(word, keyword_list_lower, n=1, cutoff=0.85)
+                    # Skip very short words (<= 3 chars) to avoid aggressive false positives
+                    if len(word) <= 3:
+                        continue
+
+                    current_cutoff = 0.85
+                    if len(word) < 6:
+                        current_cutoff = 0.90 # Stricter for short words
+
+                    matches = difflib.get_close_matches(word, keyword_list_lower, n=1, cutoff=current_cutoff)
                     if matches:
                         self._log_debug(f"Fuzzy match found: '{word}' ~ '{matches[0]}'")
                         return "[REDACTED]"
