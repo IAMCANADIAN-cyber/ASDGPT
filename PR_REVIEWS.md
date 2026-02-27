@@ -86,7 +86,17 @@ Here are the reviews and recommendations for the open Pull Requests (branches) a
 *   **Recommendation:** **2: Accept Incoming**
 *   **Reasoning:** Updates `ROADMAP.md` to the 2026-02-26 version and adds `tests/test_scenario_json.py` to verify the "Doom Scroll" dataset. Content verified and manually applied to HEAD.
 
-## 17. Final Verification (2026-02-26)
+## 17. `origin/navigator/improve-window-sensor-privacy-and-fix-lmm-context-15943297888369731951`
+*   **Status:** **Merged (Manually Applied)**
+*   **Recommendation:** **2: Accept Incoming**
+*   **Reasoning:** Manually applied robust privacy redaction (fuzzy matching) and Wayland support to `sensors/window_sensor.py` and updated `tests/test_window_sensor.py`. Verified that sensitive apps and email addresses are correctly redacted.
+
+## 18. `origin/navigator/meeting-mode-robustness-6472508485628424339`
+*   **Status:** **Closed (Already Merged)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The speech grace period logic (`MEETING_MODE_SPEECH_GRACE_PERIOD`) and associated tests (`tests/scenarios/test_meeting_mode.py`) are already present and passing in HEAD.
+
+## 19. Final Verification (2026-02-26)
 *   **Status:** **Verified (All Tests Pass)**
-*   **Reasoning:** Executed full test suite (`python -m pytest`) including new Doom Scroll scenario test and Feb 26 updates. All tests passed.
+*   **Reasoning:** Executed full test suite (`python -m pytest`) including new Window Sensor privacy tests and Meeting Mode scenarios. All tests passed.
 *   **Action:** No outstanding code issues found. Codebase is stable.
