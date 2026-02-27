@@ -748,7 +748,24 @@ class LogicEngine:
                     idle_time >= idle_threshold and
                     face_detected):
 
-                    if self.current_mode == "active": # Only switch if currently active
+                    # Check Blacklist before switching
+                    should_switch = True
+                    if self.window_sensor:
+                        try:
+                            # Use raw window title for checking blacklist
+                            active_win = self.window_sensor.get_active_window(sanitize=False)
+                            if active_win and active_win != "Unknown":
+                                blacklist = getattr(config, 'MEETING_MODE_BLACKLIST', [])
+                                active_win_lower = active_win.lower()
+                                for item in blacklist:
+                                    if item.lower() in active_win_lower:
+                                        self.logger.log_debug(f"Meeting Mode suppressed by blacklist: '{item}' found in '{active_win}'")
+                                        should_switch = False
+                                        break
+                        except Exception as e:
+                            self.logger.log_debug(f"Error checking meeting mode blacklist: {e}")
+
+                    if should_switch and self.current_mode == "active": # Only switch if currently active
                         self.logger.log_info(f"Meeting Mode Detected! (Speech: {speech_duration:.1f}s, Idle: {idle_time:.1f}s). Switching to DND.")
                         self.set_mode("dnd")
                         self.auto_dnd_active = True
