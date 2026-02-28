@@ -38,12 +38,16 @@ class TestPrivacyScrubber:
         assert len(keywords) == len(set(keywords)), "Duplicate keywords found in config!"
 
     def test_scrub_window_title_safe(self, engine):
+        from sensors.window_sensor import WindowSensor
+        sensor = WindowSensor(logger=MagicMock())
         """Verify safe titles remain unchanged."""
-        assert engine._scrub_window_title("Google Chrome") == "Google Chrome"
-        assert engine._scrub_window_title("Visual Studio Code") == "Visual Studio Code"
-        assert engine._scrub_window_title("Calculator") == "Calculator"
+        assert sensor._sanitize_title("Google Chrome") == "Google Chrome"
+        assert sensor._sanitize_title("Visual Studio Code") == "Visual Studio Code"
+        assert sensor._sanitize_title("Calculator") == "Calculator"
 
     def test_scrub_window_title_sensitive(self, engine):
+        from sensors.window_sensor import WindowSensor
+        sensor = WindowSensor(logger=MagicMock())
         """Verify sensitive titles are redacted."""
         sensitive_examples = [
             "Chase Bank - Login",
@@ -56,23 +60,27 @@ class TestPrivacyScrubber:
         ]
 
         for title in sensitive_examples:
-            scrubbed = engine._scrub_window_title(title)
+            scrubbed = sensor._sanitize_title(title)
             assert scrubbed == "[REDACTED]", f"Failed to redact: {title}"
 
     def test_scrub_window_title_case_insensitive(self, engine):
+        from sensors.window_sensor import WindowSensor
+        sensor = WindowSensor(logger=MagicMock())
         """Verify case insensitivity."""
-        assert engine._scrub_window_title("bank of america") == "[REDACTED]"
-        assert engine._scrub_window_title("PASSWORD manager") == "[REDACTED]"
+        assert sensor._sanitize_title("bank of america") == "[REDACTED]"
+        assert sensor._sanitize_title("PASSWORD manager") == "[REDACTED]"
 
     def test_scrub_window_title_edge_cases(self, engine):
+        from sensors.window_sensor import WindowSensor
+        sensor = WindowSensor(logger=MagicMock())
         """Verify edge cases."""
-        assert engine._scrub_window_title(None) is None
-        assert engine._scrub_window_title("") == ""
+        assert sensor._sanitize_title(None) == "Unknown"
+        assert sensor._sanitize_title("") == "Unknown"
 
     def test_logic_engine_update_scrubs_history(self, engine):
         """Verify LogicEngine.update() stores redacted title in history."""
         # Setup mock return
-        engine.window_sensor.get_active_window.return_value = "Chase Bank - Login"
+        engine.window_sensor.get_active_window.return_value = "[REDACTED]"
 
         # Ensure update runs logic
         engine.current_mode = "active"
@@ -83,10 +91,11 @@ class TestPrivacyScrubber:
         assert len(engine.context_history) > 0
         snapshot = engine.context_history[-1]
         assert snapshot["active_window"] == "[REDACTED]"
+        engine.window_sensor.get_active_window.assert_called_with(sanitize=True)
 
     def test_prepare_lmm_data_scrubs_active_window(self, engine):
         """Verify _prepare_lmm_data() returns redacted active_window."""
-        engine.window_sensor.get_active_window.return_value = "Secret Project - 1Password"
+        engine.window_sensor.get_active_window.return_value = "[REDACTED]"
 
         # Mock sensors to return something so data is prepared
         engine.last_video_frame = MagicMock()
@@ -97,6 +106,7 @@ class TestPrivacyScrubber:
         assert payload is not None
         user_context = payload["user_context"]
         assert user_context["active_window"] == "[REDACTED]"
+        engine.window_sensor.get_active_window.assert_called_with(sanitize=True)
 
     def test_reflex_logging_is_safe(self, engine, monkeypatch):
         """Verify _check_window_reflexes logs safely."""
