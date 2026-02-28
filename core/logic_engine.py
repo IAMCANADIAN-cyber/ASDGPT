@@ -749,11 +749,30 @@ class LogicEngine:
                     face_detected):
 
                     if self.current_mode == "active": # Only switch if currently active
-                        self.logger.log_info(f"Meeting Mode Detected! (Speech: {speech_duration:.1f}s, Idle: {idle_time:.1f}s). Switching to DND.")
-                        self.set_mode("dnd")
-                        self.auto_dnd_active = True
-                        if self.notification_callback:
-                            self.notification_callback("Meeting Detected", "Switching to Do Not Disturb mode.")
+                        # Check Meeting Mode Blacklist
+                        is_blacklisted = False
+                        if self.window_sensor:
+                            try:
+                                active_win = self.window_sensor.get_active_window(sanitize=False)
+                                if active_win:
+                                    active_win_lower = active_win.lower()
+                                    blacklist = getattr(config, 'MEETING_MODE_BLACKLIST', [])
+                                    for b_item in blacklist:
+                                        if b_item.lower() in active_win_lower:
+                                            is_blacklisted = True
+                                            self.logger.log_debug(f"Meeting Mode suppressed by blacklist match: '{b_item}' in '{active_win}'")
+                                            # Reset continuous speech timer so we don't trigger immediately when window loses focus
+                                            self.continuous_speech_start_time = 0
+                                            break
+                            except Exception as e:
+                                self.logger.log_debug(f"Error fetching active window for Meeting Mode blacklist: {e}")
+
+                        if not is_blacklisted:
+                            self.logger.log_info(f"Meeting Mode Detected! (Speech: {speech_duration:.1f}s, Idle: {idle_time:.1f}s). Switching to DND.")
+                            self.set_mode("dnd")
+                            self.auto_dnd_active = True
+                            if self.notification_callback:
+                                self.notification_callback("Meeting Detected", "Switching to Do Not Disturb mode.")
 
             # Exit Meeting Mode (Auto-DND -> Active)
             if self.current_mode == "dnd" and self.auto_dnd_active and self.input_tracking_enabled:
