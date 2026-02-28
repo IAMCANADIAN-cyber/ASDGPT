@@ -744,9 +744,19 @@ class LogicEngine:
                 if self.continuous_speech_start_time > 0:
                     speech_duration = current_time - self.continuous_speech_start_time
 
+                is_blacklisted = False
+                if self.window_sensor and hasattr(config, 'MEETING_MODE_BLACKLIST'):
+                    active_window_raw = self.window_sensor.get_active_window(sanitize=False)
+                    if active_window_raw and active_window_raw != "Unknown":
+                        blacklist = getattr(config, 'MEETING_MODE_BLACKLIST', [])
+                        if any(item.lower() in active_window_raw.lower() for item in blacklist):
+                            is_blacklisted = True
+                            # self.logger.log_debug(f"Meeting Mode suppressed: Active window '{active_window_raw}' is blacklisted.")
+
                 if (speech_duration >= speech_duration_threshold and
                     idle_time >= idle_threshold and
-                    face_detected):
+                    face_detected and
+                    not is_blacklisted):
 
                     if self.current_mode == "active": # Only switch if currently active
                         self.logger.log_info(f"Meeting Mode Detected! (Speech: {speech_duration:.1f}s, Idle: {idle_time:.1f}s). Switching to DND.")
