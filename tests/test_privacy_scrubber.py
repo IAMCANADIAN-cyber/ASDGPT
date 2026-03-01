@@ -6,6 +6,11 @@ from core.logic_engine import LogicEngine
 class TestPrivacyScrubber:
 
     @pytest.fixture
+    def window_sensor(self):
+        from sensors.window_sensor import WindowSensor
+        return WindowSensor()
+
+    @pytest.fixture
     def engine(self):
         # LogicEngine has side effects (starts threads if not careful), but constructor seems safe
         # It creates StateEngine, STTInterface (mocked whisper), MusicInterface.
@@ -37,13 +42,13 @@ class TestPrivacyScrubber:
         # Check for duplicates
         assert len(keywords) == len(set(keywords)), "Duplicate keywords found in config!"
 
-    def test_scrub_window_title_safe(self, engine):
+    def test_sanitize_title_safe(self, window_sensor):
         """Verify safe titles remain unchanged."""
-        assert engine._scrub_window_title("Google Chrome") == "Google Chrome"
-        assert engine._scrub_window_title("Visual Studio Code") == "Visual Studio Code"
-        assert engine._scrub_window_title("Calculator") == "Calculator"
+        assert window_sensor._sanitize_title("Google Chrome") == "Google Chrome"
+        assert window_sensor._sanitize_title("Visual Studio Code") == "Visual Studio Code"
+        assert window_sensor._sanitize_title("Calculator") == "Calculator"
 
-    def test_scrub_window_title_sensitive(self, engine):
+    def test_sanitize_title_sensitive(self, window_sensor):
         """Verify sensitive titles are redacted."""
         sensitive_examples = [
             "Chase Bank - Login",
@@ -56,23 +61,23 @@ class TestPrivacyScrubber:
         ]
 
         for title in sensitive_examples:
-            scrubbed = engine._scrub_window_title(title)
+            scrubbed = window_sensor._sanitize_title(title)
             assert scrubbed == "[REDACTED]", f"Failed to redact: {title}"
 
-    def test_scrub_window_title_case_insensitive(self, engine):
+    def test_sanitize_title_case_insensitive(self, window_sensor):
         """Verify case insensitivity."""
-        assert engine._scrub_window_title("bank of america") == "[REDACTED]"
-        assert engine._scrub_window_title("PASSWORD manager") == "[REDACTED]"
+        assert window_sensor._sanitize_title("bank of america") == "[REDACTED]"
+        assert window_sensor._sanitize_title("PASSWORD manager") == "[REDACTED]"
 
-    def test_scrub_window_title_edge_cases(self, engine):
+    def test_sanitize_title_edge_cases(self, window_sensor):
         """Verify edge cases."""
-        assert engine._scrub_window_title(None) is None
-        assert engine._scrub_window_title("") == ""
+        assert window_sensor._sanitize_title(None) == "Unknown"
+        assert window_sensor._sanitize_title("") == "Unknown"
 
     def test_logic_engine_update_scrubs_history(self, engine):
         """Verify LogicEngine.update() stores redacted title in history."""
         # Setup mock return
-        engine.window_sensor.get_active_window.return_value = "Chase Bank - Login"
+        engine.window_sensor.get_active_window.return_value = "[REDACTED]"
 
         # Ensure update runs logic
         engine.current_mode = "active"
@@ -86,7 +91,7 @@ class TestPrivacyScrubber:
 
     def test_prepare_lmm_data_scrubs_active_window(self, engine):
         """Verify _prepare_lmm_data() returns redacted active_window."""
-        engine.window_sensor.get_active_window.return_value = "Secret Project - 1Password"
+        engine.window_sensor.get_active_window.return_value = "[REDACTED]"
 
         # Mock sensors to return something so data is prepared
         engine.last_video_frame = MagicMock()
