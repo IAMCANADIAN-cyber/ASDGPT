@@ -56,9 +56,14 @@ sudo apt-get install x11-utils espeak ffmpeg portaudio19-dev
     ```
     *Note: Requires Python < 3.12.*
 
-## Configuration
+## Documentation Reference
 
-For a comprehensive guide on all available settings, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+*   **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Details the internal architecture and data flow.
+*   **[docs/MODES.md](docs/MODES.md)**: Explains the different operational modes (Active, Snoozed, Paused, DND) and what each does.
+*   **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)**: Comprehensive guide on all available settings.
+*   **[docs/MENTAL_MODEL.md](docs/MENTAL_MODEL.md)**: Outlines the core mental model, state definitions, and intervention strategies.
+
+## Configuration
 
 You can configure ASDGPT using the new Graphical Interface or by editing config files manually.
 

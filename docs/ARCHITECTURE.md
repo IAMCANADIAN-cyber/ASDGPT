@@ -37,7 +37,7 @@ The central coordinator ("The Brain"). It runs the main event loop.
     *   **High Audio Event**: Loudness > threshold AND identified as speech.
     *   **High Video Activity**: Motion > threshold AND face detected.
     *   **Periodic Check**: Heartbeat (default 5s) if no event occurs.
-*   **Modes**:
+*   **Modes** (For detailed behavior, see [docs/MODES.md](MODES.md)):
     *   **Meeting Mode (Auto-DND)**: Automatically switches to "Do Not Disturb" if continuous speech + face + no input is detected.
     *   **Sexual Arousal Mode**: When `sexual_arousal` state exceeds `SEXUAL_AROUSAL_THRESHOLD`, the Logic Engine increases LMM sampling frequency (2x) to capture relevant context and potential content creation moments.
 *   **Offline Fallback**:
