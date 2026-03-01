@@ -1,7 +1,6 @@
 import time
 import config
 import threading
-from collections import deque
 from typing import Optional, Callable, Any
 import numpy as np
 import cv2
@@ -29,23 +28,15 @@ class LogicEngine:
         self.lmm_interface: Optional[LMMInterface] = lmm_interface
         self.intervention_engine: Optional[InterventionEngine] = None
         self.state_engine: StateEngine = StateEngine(logger=self.logger)
-        self.stt_interface: STTInterface = STTInterface(logger=self.logger)
-        self.music_interface: MusicInterface = MusicInterface(logger=self.logger)
         self._lock: threading.Lock = threading.Lock()
 
         # Async LMM handling
         self.lmm_thread: Optional[threading.Thread] = None
-        self.stt_thread: Optional[threading.Thread] = None
 
         # Sensor data storage
         self.last_video_frame: Optional[np.ndarray] = None
         self.previous_video_frame: Optional[np.ndarray] = None
         self.last_audio_chunk: Optional[np.ndarray] = None
-        self.audio_buffer_for_stt: deque = deque(maxlen=int(44100 * 30)) # 30 sec max buffer
-        self.last_speech_state: bool = False
-        self.speech_start_time: float = 0
-        self.last_transcription: Optional[str] = None
-        self.last_transcription_time: float = 0
 
         # Sensor metrics
         self.audio_level: float = 0.0
@@ -54,17 +45,11 @@ class LogicEngine:
         self.video_analysis: dict = {}
         self.audio_analysis: dict = {}
 
+
         # LMM trigger logic
         self.last_lmm_call_time: float = 0
-
-        # Adjust intervals based on performance mode
-        perf_mode = getattr(config, 'PERFORMANCE_MODE', 'high')
-        if perf_mode == 'low':
-            self.lmm_call_interval: int = 10
-            self.min_lmm_interval: int = 5
-        else:
-            self.lmm_call_interval: int = 5
-            self.min_lmm_interval: int = 2
+        self.lmm_call_interval: int = 5  # Periodic check interval (seconds)
+        self.min_lmm_interval: int = 2   # Minimum time between calls even for triggers (seconds)
 
         # Thresholds
         # Thresholds (loaded from config)
@@ -84,6 +69,10 @@ class LogicEngine:
         self.lmm_consecutive_failures: int = 0
         self.lmm_circuit_breaker_open_until: float = 0
 
+        # Offline Fallback
+        self.last_offline_trigger_time: float = 0
+        self.offline_trigger_interval: int = 30 # Seconds between offline interventions
+
         # Meeting Mode Heuristics
         self.last_user_input_time: float = time.time()
         self.input_tracking_enabled: bool = False
@@ -95,22 +84,11 @@ class LogicEngine:
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
 
-        # Context History (for LMM narrative)
-        self.context_history: deque = deque(maxlen=config.HISTORY_WINDOW_SIZE)
-        self.last_history_sample_time: float = 0
-
-        # Content Creation Mode Heuristic
-        self.sexual_arousal_threshold = getattr(config, 'SEXUAL_AROUSAL_THRESHOLD', 50)
-
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
     def get_mode(self) -> str:
         with self._lock:
             return self.current_mode
-
-    def is_face_detected(self) -> bool:
-        with self._lock:
-            return self.face_metrics.get("face_detected", False)
 
     def set_mode(self, mode: str, from_snooze_expiry: bool = False) -> None:
         with self._lock:
@@ -127,6 +105,15 @@ class LogicEngine:
                 return
 
         # Reset auto-dnd flag if manual change (or any change not explicitly preserving it)
+        # We rely on the caller to set auto_dnd_active = True AFTER calling set_mode if it was an auto switch,
+        # OR we handle it here.
+        # Actually, simpler: Any mode change resets auto_dnd_active UNLESS we are about to set it.
+        # But if the USER changes mode, we want to clear it.
+        # If the SYSTEM changes mode (to DND), we want to set it.
+        # Let's just clear it here. If it's an auto-switch, the update loop will set it back to True immediately after.
+        # WAIT: If I clear it here, and then set_mode("dnd"), I need to re-set it.
+        # Better: LogicEngine.update calls set_mode("dnd"), then sets self.auto_dnd_active = True.
+        # But if user cycles mode, set_mode is called. So clearing here is correct for manual overrides.
         self.auto_dnd_active = False
 
         self.logger.log_info(f"LogicEngine: Changing mode from {old_mode} to {mode}")
@@ -137,6 +124,7 @@ class LogicEngine:
         if mode == "active" and old_mode == "error":
              self.logger.log_info("Entered active mode from error. Starting probation period.")
              self.recovery_probation_end_time = time.time() + self.recovery_probation_duration
+             # Do not reset attempts yet.
 
         self.current_mode = mode
 
@@ -236,33 +224,6 @@ class LogicEngine:
             if self.audio_sensor and hasattr(self.audio_sensor, 'analyze_chunk'):
                 self.audio_analysis = self.audio_sensor.analyze_chunk(audio_chunk)
                 self.audio_level = self.audio_analysis.get('rms', 0.0)
-
-                # STT Buffer logic
-                # Only buffer if there's speech confidence or sufficient energy
-                is_speech = self.audio_analysis.get("is_speech", False)
-
-                # State transition detection
-                if is_speech and not self.last_speech_state:
-                    self.speech_start_time = time.time()
-
-                # Append to buffer if speech detected or trailing silence (to complete sentence)
-                # Simple logic: if speech, add.
-                if is_speech:
-                    if len(audio_chunk.shape) > 1:
-                        self.audio_buffer_for_stt.extend(audio_chunk[:, 0])
-                    else:
-                        self.audio_buffer_for_stt.extend(audio_chunk)
-
-                # Trigger logic based on state change (Falling Edge)
-                # If speech ENDS (was True, now False), we process the buffer
-                if self.last_speech_state and not is_speech:
-                    # Delay slightly or check buffer length to ensure we have a sentence?
-                    # For now, trigger processing if buffer is big enough
-                    if len(self.audio_buffer_for_stt) > 22050: # > 0.5s @ 44.1k
-                        self._trigger_stt_processing()
-
-                self.last_speech_state = is_speech
-
             else:
                 # Fallback calculation
                 if len(audio_chunk) > 0:
@@ -272,51 +233,6 @@ class LogicEngine:
                 self.audio_analysis = {"rms": self.audio_level}
 
         self.logger.log_debug(f"Processed audio chunk. Level: {self.audio_level:.4f}")
-
-    def _trigger_stt_processing(self):
-        """Copies buffer and launches background STT thread."""
-        if self.stt_thread and self.stt_thread.is_alive():
-            # If busy, maybe skip or queue? For now, skip to avoid lag
-            self.logger.log_debug("STT thread busy, skipping chunk.")
-            return
-
-        # Copy buffer and clear
-        audio_data = np.array(self.audio_buffer_for_stt)
-        self.audio_buffer_for_stt.clear()
-
-        sample_rate = 44100
-        if self.audio_sensor and hasattr(self.audio_sensor, 'sample_rate'):
-            sample_rate = self.audio_sensor.sample_rate
-
-        self.stt_thread = threading.Thread(
-            target=self._run_stt_async,
-            args=(audio_data, sample_rate),
-            daemon=True
-        )
-        self.stt_thread.start()
-
-    def _run_stt_async(self, audio_data, sample_rate):
-        try:
-            text = self.stt_interface.transcribe(audio_data, sample_rate)
-            if text:
-                with self._lock:
-                    self.last_transcription = text
-                    self.last_transcription_time = time.time()
-
-                self.logger.log_info(f"User Speech Detected: '{text}'")
-
-                # Check Voice Commands Immediately
-                if self.intervention_engine:
-                    voice_intervention_id = self._check_voice_commands(text)
-                    if voice_intervention_id:
-                        self.logger.log_info(f"Triggering Voice Command Intervention: {voice_intervention_id}")
-                        self.intervention_engine.start_intervention(
-                            {"id": voice_intervention_id, "tier": 2},
-                            category="voice_command"
-                        )
-
-        except Exception as e:
-            self.logger.log_warning(f"STT Async Error: {e}")
 
     def _prepare_lmm_data(self, trigger_reason: str = "periodic") -> Optional[dict]:
         with self._lock:
@@ -338,11 +254,10 @@ class LogicEngine:
                 # For now, sending raw list
                 audio_data_list = self.last_audio_chunk.tolist()
 
-            # Retrieve recent speech context
-            # Only send if recent (< 30s)
-            speech_context = None
-            if self.last_transcription and (time.time() - self.last_transcription_time < 30):
-                speech_context = self.last_transcription
+            # Note: We are NOT clearing self.last_video_frame here to allow subsequent checks,
+            # but usually we want fresh data.
+            # If we clear it, we might lose context if the LMM call fails and we retry.
+            # However, standard practice here is to send snapshot.
 
             # Fetch suppressed interventions if available
             suppressed_list = []
@@ -358,27 +273,9 @@ class LogicEngine:
             if self.context_persistence.get("phone_usage", 0) >= self.doom_scroll_trigger_threshold:
                  system_alerts.append("Persistent Phone Usage Detected (Potential Doom Scrolling)")
 
-            # Check for Rapid Task Switching
-            rapid_switch_threshold = getattr(config, 'RAPID_SWITCHING_THRESHOLD', 4)
-            # Only check if we have enough history to possibly meet the threshold
-            if len(self.context_history) >= rapid_switch_threshold:
-                unique_windows = {snap.get('active_window') for snap in self.context_history if snap.get('active_window')}
-                if len(unique_windows) >= rapid_switch_threshold:
-                    system_alerts.append("Rapid Task Switching Detected")
-
-            active_window = "Unknown"
-            if self.window_sensor:
-                try:
-                    # WindowSensor handles sanitization (including fuzzy matching and regex)
-                    active_window = self.window_sensor.get_active_window(sanitize=True)
-                except Exception as e:
-                    self.logger.log_debug(f"Error fetching active window: {e}")
-
             context = {
                 "current_mode": self.current_mode,
-                "context_history": list(self.context_history),
                 "trigger_reason": trigger_reason,
-                "active_window": active_window,
                 "sensor_metrics": {
                     "audio_level": float(self.audio_level),
                     "video_activity": float(self.video_activity),
@@ -390,8 +287,7 @@ class LogicEngine:
                 "current_state_estimation": self.state_engine.get_state(),
                 "suppressed_interventions": suppressed_list,
                 "system_alerts": system_alerts,
-                "preferred_interventions": preferred_list,
-                "user_speech": speech_context
+                "preferred_interventions": preferred_list
             }
 
             return {
@@ -410,6 +306,11 @@ class LogicEngine:
             )
 
             if analysis:
+                # Reset circuit breaker on success (even if it's a fallback, though ideally fallback shouldn't count as 'network success'
+                # but LMMInterface handles that. LMMInterface returns fallback if network failed.
+                # If we get a response, the interface handled it.
+                # If analysis has _meta.is_fallback, it means LMM failed.
+
                 is_fallback = analysis.get("_meta", {}).get("is_fallback", False)
 
                 with self._lock:
@@ -444,20 +345,6 @@ class LogicEngine:
 
                 # Log state update event
                 self.logger.log_event("state_update", self.state_engine.get_state())
-
-                # Trigger Mood Playlist (Music Integration)
-                # Only play music if enabled in config and not in fallback mode (to avoid startup noise)
-                music_enabled = getattr(config, 'ENABLE_MUSIC_CONTROL', False)
-                if self.music_interface and music_enabled and not is_fallback:
-                    try:
-                        state = self.state_engine.get_state()
-                        self.music_interface.play_mood_playlist(
-                            mood=state.get("mood", 50),
-                            arousal=state.get("arousal", 50),
-                            sexual_arousal=state.get("sexual_arousal", 0)
-                        )
-                    except Exception as e:
-                        self.logger.log_warning(f"Music Interface Error: {e}")
 
                 # Update tray tooltip with new state
                 if hasattr(self, 'state_update_callback') and self.state_update_callback:
@@ -497,10 +384,7 @@ class LogicEngine:
                     if allow_intervention:
                         self.logger.log_info(f"Starting intervention: {final_intervention}")
                         # start_intervention is generally thread-safe as it just sets an event/launches another thread
-                        self.intervention_engine.start_intervention(
-                            final_intervention,
-                            category="lmm_suggestion"
-                        )
+                        self.intervention_engine.start_intervention(final_intervention)
                     else:
                         self.logger.log_info(f"Intervention suggested but suppressed due to mode: {final_intervention}")
         except Exception as e:
@@ -512,6 +396,7 @@ class LogicEngine:
         """
         Analyzes visual context tags for persistent patterns (e.g., Doom Scrolling).
         Returns an intervention ID string if a specific persistent trigger is met, else None.
+        Returns an intervention ID if a trigger condition is met, else None.
         """
         # Tags we track for persistence
         tracked_tags = ["phone_usage", "messy_room"]
@@ -585,6 +470,11 @@ class LogicEngine:
         """
         Executes simple heuristic-based interventions when LMM is offline.
         """
+        current_time = time.time()
+        if current_time - self.last_offline_trigger_time < self.offline_trigger_interval:
+            self.logger.log_debug(f"Offline fallback skipped: Cooldown active ({int(self.offline_trigger_interval - (current_time - self.last_offline_trigger_time))}s left).")
+            return
+
         intervention_payload = None
 
         if reason == "high_audio_level":
@@ -602,10 +492,8 @@ class LogicEngine:
 
         if intervention_payload and self.intervention_engine:
             self.logger.log_info(f"Triggering Offline Fallback Intervention: {reason}")
-            self.intervention_engine.start_intervention(
-                intervention_payload,
-                category="offline_fallback"
-            )
+            self.intervention_engine.start_intervention(intervention_payload)
+            self.last_offline_trigger_time = current_time
 
     def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
         if not self.lmm_interface:
@@ -659,28 +547,10 @@ class LogicEngine:
         current_mode = self.get_mode()
         # self.logger.log_debug(f"LogicEngine update. Current mode: {current_mode}")
 
-        if current_mode == "active":
-            # Check Reflexive Window Triggers
-            if self.window_sensor and self.intervention_engine:
-                try:
-                    # Use raw window title for checking reflexes (we need the app name)
-                    # Note: _check_window_reflexes logs safely (without exposing title)
-                    active_win = self.window_sensor.get_active_window(sanitize=False)
-                    reflex_id = self._check_window_reflexes(active_win)
-                    if reflex_id:
-                        self.logger.log_info(f"Triggering Reflexive Intervention: {reflex_id}")
-                        self.intervention_engine.start_intervention(
-                            {"id": reflex_id, "tier": 2},
-                            category="reflexive_window"
-                        )
-                except Exception as e:
-                    # Don't let window check crash the loop
-                    pass
-
         if current_mode in ["active", "dnd"]:
             current_time = time.time()
 
-            # Check probation
+            # Check probation (only relevant if recovering to active, but harmless to check)
             if self.recovery_probation_end_time > 0 and current_time > self.recovery_probation_end_time:
                 self.logger.log_info("Error recovery probation passed. Resetting error counters.")
                 self.error_recovery_attempts = 0
@@ -690,38 +560,20 @@ class LogicEngine:
             trigger_reason = ""
 
             # 1. Process sensor data & Evaluate conditions (Metrics updated in process_* methods)
+            # We access metrics (atomic reads roughly safe, but better with lock if precise)
+            # Using local copies for decision making
             with self._lock:
                 current_audio_level = self.audio_level
                 current_video_activity = self.video_activity
                 # Get more detailed analysis for filtering triggers
                 is_speech = self.audio_analysis.get("is_speech", False)
+                # Face detection is key for "user activity" vs "shadows"
                 face_detected = self.face_metrics.get("face_detected", False)
                 face_count = self.face_metrics.get("face_count", 0)
 
-                # Snapshot current state for history (Lock held)
-                if current_time - self.last_history_sample_time >= config.HISTORY_SAMPLE_INTERVAL:
-                    self.last_history_sample_time = current_time
-
-                    # Fetch active window safely (might take time, but usually fast enough; ideally async but sensor is local)
-                    hist_active_window = "Unknown"
-                    if self.window_sensor:
-                        try:
-                            hist_active_window = self.window_sensor.get_active_window(sanitize=True)
-                        except: pass
-
-                    snapshot = {
-                        "timestamp": current_time,
-                        "mode": self.current_mode,
-                        "active_window": hist_active_window,
-                        "audio_level": current_audio_level,
-                        "video_activity": current_video_activity,
-                        "face_detected": face_detected,
-                        "posture": self.video_analysis.get("posture_state", "unknown")
-                    }
-                    self.context_history.append(snapshot)
-
             # 2. Check Meeting Mode Conditions (Active -> DND)
-            if self.input_tracking_enabled:
+            # Heuristic: Continuous Speech + Face Detected + No User Input for X seconds
+            if self.input_tracking_enabled: # Only trust idle time if tracking is working
                 idle_time = current_time - self.last_user_input_time
                 speech_duration_threshold = getattr(config, 'MEETING_MODE_SPEECH_DURATION_THRESHOLD', 3.0)
                 idle_threshold = getattr(config, 'MEETING_MODE_IDLE_KEYBOARD_THRESHOLD', 10.0)
@@ -765,21 +617,42 @@ class LogicEngine:
                     idle_time >= idle_threshold and
                     face_detected):
 
-                    if self.current_mode == "active": # Only switch if currently active
+                    # Check Blacklist before triggering
+                    is_blacklisted = False
+                    if self.window_sensor:
+                        try:
+                            # Use unsanitized title to catch app names like "Netflix"
+                            active_window = self.window_sensor.get_active_window(sanitize=False)
+                            blacklist = getattr(config, 'MEETING_MODE_BLACKLIST', [])
+                            for blocked_app in blacklist:
+                                if blocked_app.lower() in active_window.lower():
+                                    is_blacklisted = True
+                                    self.logger.log_debug(f"Meeting Mode Suppressed: Active window '{active_window}' matches blacklist '{blocked_app}'.")
+                                    break
+                        except Exception as e:
+                            self.logger.log_warning(f"Error checking blacklist: {e}")
+
+                    if self.current_mode == "active" and not is_blacklisted: # Only switch if currently active and not blacklisted
                         self.logger.log_info(f"Meeting Mode Detected! (Speech: {speech_duration:.1f}s, Idle: {idle_time:.1f}s). Switching to DND.")
                         self.set_mode("dnd")
-                        self.auto_dnd_active = True
+                        self.auto_dnd_active = True # Mark as auto-switched
+                        # Optionally trigger a notification via main app (not directly accessible here easily without callback)
                         if self.notification_callback:
                             self.notification_callback("Meeting Detected", "Switching to Do Not Disturb mode.")
 
             # Exit Meeting Mode (Auto-DND -> Active)
+            # If we are in DND, and it was AUTO triggered, and user interacts (idle_time < 1.0s)
             if self.current_mode == "dnd" and self.auto_dnd_active and self.input_tracking_enabled:
                  idle_time = current_time - self.last_user_input_time
+                 # If user types (idle < 1s), we assume they are back / override
                  if idle_time < 1.0:
                      self.logger.log_info("User activity detected during Auto-DND. Exiting Meeting Mode.")
                      self.set_mode("active")
+                     # auto_dnd_active is reset in set_mode
 
-            # 3. Check for Event-based triggers
+            # 3. Check for Event-based Triggers
+            # Check for sudden loud noise AND it is speech-like
+            # If it's just a loud bang (high RMS, no speech confidence), we ignore it to prevent false positives.
             if current_audio_level > self.audio_threshold_high:
                 if is_speech:
                     if current_time - self.last_lmm_call_time >= self.min_lmm_interval:
@@ -788,7 +661,10 @@ class LogicEngine:
                 else:
                     self.logger.log_debug(f"High audio level ({current_audio_level:.2f}) ignored: Not speech.")
 
+            # Check for high activity (or sudden movement) AND user is present
             elif current_video_activity > self.video_activity_threshold_high:
+                # Only trigger if we see a face (user is present)
+                # This prevents triggering on cats, shadows, or empty chairs.
                 if face_detected or face_count > 0:
                     if current_time - self.last_lmm_call_time >= self.min_lmm_interval:
                         trigger_lmm = True
@@ -797,6 +673,7 @@ class LogicEngine:
                     self.logger.log_debug(f"High video activity ({current_video_activity:.2f}) ignored: No face detected.")
 
             # 3. Periodic Check (Heartbeat)
+            # If no event triggered, check if it's time for a routine check
             if not trigger_lmm:
                 if current_time - self.last_lmm_call_time >= self.lmm_call_interval:
                     trigger_lmm = True
@@ -808,7 +685,7 @@ class LogicEngine:
                 # Intervention only allowed in 'active' mode
                 should_intervene = (current_mode == "active")
 
-                # Check Circuit Breaker
+                # Check Circuit Breaker before calling LMM to see if we should fallback
                 circuit_open = False
                 with self._lock:
                     if time.time() < self.lmm_circuit_breaker_open_until:
@@ -821,20 +698,10 @@ class LogicEngine:
                 else:
                     self._trigger_lmm_analysis(reason=trigger_reason, allow_intervention=should_intervene)
 
-            # 5. Check Content Creation Mode
-            # If sexual_arousal > threshold, we might want to temporarily increase LMM frequency
-            # or trigger specific interventions more aggressively.
-
-            with self._lock:
-                current_sexual_arousal = self.state_engine.get_state().get("sexual_arousal", 0)
-
-            if current_sexual_arousal > self.sexual_arousal_threshold:
-                 # In high sexual arousal state, we might want to ensure LMM checks more frequently
-                 # to capture the "moment".
-                 if current_time - self.last_lmm_call_time >= (self.lmm_call_interval / 2): # Check twice as often
-                     if not trigger_lmm: # If not already triggered
-                        self.logger.log_info(f"High Sexual Arousal ({current_sexual_arousal}) detected. Triggering accelerated LMM check.")
-                        self._trigger_lmm_analysis(reason="high_sexual_arousal", allow_intervention=True)
+            # 5. Potentially change mode (e.g. error)
+            # (Note: Main application handles sensor hardware errors.
+            # LogicEngine could handle logical errors, e.g., if we consistently get black frames
+            # but no hardware error is reported. For now, we leave that to future expansion.)
 
         elif current_mode == "error":
             current_time = time.time()
@@ -842,21 +709,28 @@ class LogicEngine:
                 self.logger.log_debug("LogicEngine: Mode is ERROR. Attempting to handle or log.")
                 self.last_error_log_time = current_time
 
+            # 1. Log detailed error information (handled by setting mode and callers, but we ensure state is known)
+            # 2. Attempt recovery if possible.
             if self.error_recovery_attempts < self.max_error_recovery_attempts:
                 if current_time - self.last_error_recovery_attempt_time > self.error_recovery_interval:
                     self.logger.log_info(f"Attempting error recovery ({self.error_recovery_attempts + 1}/{self.max_error_recovery_attempts})...")
                     self.last_error_recovery_attempt_time = current_time
                     self.error_recovery_attempts += 1
 
+                    # Attempt to revert to previous known good state or default active
                     target_mode = self.previous_mode_before_pause if self.previous_mode_before_pause != "error" else "active"
                     self.logger.log_info(f"Resetting mode to {target_mode} for recovery check.")
+
+                    # We use set_mode. If the underlying cause (e.g. sensor error) persists,
+                    # main.py or sensor checks will likely set it back to error shortly.
                     self.set_mode(target_mode)
 
+            # 3. Notify user of persistent error state.
             elif self.error_recovery_attempts == self.max_error_recovery_attempts:
                 self.logger.log_error("Max error recovery attempts reached. User intervention required.")
                 if self.notification_callback:
                     self.notification_callback("System Error", "The system has encountered a persistent error and could not recover automatically. Please check logs.")
-                self.error_recovery_attempts += 1
+                self.error_recovery_attempts += 1 # Increment once more to stop notifying repeatedly
 
         elif current_mode == "snoozed":
             self.logger.log_debug("LogicEngine: Mode is SNOOZED. Performing light monitoring without intervention.")
@@ -870,16 +744,12 @@ class LogicEngine:
         Gracefully shuts down the LogicEngine, ensuring background threads complete.
         """
         self.logger.log_info("LogicEngine shutting down...")
+        # Since lmm_thread is daemon and uses network calls, we can't easily interrupt it
+        # unless we add a flag to LMMInterface, but we can wait briefly.
         if self.lmm_thread and self.lmm_thread.is_alive():
             self.logger.log_info("Waiting for LMM analysis thread to finish...")
-            self.lmm_thread.join(timeout=2.0)
+            self.lmm_thread.join(timeout=2.0) # Reduced timeout for faster exit
             if self.lmm_thread.is_alive():
                 self.logger.log_warning("LMM analysis thread did not finish in time (will be killed as daemon).")
             else:
                 self.logger.log_info("LMM analysis thread finished.")
-
-        if self.stt_thread and self.stt_thread.is_alive():
-            self.logger.log_info("Waiting for STT thread to finish...")
-            self.stt_thread.join(timeout=2.0)
-            if self.stt_thread.is_alive():
-                self.logger.log_warning("STT thread did not finish in time.")
