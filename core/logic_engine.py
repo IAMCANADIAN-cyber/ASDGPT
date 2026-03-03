@@ -2,6 +2,7 @@ import time
 import config
 import threading
 from typing import Optional, Callable, Any
+from collections import deque
 import numpy as np
 import cv2
 import base64
@@ -83,6 +84,10 @@ class LogicEngine:
         # Context Persistence (for specialized triggers like Doom Scrolling)
         self.context_persistence: dict = {} # Stores counts of consecutive tags e.g. {"phone_usage": 0}
         self.doom_scroll_trigger_threshold: int = getattr(config, 'DOOM_SCROLL_THRESHOLD', 3)
+
+        # Context History (User Narrative)
+        self.context_history: deque = deque(maxlen=getattr(config, 'HISTORY_WINDOW_SIZE', 5))
+        self.last_history_sample_time: float = 0
 
         self.logger.log_info(f"LogicEngine initialized. Mode: {self.current_mode}")
 
@@ -273,9 +278,26 @@ class LogicEngine:
             if self.context_persistence.get("phone_usage", 0) >= self.doom_scroll_trigger_threshold:
                  system_alerts.append("Persistent Phone Usage Detected (Potential Doom Scrolling)")
 
+            # Rapid Task Switching logic
+            if len(self.context_history) > 0:
+                unique_windows = len(set(s.get("active_window") for s in self.context_history if s.get("active_window")))
+                threshold = getattr(config, 'RAPID_SWITCHING_THRESHOLD', 4)
+                if unique_windows >= threshold:
+                    system_alerts.append("Rapid Task Switching Detected")
+
+            # Fetch active window
+            active_window = "Unknown"
+            if self.window_sensor:
+                try:
+                    active_window = self.window_sensor.get_active_window()
+                except Exception as e:
+                    self.logger.log_debug(f"Error fetching active window: {e}")
+
             context = {
                 "current_mode": self.current_mode,
                 "trigger_reason": trigger_reason,
+                "active_window": active_window,
+                "history": list(self.context_history),
                 "sensor_metrics": {
                     "audio_level": float(self.audio_level),
                     "video_activity": float(self.video_activity),
@@ -349,6 +371,16 @@ class LogicEngine:
                 # Update tray tooltip with new state
                 if hasattr(self, 'state_update_callback') and self.state_update_callback:
                     self.state_update_callback(self.state_engine.get_state())
+
+                # Update music playlist if enabled
+                if getattr(config, 'ENABLE_MUSIC_CONTROL', False) and not is_fallback:
+                    if hasattr(self, 'music_interface') and self.music_interface:
+                        current_state = self.state_engine.get_state()
+                        self.music_interface.play_mood_playlist(
+                            mood=current_state.get('mood', 50),
+                            arousal=current_state.get('arousal', 50),
+                            sexual_arousal=current_state.get('sexual_arousal', 0)
+                        )
 
             else:
                  # LogicEngine received None (hard failure in interface even after retries and no fallback?)
@@ -492,7 +524,7 @@ class LogicEngine:
 
         if intervention_payload and self.intervention_engine:
             self.logger.log_info(f"Triggering Offline Fallback Intervention: {reason}")
-            self.intervention_engine.start_intervention(intervention_payload)
+            self.intervention_engine.start_intervention(intervention_payload, category='offline_fallback')
             self.last_offline_trigger_time = current_time
 
     def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
@@ -570,6 +602,46 @@ class LogicEngine:
                 # Face detection is key for "user activity" vs "shadows"
                 face_detected = self.face_metrics.get("face_detected", False)
                 face_count = self.face_metrics.get("face_count", 0)
+
+            # Reflexive Window Triggers (run BEFORE LMM to allow instant reaction)
+            # Only run if active, not in DND
+            if current_mode == "active" and self.window_sensor:
+                active_window = "Unknown"
+                try:
+                    active_window = self.window_sensor.get_active_window()
+                except: pass
+
+                reflexive_id = self._check_window_reflexes(active_window)
+                if reflexive_id:
+                     if self.intervention_engine:
+                         self.logger.log_info(f"Reflexive Trigger fired: {reflexive_id}")
+                         # Important: We must pass **kwargs like 'category' if the engine expects it or handles it
+                         self.intervention_engine.start_intervention({"id": reflexive_id, "tier": 2}, category='reflexive_window')
+                     # Usually we don't return here so normal LMM processing can happen,
+                     # but we could choose to return to avoid redundant LMM calls.
+                     # The InterventionEngine handles rate limiting.
+
+            # 1.5 Update Context History
+            history_interval = getattr(config, 'HISTORY_SAMPLE_INTERVAL', 10)
+            if current_time - self.last_history_sample_time >= history_interval:
+                self.last_history_sample_time = current_time
+                with self._lock:
+                    hist_active_window = "Unknown"
+                    if self.window_sensor:
+                        try:
+                            hist_active_window = self.window_sensor.get_active_window()
+                        except: pass
+
+                    snapshot = {
+                        "timestamp": current_time,
+                        "mode": self.current_mode,
+                        "active_window": hist_active_window,
+                        "audio_level": current_audio_level,
+                        "video_activity": current_video_activity,
+                        "face_detected": face_detected,
+                        "posture": self.video_analysis.get("posture_state", "unknown")
+                    }
+                    self.context_history.append(snapshot)
 
             # 2. Check Meeting Mode Conditions (Active -> DND)
             # Heuristic: Continuous Speech + Face Detected + No User Input for X seconds
@@ -671,6 +743,16 @@ class LogicEngine:
                         trigger_reason = "high_video_activity"
                 else:
                     self.logger.log_debug(f"High video activity ({current_video_activity:.2f}) ignored: No face detected.")
+
+            # Accelerated checking for sexual arousal
+            if not trigger_lmm:
+                # Accelerate if above threshold
+                arousal = self.state_engine.get_state().get("sexual_arousal", 0)
+                threshold = getattr(config, 'SEXUAL_AROUSAL_THRESHOLD', 50)
+                if arousal > threshold:
+                    if current_time - self.last_lmm_call_time >= self.lmm_call_interval / 2.0:
+                        trigger_lmm = True
+                        trigger_reason = "high_sexual_arousal"
 
             # 3. Periodic Check (Heartbeat)
             # If no event triggered, check if it's time for a routine check
