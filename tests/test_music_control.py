@@ -37,7 +37,7 @@ class TestMusicControl(unittest.TestCase):
         with patch('core.logic_engine.DataLogger', return_value=self.mock_logger), \
              patch('core.logic_engine.StateEngine'):
             self.logic_engine = LogicEngine(lmm_interface=self.mock_lmm)
-            self.logic_engine.music_interface = self.mock_music
+            self.logic_engine.music_controller = self.mock_music
 
     def tearDown(self):
         self.config_patcher.stop()
@@ -61,7 +61,8 @@ class TestMusicControl(unittest.TestCase):
         analysis = {"state_estimation": {"arousal": 60, "mood": 60}, "_meta": {"is_fallback": False}}
         self.mock_lmm.process_data.return_value = analysis
 
-        # Mock StateEngine state
+        # Replace StateEngine instance to make get_state return mocked value safely
+        self.logic_engine.state_engine = MagicMock()
         self.logic_engine.state_engine.get_state.return_value = {"mood": 60, "arousal": 60, "sexual_arousal": 0}
 
         # Act
