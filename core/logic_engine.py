@@ -33,6 +33,9 @@ class LogicEngine:
         # Async LMM handling
         self.lmm_thread: Optional[threading.Thread] = None
 
+        self.context_history = []
+        self.last_history_sample_time = 0
+
         # Sensor data storage
         self.last_video_frame: Optional[np.ndarray] = None
         self.previous_video_frame: Optional[np.ndarray] = None
@@ -273,9 +276,27 @@ class LogicEngine:
             if self.context_persistence.get("phone_usage", 0) >= self.doom_scroll_trigger_threshold:
                  system_alerts.append("Persistent Phone Usage Detected (Potential Doom Scrolling)")
 
+            # Check Rapid Task Switching
+            if getattr(self, 'context_history', None):
+                unique_windows = set()
+                for snapshot in self.context_history:
+                    # Ignore 'Unknown' as it might be transient or an error
+                    win = snapshot.get("active_window", "Unknown")
+                    if win != "Unknown":
+                        unique_windows.add(win)
+                rapid_switching_threshold = getattr(config, 'RAPID_SWITCHING_THRESHOLD', 4)
+                if len(unique_windows) >= rapid_switching_threshold:
+                     system_alerts.append("Rapid Task Switching Detected")
+
+            active_window = "Unknown"
+            if hasattr(self, 'window_sensor') and self.window_sensor:
+                active_window = self.window_sensor.get_active_window(sanitize=True) or "Unknown"
+
             context = {
                 "current_mode": self.current_mode,
                 "trigger_reason": trigger_reason,
+                "active_window": active_window,
+                "context_history": getattr(self, 'context_history', []),
                 "sensor_metrics": {
                     "audio_level": float(self.audio_level),
                     "video_activity": float(self.video_activity),
@@ -295,6 +316,27 @@ class LogicEngine:
                 "audio_data": audio_data_list,
                 "user_context": context
             }
+
+    def _sample_context_history(self) -> None:
+        """Samples current metrics and window context into history ring buffer."""
+        window_size = getattr(config, 'HISTORY_WINDOW_SIZE', 5)
+        active_window = "Unknown"
+        if self.window_sensor:
+            # use unsanitized title if needed, but for LMM context, sanitized is usually preferred
+            active_window = self.window_sensor.get_active_window(sanitize=True) or "Unknown"
+
+        snapshot = {
+            "timestamp": time.time(),
+            "active_window": active_window,
+            "audio_level": self.audio_level,
+            "video_activity": self.video_activity,
+            "face_detected": self.face_metrics.get("face_detected", False)
+        }
+
+        with self._lock:
+            self.context_history.append(snapshot)
+            if len(self.context_history) > window_size:
+                self.context_history.pop(0)
 
     def _run_lmm_analysis_async(self, lmm_payload: dict, allow_intervention: bool) -> None:
         """Background worker for LMM analysis."""
@@ -345,6 +387,20 @@ class LogicEngine:
 
                 # Log state update event
                 self.logger.log_event("state_update", self.state_engine.get_state())
+
+                # Music Control Integration
+                if getattr(config, 'ENABLE_MUSIC_CONTROL', False) and not is_fallback:
+                    self.logger.log_info("Evaluating music mood playlist trigger...")
+                    state = self.state_engine.get_state()
+                    mood = state.get("mood", 50)
+                    arousal = state.get("arousal", 50)
+                    sexual_arousal = state.get("sexual_arousal", 0)
+
+                    if hasattr(self, 'music_controller') and self.music_controller:
+                         # Dynamic threshold or just let the controller decide
+                         self.music_controller.play_mood_playlist(mood=mood, arousal=arousal, sexual_arousal=sexual_arousal)
+                    else:
+                         self.logger.log_debug("Music Controller is not configured.")
 
                 # Update tray tooltip with new state
                 if hasattr(self, 'state_update_callback') and self.state_update_callback:
@@ -492,7 +548,7 @@ class LogicEngine:
 
         if intervention_payload and self.intervention_engine:
             self.logger.log_info(f"Triggering Offline Fallback Intervention: {reason}")
-            self.intervention_engine.start_intervention(intervention_payload)
+            self.intervention_engine.start_intervention(intervention_payload, category="offline_fallback")
             self.last_offline_trigger_time = current_time
 
     def _trigger_lmm_analysis(self, reason: str = "unknown", allow_intervention: bool = True) -> None:
@@ -672,14 +728,92 @@ class LogicEngine:
                 else:
                     self.logger.log_debug(f"High video activity ({current_video_activity:.2f}) ignored: No face detected.")
 
-            # 3. Periodic Check (Heartbeat)
+            # 3. Check for specific application triggers (Distraction / Focus / Reflexive)
+            active_window = "Unknown"
+            if self.window_sensor:
+                active_window = self.window_sensor.get_active_window(sanitize=False)
+
+            is_distraction = False
+            is_focus = False
+
+            distraction_apps = getattr(config, 'DISTRACTION_APPS', [])
+            for app in distraction_apps:
+                if active_window and app.lower() in active_window.lower():
+                    is_distraction = True
+                    break
+
+            focus_apps = getattr(config, 'FOCUS_APPS', [])
+            for app in focus_apps:
+                if active_window and app.lower() in active_window.lower():
+                    is_focus = True
+                    break
+
+            reflexive_triggers = getattr(config, 'REFLEXIVE_WINDOW_TRIGGERS', {})
+            triggered_reflexive = None
+            if active_window:
+                for app, trigger_id in reflexive_triggers.items():
+                    if app.lower() in active_window.lower():
+                        triggered_reflexive = trigger_id
+                        break
+
+            # Process triggers
+            if triggered_reflexive:
+                # Reflexive triggers override distraction triggers
+                trigger_lmm = True
+                trigger_reason = "reflexive_window_trigger"
+                self.logger.log_info(f"Reflexive window trigger activated: {triggered_reflexive}")
+                # Direct intervention if configured (handled by LMM trigger reason logic later,
+                # but logic engine could also do it directly if needed. We'll let offline fallback or LMM handle it
+                # actually, reflexive triggers should probably just immediately trigger InterventionEngine directly
+                if self.intervention_engine and current_mode == "active":
+                     self.intervention_engine.start_intervention({"id": triggered_reflexive, "tier": 2}, category="reflexive_window")
+                     # We reset timer so we don't spam
+                     self.last_lmm_call_time = current_time
+                     # We don't trigger LMM if we just fired a reflexive one directly
+                     trigger_lmm = False
+            elif is_distraction and not is_focus:
+                trigger_lmm = True
+                trigger_reason = "distraction_app_detected"
+                if self.intervention_engine and current_mode == "active":
+                     self.intervention_engine.start_intervention({"id": "distraction_alert", "tier": 2}, category="reflexive_window")
+                     # We reset timer so we don't spam
+                     self.last_lmm_call_time = current_time
+                     # We don't trigger LMM if we just fired a reflexive one directly
+                     trigger_lmm = False
+
+            # Check Sexual Arousal state (Accelerated Heartbeat)
+            # If sexual arousal is high, we want more frequent checks
+            is_high_arousal = False
+            if hasattr(self.state_engine, 'state') and isinstance(self.state_engine.state, dict):
+                is_high_arousal = self.state_engine.state.get("sexual_arousal", 0) >= getattr(config, 'SEXUAL_AROUSAL_THRESHOLD', 50)
+            elif hasattr(self.state_engine, 'get_state'):
+                state_dict = self.state_engine.get_state()
+                if isinstance(state_dict, dict):
+                    is_high_arousal = state_dict.get("sexual_arousal", 0) >= getattr(config, 'SEXUAL_AROUSAL_THRESHOLD', 50)
+
+            heartbeat_interval = self.lmm_call_interval
+            if is_high_arousal:
+                heartbeat_interval = heartbeat_interval / 2.0 # Accelerated polling
+
+            # 4. Periodic Check (Heartbeat)
             # If no event triggered, check if it's time for a routine check
             if not trigger_lmm:
-                if current_time - self.last_lmm_call_time >= self.lmm_call_interval:
+                if current_time - self.last_lmm_call_time >= heartbeat_interval:
                     trigger_lmm = True
-                    trigger_reason = "periodic_check"
+                    if is_high_arousal:
+                         trigger_reason = "high_sexual_arousal"
+                    else:
+                         trigger_reason = "periodic_check"
 
-            # 4. Trigger LMM if warranted
+            # 5. History Sampling
+            if current_mode in ["active", "dnd"]:
+                # Periodic History Sampling
+                sample_interval = getattr(config, 'HISTORY_SAMPLE_INTERVAL', 60.0)
+                if current_time - self.last_history_sample_time >= sample_interval:
+                    self.last_history_sample_time = current_time
+                    self._sample_context_history()
+
+            # 6. Trigger LMM if warranted
             if trigger_lmm:
                 self.last_lmm_call_time = current_time
                 # Intervention only allowed in 'active' mode
