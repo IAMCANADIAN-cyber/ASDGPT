@@ -49,3 +49,10 @@
 *   **Scenario Verification**: The synthetic dataset approach (`datasets/doom_scroll.json`) was validated with 100% accuracy using the new `test_scenario_json.py`. This confirms we can perform "Test-Driven Tuning".
 *   **Meeting Mode Flaw confirmed**: The "User Input" check (idle keyboard/mouse) is insufficient because users are also idle when watching Netflix/YouTube, leading to false "Meeting Mode" triggers. We must implement a **Window Title Blacklist** to differentiate "Productive Meeting" from "Passive Entertainment".
 *   **Privacy Hardening**: Exact string matching for privacy redaction is brittle. We will move to **Fuzzy Matching** (e.g., Levenshtein distance) to catch typos (e.g., "KePass" vs "KeePass").
+
+## Weekly Refresh (2026-03-05)
+*   **Meeting Mode Hardening**: The Meeting Mode Blacklist was successfully implemented and merged, effectively preventing false positives when consuming media (e.g., YouTube/Netflix). This proves that simple heuristic filtering can replace complex intent models in specific edge cases.
+*   **Privacy Robustness**: Fuzzy matching for privacy redaction was added successfully, hardening the `WindowSensor` against title variations.
+*   **Escalation Validation**: The centralization of intervention escalation policies (and Tier 3 visual alerts) is live. The system can now correctly graduate from a simple text nudge to an urgent modal alert.
+*   **Next Friction Point - LLM Limits**: Now that the local feedback loop is strong and robust to context gaps, "Context History" bloat is threatening the local LLM limits (latency and max context window). We must pivot to "Context Summarization" or "Pruning" to keep tokens under check.
+*   **User Profiles / Modes Gap**: The application has great configuration hooks (e.g., `config.py`), but toggling them requires a restart or code edits. "Gaming Mode" or similar high-level presets are needed next for seamless user experiences without getting spammed.
