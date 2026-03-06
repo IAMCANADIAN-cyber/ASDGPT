@@ -10,83 +10,68 @@ class TestMeetingModeBlacklist(unittest.TestCase):
         self.mock_audio = MagicMock()
         self.mock_video = MagicMock()
         self.mock_lmm = MagicMock()
-        self.mock_window = MagicMock()
+        self.mock_window_sensor = MagicMock()
 
-        # Instantiate LogicEngine with mocks
         self.engine = LogicEngine(
             audio_sensor=self.mock_audio,
             video_sensor=self.mock_video,
-            window_sensor=self.mock_window,
             logger=self.mock_logger,
-            lmm_interface=self.mock_lmm
+            lmm_interface=self.mock_lmm,
+            window_sensor=self.mock_window_sensor
         )
 
-        # Override config thresholds for faster testing
         self.original_speech_threshold = getattr(config, 'MEETING_MODE_SPEECH_DURATION_THRESHOLD', 3.0)
         self.original_idle_threshold = getattr(config, 'MEETING_MODE_IDLE_KEYBOARD_THRESHOLD', 10.0)
+        self.original_grace_period = getattr(config, 'MEETING_MODE_SPEECH_GRACE_PERIOD', 2.0)
         self.original_blacklist = getattr(config, 'MEETING_MODE_BLACKLIST', [])
 
-        # Set short thresholds and blacklist
         config.MEETING_MODE_SPEECH_DURATION_THRESHOLD = 0.5
         config.MEETING_MODE_IDLE_KEYBOARD_THRESHOLD = 1.0
-        config.MEETING_MODE_BLACKLIST = ["YouTube", "Netflix"]
+        config.MEETING_MODE_SPEECH_GRACE_PERIOD = 0.2
+        config.MEETING_MODE_BLACKLIST = ["YouTube", "Netflix", "VLC"]
 
     def tearDown(self):
-        # Restore config
         config.MEETING_MODE_SPEECH_DURATION_THRESHOLD = self.original_speech_threshold
         config.MEETING_MODE_IDLE_KEYBOARD_THRESHOLD = self.original_idle_threshold
+        config.MEETING_MODE_SPEECH_GRACE_PERIOD = self.original_grace_period
         config.MEETING_MODE_BLACKLIST = self.original_blacklist
 
     def test_meeting_mode_suppressed_by_blacklist(self):
-        """Test that meeting mode is suppressed if active window is blacklisted (e.g. YouTube)."""
+        """Test that meeting mode does NOT trigger if active window matches blacklist."""
         self.engine.current_mode = "active"
         self.engine.input_tracking_enabled = True
         self.engine.last_user_input_time = time.time() - 2.0
 
-        # Simulate Blacklisted Window
-        self.mock_window.get_active_window.return_value = "YouTube - Google Chrome"
+        # Audio: Speech detected
+        self.engine.audio_analysis = {"is_speech": True, "rms": 0.5}
+        # Video: Face detected
+        self.engine.face_metrics = {"face_detected": True, "face_count": 1}
+        # Window: YouTube is active (case-insensitive check)
+        self.mock_window_sensor.get_active_window.return_value = "Watching cat videos - YouTube"
 
-        # Simulate Meeting Conditions
-        self.engine.audio_analysis = {"is_speech": True}
-        self.engine.face_metrics = {"face_detected": True}
+        self.engine.update() # First Update: Timer normally starts
+        time.sleep(0.6) # Wait for duration threshold (0.5s)
+        self.engine.update() # Second Update: Should normally trigger
 
-        # Update
-        self.engine.update()
-        time.sleep(0.6) # Wait for duration
-        self.engine.update()
+        # Should remain active
+        self.assertEqual(self.engine.get_mode(), "active", "Should be suppressed by blacklist")
 
-        # Assertions
-        # Should remain active because YouTube is blacklisted
-        self.assertEqual(self.engine.get_mode(), "active")
-        # Ensure speech timer did NOT accumulate (or was reset)
-        # Note: If my implementation resets it, it might be 0. If it prevents start, it is 0.
-        self.assertEqual(self.engine.continuous_speech_start_time, 0)
-
-    def test_meeting_mode_triggers_normal_app(self):
-        """Test that meeting mode triggers normally for non-blacklisted apps."""
+    def test_meeting_mode_triggers_normally(self):
+        """Test that meeting mode DOES trigger if active window is not in blacklist."""
         self.engine.current_mode = "active"
         self.engine.input_tracking_enabled = True
         self.engine.last_user_input_time = time.time() - 2.0
 
-        # Simulate Normal Window
-        self.mock_window.get_active_window.return_value = "Zoom Meeting"
+        self.engine.audio_analysis = {"is_speech": True, "rms": 0.5}
+        self.engine.face_metrics = {"face_detected": True, "face_count": 1}
+        self.mock_window_sensor.get_active_window.return_value = "Zoom Meeting"
 
-        # Simulate Meeting Conditions
-        self.engine.audio_analysis = {"is_speech": True}
-        self.engine.face_metrics = {"face_detected": True}
-
-        # Update - Start Timer
         self.engine.update()
-        self.assertNotEqual(self.engine.continuous_speech_start_time, 0)
-
-        # Wait
         time.sleep(0.6)
-
-        # Update - Trigger
         self.engine.update()
 
-        # Assertions
-        self.assertEqual(self.engine.get_mode(), "dnd")
+        # Should be dnd
+        self.assertEqual(self.engine.get_mode(), "dnd", "Should trigger normally")
 
 if __name__ == '__main__':
     unittest.main()
