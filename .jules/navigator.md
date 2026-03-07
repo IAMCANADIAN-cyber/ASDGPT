@@ -54,3 +54,7 @@
 **Learning:** The `ReplayHarness` was tightly coupled to LMM-suggested interventions, making it difficult to test system-driven triggers (like persistent "Doom Scrolling" detection) where the logic engine triggers an intervention based on context without an explicit LMM suggestion.
 **Action:** Decoupled expectation from injection in `tools/replay_harness.py` by adding `expected_system_intervention` support. This allows validating logic-driven interventions while ensuring the Mock LMM doesn't "cheat" by suggesting them.
 **Pitfall:** Relying on `xvfb-run` for headless testing is crucial when indirect dependencies (like `pyautogui` via `MusicInterface`) require a display server.
+
+## 2026-03-07 - [Repo Hygiene: Untracked Draft Files]
+**Learning:** Running `pytest` locally can occasionally trigger background actions or mock sensor evaluations that write output files directly into the repository (e.g., `drafts/instagram/*.jpg` captures), bypassing normal test teardown. If `git add .` or generic staging is used, these artifacts pollute the commit history.
+**Action:** Unstaged and deleted the unexpected `.jpg` file created during testing before committing. This reinforces the rule: never blindly commit the working tree; always review `git status` for unexpected artifacts (e.g., generated captures).
