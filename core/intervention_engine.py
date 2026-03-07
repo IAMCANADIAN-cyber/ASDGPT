@@ -402,19 +402,20 @@ class InterventionEngine:
 
             start_time = time.time()
             frame_count = 0
-            while time.time() - start_time < duration:
-                # Check cancellation
-                if not self._intervention_active.is_set():
-                    break
+            try:
+                while time.time() - start_time < duration:
+                    # Check cancellation
+                    if not self._intervention_active.is_set():
+                        break
 
-                frame = self.logic_engine.last_video_frame
-                if frame is not None and frame.shape == first_frame.shape:
-                    out.write(frame)
-                    frame_count += 1
+                    frame = self.logic_engine.last_video_frame
+                    if frame is not None and frame.shape == first_frame.shape:
+                        out.write(frame)
+                        frame_count += 1
 
-                time.sleep(1.0/fps)
-
-            out.release()
+                    time.sleep(1.0/fps)
+            finally:
+                out.release()
 
             msg = f"Video saved to {filename} ({frame_count} frames)"
             if self.app and self.app.data_logger:
