@@ -397,27 +397,47 @@ class LMMInterface:
             # Context History
             context_history = user_context.get('context_history', [])
             if context_history:
-                context_str += "\nRecent History (Last 5 snapshots):\n"
+                # Estimate token count (roughly 4 chars per token)
+                # First build the full list to check size
+                history_lines = []
                 for snapshot in context_history:
-                    # Format simplified line
                     ts = snapshot.get('timestamp', 0)
-                    win = snapshot.get('active_window', 'Unknown')
-                    # Truncate history window titles more aggressively (50 chars)
-                    win = self._truncate_text(win, max_length=50)
-
-                    # Relative time is better for LMM
+                    win = self._truncate_text(snapshot.get('active_window', 'Unknown'), max_length=50)
                     rel_time = int(time.time() - ts)
-
-                    # Extract richer metrics if available
                     posture = snapshot.get('posture', 'unknown')
                     audio_level = snapshot.get('audio_level', 0.0)
                     video_activity = snapshot.get('video_activity', 0.0)
+                    line = (f"- T-{rel_time}s: Window='{win}', Mode={snapshot.get('mode')}, "
+                            f"Face={snapshot.get('face_detected')}, Posture={posture}, "
+                            f"Audio={audio_level:.2f}, Motion={video_activity:.1f}\n")
+                    history_lines.append(line)
 
-                    context_str += (
-                        f"- T-{rel_time}s: Window='{win}', Mode={snapshot.get('mode')}, "
-                        f"Face={snapshot.get('face_detected')}, Posture={posture}, "
-                        f"Audio={audio_level:.2f}, Motion={video_activity:.1f}\n"
-                    )
+                total_chars = sum(len(line) for line in history_lines)
+                max_tokens = getattr(config, 'MAX_HISTORY_TOKENS', 100)
+
+                # If too large, summarize older entries
+                if (total_chars / 4) > max_tokens and len(context_history) > 2:
+                    context_str += "\nRecent History (Summarized):\n"
+                    # Keep the 2 most recent
+                    recent_lines = history_lines[-2:]
+                    older_snapshots = context_history[:-2]
+
+                    # Summarize older snapshots
+                    if older_snapshots:
+                        windows = [s.get('active_window', 'Unknown') for s in older_snapshots if s.get('active_window')]
+                        most_freq_window = max(set(windows), key=windows.count) if windows else "Unknown"
+                        avg_audio = sum(s.get('audio_level', 0.0) for s in older_snapshots) / len(older_snapshots)
+                        avg_video = sum(s.get('video_activity', 0.0) for s in older_snapshots) / len(older_snapshots)
+
+                        summary_line = f"- Older ({len(older_snapshots)} events): Mostly in '{self._truncate_text(most_freq_window, 30)}', Avg Audio: {avg_audio:.2f}, Avg Motion: {avg_video:.1f}\n"
+                        context_str += summary_line
+
+                    for line in recent_lines:
+                        context_str += line
+                else:
+                    context_str += "\nRecent History:\n"
+                    for line in history_lines:
+                        context_str += line
 
             est = user_context.get('current_state_estimation')
             if est:

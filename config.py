@@ -169,6 +169,7 @@ LMM_CIRCUIT_BREAKER_COOLDOWN = _get_conf("LMM_CIRCUIT_BREAKER_COOLDOWN", 60, int
 
 # --- Context History ---
 HISTORY_SAMPLE_INTERVAL = _get_conf("HISTORY_SAMPLE_INTERVAL", 10, int) # Seconds between history snapshots
+MAX_HISTORY_TOKENS = _get_conf("MAX_HISTORY_TOKENS", 100, int) # Max tokens for history before summarization
 HISTORY_WINDOW_SIZE = _get_conf("HISTORY_WINDOW_SIZE", 5, int) # Number of snapshots to keep
 RAPID_SWITCHING_THRESHOLD = _get_conf("RAPID_SWITCHING_THRESHOLD", 4, int) # Unique windows to trigger alert
 
