@@ -681,6 +681,13 @@ class InterventionEngine:
         logger = self.app.data_logger if self.app and hasattr(self.app, 'data_logger') else None
 
         intervention_id = intervention_details.get("id")
+
+        current_mode = self.app.logic_engine.get_mode() if self.app and hasattr(self.app, 'logic_engine') and self.app.logic_engine else "active"
+        if current_mode == "gaming" and intervention_id != "posture_water_reset":
+            if logger:
+                logger.log_info(f"Gaming mode active, suppressing non-critical intervention: {intervention_id}")
+            return False
+
         card = None
 
         # 1. Try to fetch from library if ID is present
