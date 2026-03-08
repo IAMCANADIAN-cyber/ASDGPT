@@ -9,3 +9,8 @@
 - "Active", "Snoozed", and "Paused" are explicit states driven by the user (hotkeys) or timer logic (`snooze_end_time`), whereas "Meeting Mode" (DND) is dynamically and implicitly driven by heuristics.
 - Snoozed mode performs "light monitoring without intervention" (`allow_intervention=False`).
 - Paused mode skips sensor updates in the main LogicEngine loop.
+
+## Run: Configuration Docs (Hotkeys & Validation)
+- Added `esc` hotkey documentation for quitting the application.
+- Clarified that `user_data/config.json` is optional, and settings default to `config.py` hardcoded defaults or `.env` when not present.
+- Added explicit steps for testing hotkeys to the "How to Verify Configuration" section.
