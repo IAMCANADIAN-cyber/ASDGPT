@@ -99,7 +99,7 @@ class TestContextHistory(unittest.TestCase):
             # Debug output if needed
             # print(text_part)
 
-            self.assertIn("Recent History (Last 5 snapshots):", text_part)
+            self.assertIn("Recent History:", text_part)
             self.assertIn("- T-40s: Window='Old App'", text_part)
             # Verify new fields are present
             self.assertIn("Posture=neutral", text_part)

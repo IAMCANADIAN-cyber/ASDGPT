@@ -100,3 +100,83 @@ Here are the reviews and recommendations for the open Pull Requests (branches) a
 *   **Status:** **Merged (Manually Applied)**
 *   **Recommendation:** **2: Accept Incoming**
 *   **Reasoning:** Updates `ROADMAP.md` and `.jules/roadmapper.md` to the 2026-03-05 version. Content verified and manually applied to HEAD.
+
+## 22. `origin/roadmapper/weekly-refresh-feb-05-1223743275663484429`
+*   **Status:** **Closed (Stale)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The branch contains outdated content from Feb 5 that would overwrite current documentation from Mar 5.
+
+## 23. `origin/roadmapper/weekly-refresh-feb-12-14929537395837105426`
+*   **Status:** **Closed (Stale)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The branch contains outdated content from Feb 12 that would overwrite current documentation from Mar 5.
+
+## 24. `origin/roadmapper/weekly-refresh-feb-19-7135105991564294272`
+*   **Status:** **Closed (Stale)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The branch contains outdated content from Feb 19 that would overwrite current documentation from Mar 5.
+
+## 25. `origin/roadmapper/weekly-refresh-feb-26-14550974276103232712`
+*   **Status:** **Closed (Stale)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The branch contains outdated content from Feb 26 that would overwrite current documentation from Mar 5.
+
+## 26. `origin/roadmapper/weekly-refresh-feb-26-integration-13522582000585637782`
+*   **Status:** **Closed (Stale)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The branch contains outdated content from Feb 26 that would overwrite current documentation from Mar 5.
+
+## 27. `origin/roadmapper/weekly-refresh-jan-22-8516151469706892438`
+*   **Status:** **Closed (Stale)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The branch contains outdated content from Jan 22 that would overwrite current documentation from Mar 5.
+
+## 28. `origin/roadmapper/weekly-refresh-jan-29-3747202026440890670`
+*   **Status:** **Closed (Stale)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The branch contains outdated content from Jan 29 that would overwrite current documentation from Mar 5.
+
+## 29. `origin/roadmapper/weekly-refresh-mar-05-4823426099654362464`
+*   **Status:** **Merged**
+*   **Recommendation:** **2: Accept Incoming**
+*   **Reasoning:** This is the current Mar 5 documentation refresh and has already been merged manually to main.
+
+## 30. `origin/roadmapper/weekly-refresh-may29-5484203406554034531`
+*   **Status:** **Closed (Stale)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The branch contains outdated content from May 2024 that would overwrite current documentation from Mar 5 2026.
+
+## 31. `origin/scribe-update-config-docs-5881074557911465817`
+*   **Status:** **Closed (Already Merged)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The `docs/CONFIGURATION.md` is identical to `main`.
+
+## 32. `origin/scribe-config-docs-fix-3820313282899004869`
+*   **Status:** **Closed (Stale)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The branch contains outdated content from Jan 18 that would overwrite current configuration from Mar 5.
+
+## 33. `origin/scribe-config-docs-13017564554289448362`
+*   **Status:** **Closed (Stale)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The branch contains outdated content from Jan 18 that would overwrite current configuration from Mar 5.
+
+## 34. `origin/scribe-meeting-mode-docs-16627115566403867244`
+*   **Status:** **Closed (Already Merged)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The meeting mode has been implemented and is documented in the current `main` branch.
+
+## 35. `origin/scribe-modes-docs-1640124966106607099`
+*   **Status:** **Merged**
+*   **Recommendation:** **2: Accept Incoming**
+*   **Reasoning:** This is the current Mar 1 documentation update for Modes and has already been manually merged to main.
+
+## 36. `origin/scribe/architecture-upgrade-5594729541412602302`
+*   **Status:** **Closed (Stale)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** This is an old architecture update branch that would overwrite newer docs in main.
+
+## 37. `origin/scribe-doc-improvements-14040038396007192394`
+*   **Status:** **Closed (Already Merged)**
+*   **Recommendation:** **4: Or no longer needed / close PR**
+*   **Reasoning:** The `docs/CONFIGURATION.md` improvements have been superseded by the scribe-update-config-docs PR which is already in main.
