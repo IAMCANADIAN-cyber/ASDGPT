@@ -301,3 +301,52 @@ def test_minicpm_configuration(mock_post, lmm_interface):
         # The log message is "Optimizing for MiniCPM-o..." sent to _log_debug
         # Check if log_debug was called with this string
         lmm_interface.logger.log_debug.assert_any_call("LMMInterface: Optimizing for MiniCPM-o...")
+
+@patch('requests.post')
+def test_process_data_context_summarization(mock_post, lmm_interface):
+    response_content = {
+        "state_estimation": {"arousal": 50, "overload": 10, "focus": 80, "energy": 60, "mood": 70},
+        "suggestion": None
+    }
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "choices": [{"message": {"content": json.dumps(response_content)}}]
+    }
+    mock_post.return_value = mock_response
+
+    long_window_title = "A very long window title that will push the character count up significantly so we trigger summarization"
+    history = []
+    for i in range(5):
+        history.append({
+            "timestamp": time.time() - (50 - i*10),
+            "mode": "active",
+            "active_window": f"{long_window_title} {i}",
+            "face_detected": True,
+            "posture": "neutral",
+            "audio_level": 0.1,
+            "video_activity": 1.0
+        })
+
+    user_context = {
+        "context_history": history,
+        "sensor_metrics": {}
+    }
+
+    # Set threshold low to force summarization
+    with patch.object(core.lmm_interface.config, 'MAX_HISTORY_TOKENS', 10):
+        lmm_interface.process_data(user_context=user_context)
+
+    assert mock_post.called
+    args, kwargs = mock_post.call_args
+    payload = kwargs['json']
+    text_part = next(item for item in payload['messages'][1]['content'] if item["type"] == "text")
+
+    # Verify summarization occurred
+    assert "Recent History (Summarized):" in text_part["text"]
+    assert "- Older (3 events): Mostly in" in text_part["text"]
+
+    # Verify recent entries are still fully present
+    # Verify recent entries are still fully present (truncated by _truncate_text)
+    truncated_title = lmm_interface._truncate_text(f"{long_window_title} 3", 50)
+    assert truncated_title in text_part["text"]
