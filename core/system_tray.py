@@ -44,6 +44,7 @@ class ACRTrayIcon:
             "snoozed": "assets/icons/snoozed_icon.png",
             "error": "assets/icons/error_icon.png",
             "dnd": "assets/icons/dnd_icon.png",
+            "gaming": "assets/icons/gaming_icon.png",
             "default": "assets/icons/default_icon.png"
         }
         self.icons = {name: load_image(path) for name, path in self.icon_paths.items()}
@@ -68,6 +69,7 @@ class ACRTrayIcon:
             pystray.MenuItem('Pause/Resume', self.on_toggle_pause_resume),
             pystray.MenuItem(snooze_label, self.on_snooze),
             pystray.MenuItem('Toggle DND', self.on_toggle_dnd),
+            pystray.MenuItem('Toggle Gaming Mode', self.on_toggle_gaming_mode),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem('Last: Helpful', self.on_feedback_helpful),
             pystray.MenuItem('Last: Unhelpful', self.on_feedback_unhelpful),
@@ -136,6 +138,23 @@ class ACRTrayIcon:
 
             new_mode = self.app.logic_engine.get_mode()
             print(f"Mode changed to {new_mode} via tray DND toggle.")
+            if hasattr(self.app, 'intervention_engine'):
+                self.app.intervention_engine.notify_mode_change(new_mode)
+            self.update_icon_status(new_mode)
+
+    def on_toggle_gaming_mode(self, icon, item):
+        print("Tray: Toggle Gaming Mode clicked")
+        if self.app and self.app.logic_engine:
+            current_mode = self.app.logic_engine.get_mode()
+            if current_mode == "gaming":
+                # Toggle OFF -> Active
+                self.app.logic_engine.set_mode("active")
+            else:
+                # Toggle ON -> Gaming
+                self.app.logic_engine.set_mode("gaming")
+
+            new_mode = self.app.logic_engine.get_mode()
+            print(f"Mode changed to {new_mode} via tray Gaming toggle.")
             if hasattr(self.app, 'intervention_engine'):
                 self.app.intervention_engine.notify_mode_change(new_mode)
             self.update_icon_status(new_mode)

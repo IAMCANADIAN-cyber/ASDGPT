@@ -821,7 +821,11 @@ class InterventionEngine:
                  return False
 
         current_app_mode = self.logic_engine.get_mode()
-        if current_app_mode != "active":
+
+        # In gaming mode, only allow posture_water_reset interventions
+        is_gaming_and_allowed = (current_app_mode == "gaming" and intervention_id == "posture_water_reset")
+
+        if current_app_mode != "active" and not is_gaming_and_allowed:
             if logger:
                 logger.log_info(f"Intervention suppressed: Mode is {current_app_mode}")
             else:
@@ -911,6 +915,8 @@ class InterventionEngine:
                 message = f"Co-regulator snoozed for {config.SNOOZE_DURATION / 60:.0f} minutes."
             elif new_mode == "active":
                 message = "Co-regulator active."
+            elif new_mode == "gaming":
+                message = "Gaming mode activated. Notifications suppressed."
             elif new_mode == "error":
                 message = "Sensor error detected. Operations affected."
 
