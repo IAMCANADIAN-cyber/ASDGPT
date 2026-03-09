@@ -12,7 +12,10 @@ The system loads configuration in the following priority order (highest to lowes
 
 ## Configuration Files
 
-*   **`user_data/config.json`**: Create this file to override defaults. It should be a valid JSON object.
+
+*   **`user_data/config.json`**: Create this file to override defaults. It should be a valid JSON object. If this file does not exist, settings fall back to environment variables and hardcoded defaults.
+
+
     ```json
     {
       "PERFORMANCE_MODE": "low",
@@ -152,19 +155,17 @@ Configure lists of applications to automatically classify activities.
 | **Feedback Helpful** | `ctrl+alt+up` | Mark last intervention as helpful. |
 | **Feedback Unhelpful** | `ctrl+alt+down` | Mark last intervention as unhelpful. |
 
+| **Quit** | `esc` | Exit the application. |
+
+
+
 ## How to Verify Configuration
 
-### 1. Using the GUI Tool
-Run the included configuration tool to view and edit `user_data/config.json` visually:
-```bash
-python tools/config_gui.py
-```
-*   **Verify**: Change a value (e.g., "Audio Threshold"), save, and check `user_data/config.json` to confirm the change.
+To verify that the system loaded your configuration correctly, start the application from the command line:
 
-### 2. Checking Logs
-Start the application and check the startup logs:
 ```bash
 python main.py
 ```
 *   **Verify**: Look for lines like `ACR Initialized. Mode: active.` and `Hotkeys registered...`.
 *   **Verify**: If you changed `LOG_LEVEL` to `DEBUG`, ensure verbose logs appear.
+*   **Verify Hotkeys**: While the application is running, press `ctrl+alt+m` to see the mode cycle in the logs, and press `esc` to ensure the application quits properly.

@@ -400,21 +400,22 @@ class InterventionEngine:
 
             out = cv2.VideoWriter(filename, cv2.VideoWriter_fourcc(*'MJPG'), fps, size)
 
-            start_time = time.time()
-            frame_count = 0
-            while time.time() - start_time < duration:
-                # Check cancellation
-                if not self._intervention_active.is_set():
-                    break
+            try:
+                start_time = time.time()
+                frame_count = 0
+                while time.time() - start_time < duration:
+                    # Check cancellation
+                    if not self._intervention_active.is_set():
+                        break
 
-                frame = self.logic_engine.last_video_frame
-                if frame is not None and frame.shape == first_frame.shape:
-                    out.write(frame)
-                    frame_count += 1
+                    frame = self.logic_engine.last_video_frame
+                    if frame is not None and frame.shape == first_frame.shape:
+                        out.write(frame)
+                        frame_count += 1
 
-                time.sleep(1.0/fps)
-
-            out.release()
+                    time.sleep(1.0/fps)
+            finally:
+                out.release()
 
             msg = f"Video saved to {filename} ({frame_count} frames)"
             if self.app and self.app.data_logger:
@@ -821,7 +822,13 @@ class InterventionEngine:
                  return False
 
         current_app_mode = self.logic_engine.get_mode()
-        if current_app_mode != "active":
+        if current_app_mode == "gaming" and intervention_id != "posture_water_reset":
+            if logger:
+                logger.log_info(f"Intervention suppressed: Mode is {current_app_mode} and intervention is not critical.")
+            else:
+                print(f"Intervention suppressed: Mode is {current_app_mode} and intervention is not critical.")
+            return False
+        elif current_app_mode not in ["active", "gaming"]:
             if logger:
                 logger.log_info(f"Intervention suppressed: Mode is {current_app_mode}")
             else:
