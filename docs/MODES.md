@@ -34,6 +34,13 @@ ASDGPT uses different operational modes to control monitoring behavior and inter
     *   **Interventions**: Suppressed.
     *   **Transitions**: Exits Meeting Mode (Auto-DND) and returns to `active` as soon as user keyboard/mouse activity is detected.
 
+### 5. Gaming Mode
+*   **What it does**: A dedicated profile for gamers to prevent distractions without turning the system off entirely.
+*   **Behavior**:
+    *   **Monitoring**: Similar to `active` mode, but high video activity checks are explicitly ignored to avoid false triggers during gameplay.
+    *   **Interventions**: Most interventions are suppressed. However, system-critical interventions and specific checks (like `posture_water_reset`) are still allowed to operate.
+    *   **Transitions**: Manually toggled via the System Tray.
+
 ## How to Verify
 
 1.  **Verify Meeting Mode (Auto-DND)**:

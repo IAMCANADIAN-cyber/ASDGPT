@@ -100,7 +100,7 @@ class LogicEngine:
             self._set_mode_unlocked(mode, from_snooze_expiry)
 
     def _set_mode_unlocked(self, mode: str, from_snooze_expiry: bool = False) -> None:
-        if mode not in ["active", "snoozed", "paused", "error", "dnd"]:
+        if mode not in ["active", "snoozed", "paused", "error", "dnd", "gaming"]:
             self.logger.log_warning(f"Attempted to set invalid mode: {mode}")
             return
 
@@ -579,7 +579,7 @@ class LogicEngine:
         current_mode = self.get_mode()
         # self.logger.log_debug(f"LogicEngine update. Current mode: {current_mode}")
 
-        if current_mode in ["active", "dnd"]:
+        if current_mode in ["active", "dnd", "gaming"]:
             current_time = time.time()
 
             # Check probation (only relevant if recovering to active, but harmless to check)
@@ -735,9 +735,11 @@ class LogicEngine:
 
             # Check for high activity (or sudden movement) AND user is present
             elif current_video_activity > self.video_activity_threshold_high:
+                if current_mode == "gaming":
+                    self.logger.log_debug(f"High video activity ({current_video_activity:.2f}) ignored: Gaming mode active.")
                 # Only trigger if we see a face (user is present)
                 # This prevents triggering on cats, shadows, or empty chairs.
-                if face_detected or face_count > 0:
+                elif face_detected or face_count > 0:
                     if current_time - self.last_lmm_call_time >= self.min_lmm_interval:
                         trigger_lmm = True
                         trigger_reason = "high_video_activity"
@@ -764,8 +766,8 @@ class LogicEngine:
             # 4. Trigger LMM if warranted
             if trigger_lmm:
                 self.last_lmm_call_time = current_time
-                # Intervention only allowed in 'active' mode
-                should_intervene = (current_mode == "active")
+                # Intervention only allowed in 'active' or 'gaming' mode
+                should_intervene = (current_mode in ["active", "gaming"])
 
                 # Check Circuit Breaker before calling LMM to see if we should fallback
                 circuit_open = False

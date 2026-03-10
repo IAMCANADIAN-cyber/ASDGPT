@@ -821,7 +821,18 @@ class InterventionEngine:
                  return False
 
         current_app_mode = self.logic_engine.get_mode()
-        if current_app_mode != "active":
+
+        # In gaming mode, suppress everything except critical interventions (bypass global) or posture checks
+        if current_app_mode == "gaming":
+            is_critical = bypass_global or is_system_msg
+            is_posture = (intervention_id == "posture_water_reset" or execution_details.get("type") == "posture_water_reset")
+            if not is_critical and not is_posture:
+                if logger:
+                    logger.log_info(f"Intervention suppressed: Mode is {current_app_mode} (only critical/posture allowed).")
+                else:
+                    print(f"Intervention suppressed: Mode is {current_app_mode} (only critical/posture allowed).")
+                return False
+        elif current_app_mode != "active":
             if logger:
                 logger.log_info(f"Intervention suppressed: Mode is {current_app_mode}")
             else:
