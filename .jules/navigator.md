@@ -54,3 +54,7 @@
 **Learning:** The `ReplayHarness` was tightly coupled to LMM-suggested interventions, making it difficult to test system-driven triggers (like persistent "Doom Scrolling" detection) where the logic engine triggers an intervention based on context without an explicit LMM suggestion.
 **Action:** Decoupled expectation from injection in `tools/replay_harness.py` by adding `expected_system_intervention` support. This allows validating logic-driven interventions while ensuring the Mock LMM doesn't "cheat" by suggesting them.
 **Pitfall:** Relying on `xvfb-run` for headless testing is crucial when indirect dependencies (like `pyautogui` via `MusicInterface`) require a display server.
+
+## 2026-03-10 - [Gaming Mode Implementation]
+**Learning:** Adding a new mode like `"gaming"` requires updates not just in `LogicEngine` to manage data flow (e.g. ignoring high video activity), but also in `InterventionEngine` to strictly filter triggers.
+**Pitfall:** Ensure `icon_paths` definitions in `core/system_tray.py` are coupled with actual binary files in `assets/icons/`. Loading missing files with `pystray`/`PIL` during init causes a fatal application crash. Copied an existing active icon to prevent this.
