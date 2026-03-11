@@ -46,3 +46,10 @@ ASDGPT uses different operational modes to control monitoring behavior and inter
     *   Use the toggle pause/resume functionality.
     *   Observe the logs to confirm the mode changes to `paused`.
     *   Toggle again to confirm it returns to the previous state.
+
+### 5. Gaming Mode
+*   **What it does**: A configuration profile designed for gamers that disables distractions and non-critical interventions while allowing background logic to continue.
+*   **Behavior**:
+    *   **Monitoring**: Sensors operate normally, but thresholds for alerts (like High Video Activity) are effectively disabled to prevent "Take a break" spam.
+    *   **LMM Analysis**: Heartbeat processing continues.
+    *   **Interventions**: All non-critical interventions are suppressed, except specific predefined critical ones (e.g., `posture_water_reset`, `mode_change_notification`).

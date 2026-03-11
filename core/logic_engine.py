@@ -56,6 +56,8 @@ class LogicEngine:
         # Thresholds (loaded from config)
         self.audio_threshold_high = config.AUDIO_THRESHOLD_HIGH
         self.video_activity_threshold_high = config.VIDEO_ACTIVITY_THRESHOLD_HIGH
+        if getattr(self, "current_mode", None) == "gaming":
+            self.video_activity_threshold_high = float("inf") # effectively disable
 
         # Error recovery
         self.error_recovery_attempts: int = 0
@@ -100,7 +102,7 @@ class LogicEngine:
             self._set_mode_unlocked(mode, from_snooze_expiry)
 
     def _set_mode_unlocked(self, mode: str, from_snooze_expiry: bool = False) -> None:
-        if mode not in ["active", "snoozed", "paused", "error", "dnd"]:
+        if mode not in ["active", "snoozed", "paused", "error", "dnd", "gaming"]:
             self.logger.log_warning(f"Attempted to set invalid mode: {mode}")
             return
 
@@ -132,6 +134,11 @@ class LogicEngine:
              # Do not reset attempts yet.
 
         self.current_mode = mode
+
+        if self.current_mode == "gaming":
+            self.video_activity_threshold_high = float("inf") # effectively disable
+        else:
+            self.video_activity_threshold_high = config.VIDEO_ACTIVITY_THRESHOLD_HIGH
 
         if self.current_mode == "snoozed":
             self.snooze_end_time = time.time() + config.SNOOZE_DURATION
@@ -579,7 +586,7 @@ class LogicEngine:
         current_mode = self.get_mode()
         # self.logger.log_debug(f"LogicEngine update. Current mode: {current_mode}")
 
-        if current_mode in ["active", "dnd"]:
+        if current_mode in ["active", "dnd", "gaming"]:
             current_time = time.time()
 
             # Check probation (only relevant if recovering to active, but harmless to check)
