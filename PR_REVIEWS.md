@@ -100,3 +100,8 @@ Here are the reviews and recommendations for the open Pull Requests (branches) a
 *   **Status:** **Merged (Manually Applied)**
 *   **Recommendation:** **2: Accept Incoming**
 *   **Reasoning:** Updates `ROADMAP.md` and `.jules/roadmapper.md` to the 2026-03-05 version. Content verified and manually applied to HEAD.
+
+## 20. Gaming Mode Merges
+*   **Status:** **Merged (Manually Applied)**
+*   **Recommendation:** **2: Accept Incoming**
+*   **Reasoning:** Merged `origin/navigator/implement-gaming-mode-8513325965683243647` and `origin/navigator/gaming-mode-preset-7757280441481687494` to bring in gaming mode logic, preset, and system tray toggle functionality. Conflicts manually resolved in `core/logic_engine.py`, `core/intervention_engine.py` and `core/system_tray.py` to preserve existing fixes. **Tests pass in HEAD.**
