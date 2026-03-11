@@ -54,3 +54,6 @@
 **Learning:** The `ReplayHarness` was tightly coupled to LMM-suggested interventions, making it difficult to test system-driven triggers (like persistent "Doom Scrolling" detection) where the logic engine triggers an intervention based on context without an explicit LMM suggestion.
 **Action:** Decoupled expectation from injection in `tools/replay_harness.py` by adding `expected_system_intervention` support. This allows validating logic-driven interventions while ensuring the Mock LMM doesn't "cheat" by suggesting them.
 **Pitfall:** Relying on `xvfb-run` for headless testing is crucial when indirect dependencies (like `pyautogui` via `MusicInterface`) require a display server.
+2026-03-11 - [Gaming Mode Integration]
+**Learning:** Adding a new mode requires updating several layers: `LogicEngine._set_mode_unlocked` for validation, `LogicEngine.update` loop conditions, specific threshold logic (e.g. `video_activity_threshold_high`), `InterventionEngine` suppression lists, and `SystemTray` definitions (both icons and menus). Adding a standalone pytest function inside a file primarily defining `unittest.TestCase` classes causes the function to be ignored or placed incorrectly, breaking test discovery.
+**Action:** Implemented `gaming` mode that suppresses low-tier alerts and conditionally unbounds `video_activity_threshold_high`.

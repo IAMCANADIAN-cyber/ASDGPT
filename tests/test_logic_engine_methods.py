@@ -146,5 +146,10 @@ class TestLogicEngineMethods(unittest.TestCase):
         self.assertIsNone(self.engine.lmm_thread)
         self.mock_logger.log_debug.assert_called()
 
+
+    def test_gaming_mode_ignores_video_activity(self):
+        self.engine.set_mode("gaming")
+        self.assertEqual(self.engine.video_activity_threshold_high, float('inf'))
+
 if __name__ == '__main__':
     unittest.main()
