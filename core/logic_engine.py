@@ -100,7 +100,7 @@ class LogicEngine:
             self._set_mode_unlocked(mode, from_snooze_expiry)
 
     def _set_mode_unlocked(self, mode: str, from_snooze_expiry: bool = False) -> None:
-        if mode not in ["active", "snoozed", "paused", "error", "dnd"]:
+        if mode not in ["active", "snoozed", "paused", "error", "dnd", "gaming"]:
             self.logger.log_warning(f"Attempted to set invalid mode: {mode}")
             return
 
@@ -136,7 +136,7 @@ class LogicEngine:
         if self.current_mode == "snoozed":
             self.snooze_end_time = time.time() + config.SNOOZE_DURATION
             self.logger.log_info(f"Snooze activated. Will return to active mode in {config.SNOOZE_DURATION / 60:.0f} minutes.")
-        elif self.current_mode == "active":
+        elif self.current_mode in ["active", "gaming"]:
             self.snooze_end_time = 0
 
         self._notify_mode_change(old_mode, new_mode=self.current_mode, from_snooze_expiry=from_snooze_expiry)
@@ -579,7 +579,7 @@ class LogicEngine:
         current_mode = self.get_mode()
         # self.logger.log_debug(f"LogicEngine update. Current mode: {current_mode}")
 
-        if current_mode in ["active", "dnd"]:
+        if current_mode in ["active", "dnd", "gaming"]:
             current_time = time.time()
 
             # Check probation (only relevant if recovering to active, but harmless to check)
@@ -605,7 +605,7 @@ class LogicEngine:
 
             # Reflexive Window Triggers (run BEFORE LMM to allow instant reaction)
             # Only run if active, not in DND
-            if current_mode == "active" and self.window_sensor:
+            if current_mode in ["active", "gaming"] and self.window_sensor:
                 active_window = "Unknown"
                 try:
                     active_window = self.window_sensor.get_active_window()
@@ -704,7 +704,7 @@ class LogicEngine:
                         except Exception as e:
                             self.logger.log_warning(f"Error checking blacklist: {e}")
 
-                    if self.current_mode == "active" and not is_blacklisted: # Only switch if currently active and not blacklisted
+                    if self.current_mode in ["active", "gaming"] and not is_blacklisted: # Only switch if currently active and not blacklisted
                         self.logger.log_info(f"Meeting Mode Detected! (Speech: {speech_duration:.1f}s, Idle: {idle_time:.1f}s). Switching to DND.")
                         self.set_mode("dnd")
                         self.auto_dnd_active = True # Mark as auto-switched
@@ -735,14 +735,18 @@ class LogicEngine:
 
             # Check for high activity (or sudden movement) AND user is present
             elif current_video_activity > self.video_activity_threshold_high:
-                # Only trigger if we see a face (user is present)
-                # This prevents triggering on cats, shadows, or empty chairs.
-                if face_detected or face_count > 0:
-                    if current_time - self.last_lmm_call_time >= self.min_lmm_interval:
-                        trigger_lmm = True
-                        trigger_reason = "high_video_activity"
+                # In gaming mode, we ignore high video activity to prevent spam during gameplay
+                if current_mode == "gaming":
+                    self.logger.log_debug(f"High video activity ({current_video_activity:.2f}) ignored: Gaming mode active.")
                 else:
-                    self.logger.log_debug(f"High video activity ({current_video_activity:.2f}) ignored: No face detected.")
+                    # Only trigger if we see a face (user is present)
+                    # This prevents triggering on cats, shadows, or empty chairs.
+                    if face_detected or face_count > 0:
+                        if current_time - self.last_lmm_call_time >= self.min_lmm_interval:
+                            trigger_lmm = True
+                            trigger_reason = "high_video_activity"
+                    else:
+                        self.logger.log_debug(f"High video activity ({current_video_activity:.2f}) ignored: No face detected.")
 
             # Accelerated checking for sexual arousal
             if not trigger_lmm:
@@ -765,7 +769,7 @@ class LogicEngine:
             if trigger_lmm:
                 self.last_lmm_call_time = current_time
                 # Intervention only allowed in 'active' mode
-                should_intervene = (current_mode == "active")
+                should_intervene = current_mode in ("active", "gaming")
 
                 # Check Circuit Breaker before calling LMM to see if we should fallback
                 circuit_open = False

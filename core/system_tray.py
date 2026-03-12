@@ -47,6 +47,8 @@ class ACRTrayIcon:
             "default": "assets/icons/default_icon.png"
         }
         self.icons = {name: load_image(path) for name, path in self.icon_paths.items()}
+        # Use a colored icon for gaming as fallback if not in paths
+        self.icons["gaming"] = self.create_colored_icon("purple", "GAME")
 
         # Generate feedback icons programmatically
         self.icons["feedback_helpful"] = self.create_colored_icon("green", "OK")
@@ -68,6 +70,7 @@ class ACRTrayIcon:
             pystray.MenuItem('Pause/Resume', self.on_toggle_pause_resume),
             pystray.MenuItem(snooze_label, self.on_snooze),
             pystray.MenuItem('Toggle DND', self.on_toggle_dnd),
+            pystray.MenuItem('Toggle Gaming Mode', self.on_toggle_gaming_mode),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem('Last: Helpful', self.on_feedback_helpful),
             pystray.MenuItem('Last: Unhelpful', self.on_feedback_unhelpful),
@@ -140,6 +143,21 @@ class ACRTrayIcon:
                 self.app.intervention_engine.notify_mode_change(new_mode)
             self.update_icon_status(new_mode)
 
+    def on_toggle_gaming_mode(self, icon, item):
+        print("Tray: Toggle Gaming Mode clicked")
+        if self.app and self.app.logic_engine:
+            current_mode = self.app.logic_engine.get_mode()
+            if current_mode == "gaming":
+                self.app.logic_engine.set_mode("active")
+            else:
+                self.app.logic_engine.set_mode("gaming")
+
+            new_mode = self.app.logic_engine.get_mode()
+            print(f"Mode changed to {new_mode} via tray Gaming Mode toggle.")
+            if hasattr(self.app, 'intervention_engine'):
+                self.app.intervention_engine.notify_mode_change(new_mode)
+            self.update_icon_status(new_mode)
+
     def on_feedback_helpful(self, icon, item):
         print("Tray: Feedback 'Helpful' clicked")
         if self.app and hasattr(self.app, 'on_feedback_helpful_pressed'):
@@ -184,6 +202,8 @@ class ACRTrayIcon:
 
         if self.current_icon_state == "dnd":
             tooltip_text = f"{config.APP_NAME} (DND)"
+        elif self.current_icon_state == "gaming":
+            tooltip_text = f"{config.APP_NAME} (Gaming)"
         elif isinstance(state_info, dict):
             if not state_info:
                 tooltip_text = f"{config.APP_NAME}\nInitializing..."
