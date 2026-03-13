@@ -821,7 +821,14 @@ class InterventionEngine:
                  return False
 
         current_app_mode = self.logic_engine.get_mode()
-        if current_app_mode != "active":
+
+        if current_app_mode == "gaming":
+            allowed_categories = ["mode_change_notification"]
+            allowed_ids = ["posture_water_reset"]
+            if category not in allowed_categories and check_type not in allowed_ids:
+                if logger: logger.log_info("Intervention suppressed: Mode is gaming")
+                return False
+        elif current_app_mode != "active":
             if logger:
                 logger.log_info(f"Intervention suppressed: Mode is {current_app_mode}")
             else:

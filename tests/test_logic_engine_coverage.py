@@ -102,6 +102,9 @@ class TestLogicEngineCoverage:
         assert logic_engine.current_mode == "paused"
 
         logic_engine.cycle_mode()
+        assert logic_engine.current_mode == "gaming"
+
+        logic_engine.cycle_mode()
         assert logic_engine.current_mode == "active"
 
     def test_toggle_pause_resume(self, logic_engine):
