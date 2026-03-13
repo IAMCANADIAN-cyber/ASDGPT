@@ -56,3 +56,9 @@
 *   **Escalation Validation**: The centralization of intervention escalation policies (and Tier 3 visual alerts) is live. The system can now correctly graduate from a simple text nudge to an urgent modal alert.
 *   **Next Friction Point - LLM Limits**: Now that the local feedback loop is strong and robust to context gaps, "Context History" bloat is threatening the local LLM limits (latency and max context window). We must pivot to "Context Summarization" or "Pruning" to keep tokens under check.
 *   **User Profiles / Modes Gap**: The application has great configuration hooks (e.g., `config.py`), but toggling them requires a restart or code edits. "Gaming Mode" or similar high-level presets are needed next for seamless user experiences without getting spammed.
+
+## Weekly Refresh (2026-03-08)
+*   **Performance Win**: Implementing LMM context summarization successfully addressed the token bloat friction point identified last week. This ensures long-term prompt latency remains stable.
+*   **Reliability Focus**: The discovery and fix of the `cv2.VideoWriter` resource leak highlighted the need to audit long-running sensor processes for unclosed handles. High-frequency loops like `VideoSensor` must be bulletproof to support multiple-hour sessions.
+*   **Documentation Alignment**: Adding `MODES.md` and clarifying hotkeys in `CONFIGURATION.md` closed the loop on ensuring the user and agent have the same mental model of system states.
+*   **Next Friction Point - The Offline Experience**: With token bloat resolved, the greatest risk to user trust is the system locking up when the LLM is down. The "Offline Fallback" milestone is critical for making ASDGPT a reliable, background utility rather than a fragile network service.
