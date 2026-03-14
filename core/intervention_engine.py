@@ -398,23 +398,26 @@ class InterventionEngine:
             fps = 10.0
             duration = 5.0
 
-            out = cv2.VideoWriter(filename, cv2.VideoWriter_fourcc(*'MJPG'), fps, size)
+            out = None
+            try:
+                out = cv2.VideoWriter(filename, cv2.VideoWriter_fourcc(*'MJPG'), fps, size)
 
-            start_time = time.time()
-            frame_count = 0
-            while time.time() - start_time < duration:
-                # Check cancellation
-                if not self._intervention_active.is_set():
-                    break
+                start_time = time.time()
+                frame_count = 0
+                while time.time() - start_time < duration:
+                    # Check cancellation
+                    if not self._intervention_active.is_set():
+                        break
 
-                frame = self.logic_engine.last_video_frame
-                if frame is not None and frame.shape == first_frame.shape:
-                    out.write(frame)
-                    frame_count += 1
+                    frame = self.logic_engine.last_video_frame
+                    if frame is not None and frame.shape == first_frame.shape:
+                        out.write(frame)
+                        frame_count += 1
 
-                time.sleep(1.0/fps)
-
-            out.release()
+                    time.sleep(1.0/fps)
+            finally:
+                if out is not None and hasattr(out, 'release'):
+                    out.release()
 
             msg = f"Video saved to {filename} ({frame_count} frames)"
             if self.app and self.app.data_logger:
