@@ -108,7 +108,7 @@ class TestNewModes(unittest.TestCase):
         # We need to wait a bit or just verify file existence immediately?
         # It's synchronous in _capture_image using cv2.imwrite
 
-        with patch('cv2.imwrite') as mock_imwrite:
+        with patch('core.intervention_engine.cv2.imwrite') as mock_imwrite:
             engine._capture_image(test_details)
 
             # Verify cv2.imwrite was called

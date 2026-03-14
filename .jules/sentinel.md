@@ -34,3 +34,18 @@ Created a reproduction test `tests/test_init_reliability.py` that mocks `AudioSe
 - Constructors (`__init__`) that acquire external resources must be atomic or self-cleaning. If they fail, they must clean up partial state.
 - Relying on `finally` blocks in the caller is insufficient if the constructor itself fails and returns nothing.
 - Mocks for system libraries (`pystray`, `sounddevice`) are essential for testing reliability logic in headless CI environments.
+
+## 2026-03-14: Intervention Engine Video Recorder Resource Leak
+
+### Failure Mode
+The `InterventionEngine` records video asynchronously during certain events via `_record_video`. Within this method, a loop records frames into an output file via `cv2.VideoWriter`. If an exception occurs during the `write()` loop (e.g. disk full or a frame error), the method would jump straight to the outer `except` block, and the `out.release()` call is skipped. This leaves the file handle open and locks resources.
+
+### Fix
+Refactored the `_record_video` method so the `VideoWriter` initialization and frame writing loop are within a `try...finally` block. Inside the `finally` block, we verify `out` exists and explicitly call `out.release()` to ensure the resource is closed.
+
+### Verification
+Created a reproduction test `tests/test_record_video_leak.py` that mocks the `VideoWriter.write` method to throw an exception, then verified that the `release()` method was still called.
+
+### Learnings
+- File handles and stream writers should always be managed securely with Context Managers (if supported) or within `try...finally` blocks. This ensures cleanup occurs in both normal execution paths and error scenarios.
+- When fixing issues with system libraries that hold external resources, always build a reproduction test that simulates a library-level exception to ensure recovery logic fires correctly.
