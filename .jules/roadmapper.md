@@ -56,3 +56,6 @@
 *   **Escalation Validation**: The centralization of intervention escalation policies (and Tier 3 visual alerts) is live. The system can now correctly graduate from a simple text nudge to an urgent modal alert.
 *   **Next Friction Point - LLM Limits**: Now that the local feedback loop is strong and robust to context gaps, "Context History" bloat is threatening the local LLM limits (latency and max context window). We must pivot to "Context Summarization" or "Pruning" to keep tokens under check.
 *   **User Profiles / Modes Gap**: The application has great configuration hooks (e.g., `config.py`), but toggling them requires a restart or code edits. "Gaming Mode" or similar high-level presets are needed next for seamless user experiences without getting spammed.
+
+## Weekly Refresh (2026-03-15)
+*   **Integration Bottleneck**: Features like 'Gaming Mode', 'Offline Fallback', and 'Context Summarization' are being developed in isolated branches but not merged into the main branch. This leads to fragmented progress and high risk of severe merge conflicts. The immediate priority must be merging in-flight features before starting new ones.
