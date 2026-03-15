@@ -34,6 +34,14 @@ ASDGPT uses different operational modes to control monitoring behavior and inter
     *   **Interventions**: Suppressed.
     *   **Transitions**: Exits Meeting Mode (Auto-DND) and returns to `active` as soon as user keyboard/mouse activity is detected.
 
+### 5. Error Mode
+*   **What it does**: A fallback state when the system encounters persistent internal errors (like sensor failure or repeated LMM timeouts) and cannot recover automatically.
+*   **Behavior**:
+    *   **Monitoring**: Suspended or severely degraded, depending on the error.
+    *   **LMM Analysis**: Halted to prevent cascading failures.
+    *   **Interventions**: Suppressed, except for error notifications.
+    *   **Transitions**: The system periodically attempts to auto-recover back to `active` mode. If max recovery attempts are reached, it requires manual user intervention (e.g. app restart).
+
 ## How to Verify
 
 1.  **Verify Meeting Mode (Auto-DND)**:
@@ -46,3 +54,6 @@ ASDGPT uses different operational modes to control monitoring behavior and inter
     *   Use the toggle pause/resume functionality.
     *   Observe the logs to confirm the mode changes to `paused`.
     *   Toggle again to confirm it returns to the previous state.
+3.  **Verify Error Recovery**:
+    *   Simulate a crash (e.g. by disabling your camera via device manager while running).
+    *   The app will switch to `error` mode. Wait `5` seconds for it to attempt a recovery.
