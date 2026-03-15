@@ -9,3 +9,4 @@
 - "Active", "Snoozed", and "Paused" are explicit states driven by the user (hotkeys) or timer logic (`snooze_end_time`), whereas "Meeting Mode" (DND) is dynamically and implicitly driven by heuristics.
 - Snoozed mode performs "light monitoring without intervention" (`allow_intervention=False`).
 - Paused mode skips sensor updates in the main LogicEngine loop.
+Critical Learning: 'error' mode is fully implemented in the codebase (handles LMM circuit breaking, timeouts, automatic recovery attempts) but was entirely undocumented in MODES.md.
